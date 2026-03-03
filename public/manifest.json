@@ -1,0 +1,16 @@
+{
+  "name": "ITL Drivers - ระบบจัดการลา",
+  "short_name": "ITL Drivers",
+  "description": "ระบบจัดการลาพนักงานขับรถ",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f0f23",
+  "theme_color": "#0f0f23",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}

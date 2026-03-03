@@ -1,0 +1,71 @@
+import { NextRequest, NextResponse } from 'next/server';
+import dbConnect from '@/lib/mongodb';
+import { SubstituteRecord } from '@/models/SubstituteRecord';
+import { requireAuth, requireLeader } from '@/lib/api-auth';
+
+export const dynamic = 'force-dynamic';
+
+export async function GET(request: NextRequest) {
+  try {
+    const authResult = requireAuth(request);
+    if ('error' in authResult) return authResult.error;
+
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
+
+    await dbConnect();
+
+    const query: any = {};
+    if (userId) {
+      query.userId = userId;
+    }
+
+    const records = await SubstituteRecord.find(query)
+      .populate('userId', 'lineDisplayName employeeId phone name surname lineProfileImage')
+      .populate('createdBy', 'name')
+      .sort({ date: -1 });
+
+    return NextResponse.json({
+      success: true,
+      records,
+    });
+  } catch (error) {
+    console.error('Get Substitute Records Error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const authResult = requireLeader(request);
+    if ('error' in authResult) return authResult.error;
+
+    const body = await request.json();
+    const { userId, recordType, date, description, createdBy } = body;
+
+    if (!userId || !recordType || !date || !createdBy) {
+      return NextResponse.json(
+        { error: 'All required fields must be provided' },
+        { status: 400 }
+      );
+    }
+
+    await dbConnect();
+
+    const record = await SubstituteRecord.create({
+      userId,
+      recordType,
+      date: new Date(date),
+      description,
+      createdBy,
+    });
+
+    return NextResponse.json({
+      success: true,
+      record,
+    });
+  } catch (error) {
+    console.error('Create Substitute Record Error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
