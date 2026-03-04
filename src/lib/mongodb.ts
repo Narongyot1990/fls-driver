@@ -1,5 +1,11 @@
 import mongoose from 'mongoose';
 
+import '@/models/User';
+import '@/models/LeaveRequest';
+import '@/models/CarWashActivity';
+import '@/models/Leader';
+import '@/models/SubstituteRecord';
+
 const MONGODB_URI = process.env.MONGODB_URI!;
 
 if (!MONGODB_URI) {
