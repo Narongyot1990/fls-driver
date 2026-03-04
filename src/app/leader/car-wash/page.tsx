@@ -222,27 +222,40 @@ export default function LeaderCarWashPage() {
     fetchActivities();
   }, [user, selectedDriver, startDate, endDate, filterActivityType]);
 
-  // Pusher realtime
+  // Pusher realtime — fetch full data from API on each event
   useEffect(() => {
     if (!user) return;
 
-    const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY || '', {
+    const pusherClient = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY || '', {
       cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'ap1',
     });
 
-    const channel = pusher.subscribe('car-wash-feed');
+    const channel = pusherClient.subscribe('car-wash-feed');
 
-    channel.bind('new-activity', (data: { activity: Activity }) => {
-      if (!filterActivityType || data.activity.activityType === filterActivityType) {
-        setActivities((prev) => {
-          if (prev.some((a) => a._id === data.activity._id)) return prev;
-          return [data.activity, ...prev];
-        });
+    const fetchActivity = async (activityId: string): Promise<Activity | null> => {
+      try {
+        const res = await fetch(`/api/car-wash/${activityId}`);
+        const data = await res.json();
+        return data.success ? data.activity : null;
+      } catch {
+        return null;
       }
+    };
+
+    channel.bind('new-activity', async (data: { activityId: string }) => {
+      const activity = await fetchActivity(data.activityId);
+      if (!activity) return;
+      if (filterActivityType && activity.activityType !== filterActivityType) return;
+      setActivities((prev) => {
+        if (prev.some((a) => a._id === activity._id)) return prev;
+        return [activity, ...prev];
+      });
     });
 
-    channel.bind('update-activity', (data: { activityId: string; activity: Activity }) => {
-      setActivities((prev) => prev.map((a) => (a._id === data.activityId ? data.activity : a)));
+    channel.bind('update-activity', async (data: { activityId: string }) => {
+      const activity = await fetchActivity(data.activityId);
+      if (!activity) return;
+      setActivities((prev) => prev.map((a) => (a._id === data.activityId ? activity : a)));
     });
 
     channel.bind('delete-activity', (data: { activityId: string }) => {
@@ -250,7 +263,7 @@ export default function LeaderCarWashPage() {
     });
 
     return () => {
-      pusher.unsubscribe('car-wash-feed');
+      pusherClient.unsubscribe('car-wash-feed');
     };
   }, [user, filterActivityType]);
 

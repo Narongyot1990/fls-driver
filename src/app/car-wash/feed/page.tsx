@@ -212,27 +212,40 @@ export default function CarWashFeedPage() {
     }
   };
 
-  // Pusher realtime
+  // Pusher realtime — fetch full data from API on each event
   useEffect(() => {
     if (!user) return;
 
-    const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY || '', {
+    const pusherClient = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY || '', {
       cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'ap1',
     });
 
-    const channel = pusher.subscribe('car-wash-feed');
+    const channel = pusherClient.subscribe('car-wash-feed');
 
-    channel.bind('new-activity', (data: { activity: Activity }) => {
-      if (!filterType || data.activity.activityType === filterType) {
-        setActivities((prev) => {
-          if (prev.some((a) => a._id === data.activity._id)) return prev;
-          return [data.activity, ...prev];
-        });
+    const fetchActivity = async (activityId: string): Promise<Activity | null> => {
+      try {
+        const res = await fetch(`/api/car-wash/${activityId}`);
+        const data = await res.json();
+        return data.success ? data.activity : null;
+      } catch {
+        return null;
       }
+    };
+
+    channel.bind('new-activity', async (data: { activityId: string }) => {
+      const activity = await fetchActivity(data.activityId);
+      if (!activity) return;
+      if (filterType && activity.activityType !== filterType) return;
+      setActivities((prev) => {
+        if (prev.some((a) => a._id === activity._id)) return prev;
+        return [activity, ...prev];
+      });
     });
 
-    channel.bind('update-activity', (data: { activityId: string; activity: Activity }) => {
-      setActivities((prev) => prev.map((a) => (a._id === data.activityId ? data.activity : a)));
+    channel.bind('update-activity', async (data: { activityId: string }) => {
+      const activity = await fetchActivity(data.activityId);
+      if (!activity) return;
+      setActivities((prev) => prev.map((a) => (a._id === data.activityId ? activity : a)));
     });
 
     channel.bind('delete-activity', (data: { activityId: string }) => {
@@ -240,7 +253,7 @@ export default function CarWashFeedPage() {
     });
 
     return () => {
-      pusher.unsubscribe('car-wash-feed');
+      pusherClient.unsubscribe('car-wash-feed');
     };
   }, [user, filterType]);
 
@@ -369,6 +382,16 @@ export default function CarWashFeedPage() {
         <PageHeader
           title="Moments"
           backHref="/home"
+          rightContent={
+            <button
+              onClick={() => router.push('/car-wash')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-fluid-xs font-medium"
+              style={{ background: 'var(--accent)', color: '#fff' }}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              โพสต์
+            </button>
+          }
         />
 
         {/* Filter tabs */}
@@ -734,16 +757,6 @@ export default function CarWashFeedPage() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* FAB — Floating Action Button */}
-      <motion.button
-        whileTap={{ scale: 0.9 }}
-        onClick={() => router.push('/car-wash')}
-        className="fixed z-30 flex items-center justify-center w-14 h-14 rounded-full shadow-lg lg:hidden"
-        style={{ background: 'var(--accent)', color: '#fff', bottom: '5.5rem', right: '1.25rem' }}
-      >
-        <Plus className="w-6 h-6" />
-      </motion.button>
 
       <BottomNav role="driver" />
     </div>

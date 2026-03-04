@@ -101,11 +101,10 @@ export async function POST(request: NextRequest) {
 
     await activity.populate('userId', 'lineDisplayName lineProfileImage name surname employeeId');
 
-    // Pusher realtime — new post
+    // Pusher realtime — new post (send only ID to stay under 10KB limit)
     try {
       await pusher.trigger(CHANNELS.CAR_WASH, 'new-activity', {
-        activityId: activity._id,
-        activity: JSON.parse(JSON.stringify(activity)),
+        activityId: activity._id.toString(),
       });
     } catch (pusherError) {
       console.error('Pusher Error:', pusherError);

@@ -82,7 +82,6 @@ export async function PATCH(
       try {
         await pusher.trigger(CHANNELS.CAR_WASH, 'update-activity', {
           activityId: id,
-          activity: JSON.parse(JSON.stringify(activity)),
         });
       } catch (pusherError) {
         console.error('Pusher Error:', pusherError);
@@ -111,7 +110,6 @@ export async function PATCH(
       try {
         await pusher.trigger(CHANNELS.CAR_WASH, 'update-activity', {
           activityId: id,
-          activity: JSON.parse(JSON.stringify(activity)),
         });
       } catch (pusherError) {
         console.error('Pusher Error:', pusherError);
@@ -143,6 +141,13 @@ export async function PATCH(
       await activity.save();
       await activity.populate('userId', 'lineDisplayName lineProfileImage name surname');
       await activity.populate('comments.userId', 'lineDisplayName lineProfileImage name surname');
+
+      try {
+        await pusher.trigger(CHANNELS.CAR_WASH, 'update-activity', { activityId: id });
+      } catch (pusherError) {
+        console.error('Pusher Error:', pusherError);
+      }
+
       return NextResponse.json({ success: true, activity });
     }
 
@@ -161,6 +166,13 @@ export async function PATCH(
       await activity.populate('userId', 'lineDisplayName lineProfileImage name surname');
       await activity.populate('comments.userId', 'lineDisplayName lineProfileImage name surname');
       await activity.populate('markedBy', 'lineDisplayName name surname');
+
+      try {
+        await pusher.trigger(CHANNELS.CAR_WASH, 'update-activity', { activityId: id });
+      } catch (pusherError) {
+        console.error('Pusher Error:', pusherError);
+      }
+
       return NextResponse.json({ success: true, activity });
     }
 
@@ -180,6 +192,13 @@ export async function PATCH(
     await activity.save();
     await activity.populate('userId', 'lineDisplayName lineProfileImage name surname');
     await activity.populate('comments.userId', 'lineDisplayName lineProfileImage name surname');
+
+    try {
+      await pusher.trigger(CHANNELS.CAR_WASH, 'update-activity', { activityId: id });
+    } catch (pusherError) {
+      console.error('Pusher Error:', pusherError);
+    }
+
     return NextResponse.json({ success: true, activity });
   } catch (error) {
     console.error('Update Activity Error:', error);
