@@ -9,6 +9,9 @@ import { Camera, Car, CalendarDays, Clock, CheckCircle2, AlertCircle, ImageIcon,
 import PageHeader from '@/components/PageHeader';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
+import DatePickerModal from '@/components/DatePickerModal';
+import TimePickerModal from '@/components/TimePickerModal';
+import { formatDateThai } from '@/lib/types';
 
 dayjs.locale('th');
 
@@ -94,7 +97,10 @@ export default function CarWashPage() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+
+  // Modal states
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('driverUser');
@@ -136,7 +142,6 @@ export default function CarWashPage() {
 
     setLoading(true);
     setError('');
-    setSuccess(false);
 
     try {
       const formData = new FormData();
@@ -157,17 +162,13 @@ export default function CarWashPage() {
       const data = await res.json();
 
       if (data.success) {
-        setSuccess(true);
-        setImagePreviews([]);
-        setImageFiles([]);
-        setCaption('');
-        if (fileInputRef.current) fileInputRef.current.value = '';
+        router.push('/car-wash/feed');
       } else {
         setError(data.error || 'เกิดข้อผิดพลาด');
+        setLoading(false);
       }
     } catch {
       setError('เกิดข้อผิดพลาดในการเชื่อมต่อ');
-    } finally {
       setLoading(false);
     }
   };
@@ -185,23 +186,6 @@ export default function CarWashPage() {
 
         <div className="px-4 lg:px-8 py-4">
           <div className="max-w-2xl mx-auto space-y-4">
-
-            {/* Success */}
-            <AnimatePresence>
-              {success && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="card p-4 flex items-center gap-3"
-                >
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: 'var(--success-light)' }}>
-                    <CheckCircle2 className="w-4 h-4" style={{ color: 'var(--success)' }} />
-                  </div>
-                  <span className="text-fluid-sm font-medium" style={{ color: 'var(--success)' }}>บันทึกกิจกรรมสำเร็จ!</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
 
             {error && (
               <div className="flex items-center gap-2 p-3 rounded-[var(--radius-md)] text-fluid-sm" style={{ background: 'var(--danger-light)', color: 'var(--danger)' }}>
@@ -350,32 +334,28 @@ export default function CarWashPage() {
                           <CalendarDays className="w-3.5 h-3.5 inline mr-1" />
                           วันที่
                         </label>
-                        <input
-                          type="date"
-                          value={activityDate}
-                          onChange={(e) => setActivityDate(e.target.value)}
-                          max={dayjs().format('YYYY-MM-DD')}
-                          className="input"
-                        />
+                        <button
+                          onClick={() => setShowDatePicker(true)}
+                          className="input w-full text-left"
+                        >
+                          {formatDateThai(activityDate)}
+                        </button>
                       </div>
                       <div>
                         <label className="block text-fluid-xs mb-1.5" style={{ color: 'var(--text-muted)' }}>
                           <Clock className="w-3.5 h-3.5 inline mr-1" />
                           เวลา
                         </label>
-                        <select
-                          value={activityTime}
-                          onChange={(e) => setActivityTime(e.target.value)}
-                          className="input"
+                        <button
+                          onClick={() => setShowTimePicker(true)}
+                          className="input w-full text-left"
                         >
-                          {timeSlots.map((t) => (
-                            <option key={t} value={t}>{t}</option>
-                          ))}
-                        </select>
+                          {activityTime} น.
+                        </button>
                       </div>
                     </div>
                     <p className="text-fluid-xs mt-2" style={{ color: 'var(--text-muted)' }}>
-                      {dayjs(activityDate).format('D MMMM YYYY')} เวลา {activityTime} น.
+                      {formatDateThai(activityDate)} เวลา {activityTime} น.
                     </p>
                   </motion.div>
 
@@ -412,6 +392,44 @@ export default function CarWashPage() {
           </div>
         </div>
       </div>
+
+      {/* Full-screen loading overlay */}
+      <AnimatePresence>
+        {loading && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4"
+            style={{ background: 'rgba(0,0,0,0.5)' }}
+          >
+            <div className="card p-8 flex flex-col items-center gap-4">
+              <div className="w-12 h-12 rounded-full border-[3px] animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--accent)' }} />
+              <p className="text-fluid-sm font-medium" style={{ color: 'var(--text-primary)' }}>กำลังบันทึกกิจกรรม...</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Date Picker Modal */}
+      <DatePickerModal
+        open={showDatePicker}
+        onClose={() => setShowDatePicker(false)}
+        onConfirm={() => {}}
+        onConfirmSingle={(date) => setActivityDate(dayjs(date).format('YYYY-MM-DD'))}
+        initialDate={new Date(activityDate)}
+        mode="single"
+        allowPast={true}
+        title="เลือกวันที่ทำกิจกรรม"
+      />
+
+      {/* Time Picker Modal */}
+      <TimePickerModal
+        open={showTimePicker}
+        onClose={() => setShowTimePicker(false)}
+        onConfirm={(time) => setActivityTime(time)}
+        initialTime={activityTime}
+      />
 
       <BottomNav role="driver" />
     </div>

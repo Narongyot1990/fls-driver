@@ -181,3 +181,173 @@ NEXT_PUBLIC_PUSHER_CLUSTER=
 JWT_SECRET=
 REFRESH_SECRET=
 ```
+
+## Moments/Car Wash — Pending Improvements
+
+ระบบ Moments (หน้า car wash feed) ต้องแก้ไข 8 ประเด็นต่อไปนี้ ให้ implement ตามลำดับ
+
+### 1. Date/Time Picker — ใช้ DatePickerModal ที่มีอยู่แล้ว
+
+**ไฟล์ที่แก้:** `src/app/car-wash/page.tsx`, อาจสร้าง `src/components/TimePickerModal.tsx`
+
+ตอนนี้หน้า create activity ใช้ native `<input type="date">` + `<select>` dropdown สำหรับเวลา ซึ่งดู design ไม่สอดคล้องกับแอป
+
+**สิ่งที่ต้องทำ:**
+- เปลี่ยน date picker → ใช้ `DatePickerModal` (`src/components/DatePickerModal.tsx`) ที่มีอยู่แล้ว แต่ปรับ mode เป็น `"single"` (ไม่ใช่ range) เพราะ activity ต้องเลือกวันเดียว ถ้า DatePickerModal รองรับเฉพาะ range ให้เพิ่ม prop `mode` เพื่อ toggle ได้
+- เปลี่ยน time picker → สร้าง `TimePickerModal` ใหม่ที่ design เหมือน DatePickerModal (ใช้ framer-motion, same card style, overlay backdrop) แสดง time slots เป็น grid แทน `<select>`
+- Format แสดงผลวันที่ทุกที่ → ใช้ `toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' })` ตาม pattern ที่ใช้ทั่วแอป (ดู `formatDateThai` ใน `src/lib/types.ts`)
+- DatePickerModal สำหรับ activity ต้อง **อนุญาตเลือกวันในอดีต** (ไม่เหมือน leave request ที่ `fromDate={today}`) เพราะ driver อาจบันทึกย้อนหลัง
+- Preview text ใช้ Thai format: เช่น "4 มี.ค. 2569 เวลา 14:30 น."
+
+### 2. Loading Modal หลังบันทึก
+
+**ไฟล์ที่แก้:** `src/app/car-wash/page.tsx`
+
+ตอนนี้มีแค่ spinner เล็กๆ ในปุ่ม "กำลังบันทึก..." ซึ่งผู้ใช้มองไม่เห็นว่ากำลังทำงาน
+
+**สิ่งที่ต้องทำ:**
+- เพิ่ม **full-screen loading overlay** (framer-motion AnimatePresence) ตอน submit
+- แสดง spinner ขนาดใหญ่ (w-12 h-12) + ข้อความ "กำลังบันทึกกิจกรรม..." กลางจอ
+- Overlay: `position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.5)`
+- ใช้ design variables จาก globals.css (`--bg-surface`, `--accent`, `--text-primary`)
+- Spinner ใช้ pattern เดียวกับที่ใช้ทั่วแอป: `border-[3px] animate-spin` + `borderColor: var(--border), borderTopColor: var(--accent)`
+
+### 3. Redirect ไปหน้า Moments หลังบันทึกสำเร็จ
+
+**ไฟล์ที่แก้:** `src/app/car-wash/page.tsx`
+
+ตอนนี้หลัง save สำเร็จแค่ reset form + แสดง success message อยู่หน้าเดิม ทำให้ผู้ใช้สับสน
+
+**สิ่งที่ต้องทำ:**
+- หลัง `POST /api/car-wash` สำเร็จ → `router.push('/car-wash/feed')` ทันที
+- ไม่ต้อง reset form / ไม่ต้องแสดง success message ในหน้า create (เพราะจะ redirect ออกเลย)
+- Loading overlay จากข้อ 2 จะแสดงจนกว่า redirect จะเสร็จ
+
+### 4. Pagination — โหลด 10 รายการ + Infinite Scroll
+
+**ไฟล์ที่แก้:** `src/app/api/car-wash/route.ts`, `src/app/car-wash/feed/page.tsx`, `src/app/leader/car-wash/page.tsx`
+
+ตอนนี้ `GET /api/car-wash` โหลดทุก record ในครั้งเดียว เมื่อข้อมูลเยอะจะช้ามาก
+
+**API — เพิ่ม pagination:**
+```
+GET /api/car-wash?page=1&limit=10&activityType=car-wash&userId=xxx
+```
+- เพิ่ม query params: `page` (default: 1), `limit` (default: 10)
+- ใช้ `.skip((page - 1) * limit).limit(limit)` ใน Mongoose query
+- Response: `{ success: true, activities: [...], hasMore: boolean, total: number }`
+- `hasMore` = `skip + activities.length < total`
+
+**Client — Infinite Scroll:**
+- โหลด 10 รายการแรกตอน mount
+- ใช้ `IntersectionObserver` ที่ element สุดท้ายของ list (sentinel div)
+- เมื่อ sentinel เข้า viewport → fetch page ถัดไป, append ต่อท้าย `activities` state
+- แสดง loading spinner ตอนโหลดเพิ่ม (ใช้ pattern spinner เดียวกับแอป)
+- หยุด fetch เมื่อ `hasMore === false`
+- ทำทั้ง **driver feed** (`src/app/car-wash/feed/page.tsx`) และ **leader feed** (`src/app/leader/car-wash/page.tsx`)
+
+### 5. Filter เฉพาะโพสต์ของตัวเอง
+
+**ไฟล์ที่แก้:** `src/app/car-wash/feed/page.tsx`
+
+**สิ่งที่ต้องทำ:**
+- เพิ่ม filter option ใน `filterOptions` array:
+  ```typescript
+  { key: 'mine', label: 'ของฉัน' }
+  ```
+- เมื่อเลือก "ของฉัน" → ส่ง `userId` param ไป API: `GET /api/car-wash?userId={user.id}`
+- Reset page กลับไป 1 เมื่อเปลี่ยน filter
+- Design: ใช้ pill-style tab เดียวกับ filter ที่มีอยู่
+
+### 6. แสดง Created Date/Time ใน Post Card ให้ชัดเจน
+
+**ไฟล์ที่แก้:** `src/app/car-wash/feed/page.tsx`, `src/app/leader/car-wash/page.tsx`
+
+ตอนนี้แสดง `dayjs(createdAt).fromNow()` + `activityTime` แต่ไม่ชัดเจน
+
+**สิ่งที่ต้องทำ:**
+- เรียงข้อมูลใน post header:
+  - **บรรทัด 1:** ชื่อ driver (font-semibold)
+  - **บรรทัด 2:** วันที่กิจกรรม + เวลา ในรูปแบบ Thai: `"4 มี.ค. 2569 · 14:30 น."` (ใช้ `formatDateThai` จาก `src/lib/types.ts` + activityTime)
+  - **บรรทัด 3 (เล็กกว่า):** relative time `dayjs(createdAt).fromNow()` เป็น text-muted เช่น "โพสต์เมื่อ 2 ชั่วโมงที่แล้ว"
+- ใช้ `text-fluid-xs` สำหรับบรรทัด 2-3, `text-fluid-sm` สำหรับชื่อ
+- Color: บรรทัด 2 ใช้ `--text-secondary`, บรรทัด 3 ใช้ `--text-muted`
+
+### 7. แก้ Pusher Console Errors (สีแดงใน Network Tab)
+
+**ไฟล์ที่ตรวจ:** `.env.local`, `src/app/car-wash/feed/page.tsx`, `src/app/leader/car-wash/page.tsx`
+
+**อาการ:**
+```
+Request URL: https://sockjs.pusher.com/pusher/app//469/...
+```
+สังเกต `app//` มี **double slash** = APP_ID ว่างเปล่า → Pusher client ไม่ได้รับ key ที่ถูกต้อง
+
+**สิ่งที่ต้องตรวจ/แก้:**
+1. ตรวจ `.env.local` ว่า `NEXT_PUBLIC_PUSHER_KEY` และ `NEXT_PUBLIC_PUSHER_CLUSTER` มีค่าถูกต้อง (ไม่ว่าง, ไม่มี space หรือ quote)
+2. ตรวจ Vercel environment variables ว่าตั้งค่า `NEXT_PUBLIC_PUSHER_KEY` + `NEXT_PUBLIC_PUSHER_CLUSTER` แล้ว
+3. เพิ่ม **guard check** ก่อนสร้าง Pusher client ในทั้ง 2 feed pages:
+   ```typescript
+   const pusherKey = process.env.NEXT_PUBLIC_PUSHER_KEY;
+   if (!pusherKey) {
+     console.warn('NEXT_PUBLIC_PUSHER_KEY is not set — real-time disabled');
+     return;
+   }
+   ```
+
+### 8. Real-time ไม่ Update ต้อง Refresh — แก้ Pusher Client
+
+**ไฟล์ที่แก้:** สร้าง `src/lib/pusher-client.ts`, แก้ `src/app/car-wash/feed/page.tsx`, `src/app/leader/car-wash/page.tsx`
+
+**สาเหตุหลัก:** Pusher connection ล้มเหลวจากปัญหาข้อ 7 + connection leak
+
+**สิ่งที่ต้องทำ:**
+
+1. **สร้าง Pusher client singleton** — ไฟล์ `src/lib/pusher-client.ts`:
+   ```typescript
+   import Pusher from 'pusher-js';
+
+   let pusherInstance: Pusher | null = null;
+
+   export function getPusherClient(): Pusher | null {
+     if (typeof window === 'undefined') return null;
+     const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
+     const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
+     if (!key || !cluster) return null;
+
+     if (!pusherInstance) {
+       pusherInstance = new Pusher(key, { cluster });
+     }
+     return pusherInstance;
+   }
+   ```
+
+2. **แก้ทั้ง 2 feed pages** — ใช้ singleton แทนสร้าง new Pusher ทุกครั้ง:
+   ```typescript
+   import { getPusherClient } from '@/lib/pusher-client';
+
+   useEffect(() => {
+     const pusher = getPusherClient();
+     if (!pusher) return;
+
+     const channel = pusher.subscribe('car-wash-feed');
+     // ... bind events ...
+
+     return () => {
+       channel.unbind_all();
+       pusher.unsubscribe('car-wash-feed');
+     };
+   }, [user]);  // ลบ filterType ออกจาก dependency — filter ทำ client-side
+   ```
+
+3. **Pusher event handler ต้อง check filterType** ภายใน handler (ใช้ ref) ไม่ใช่ dependency:
+   ```typescript
+   const filterTypeRef = useRef(filterType);
+   filterTypeRef.current = filterType;
+
+   // ใน new-activity handler:
+   if (filterTypeRef.current && activity.activityType !== filterTypeRef.current) return;
+   ```
+
+4. **อัพเดท Pusher channel list ใน CLAUDE.md** (Real-time Notifications section):
+   - Car wash feed → channel `car-wash-feed`, events: `new-activity`, `update-activity`, `delete-activity`

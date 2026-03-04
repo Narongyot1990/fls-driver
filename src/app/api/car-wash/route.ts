@@ -40,13 +40,23 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const page = parseInt(searchParams.get('page') || '1', 10);
+    const limit = parseInt(searchParams.get('limit') || '10', 10);
+    const skip = (page - 1) * limit;
+
+    const total = await CarWashActivity.countDocuments(query);
+
     const activities = await CarWashActivity.find(query)
       .populate('userId', 'lineDisplayName lineProfileImage name surname employeeId')
       .populate('comments.userId', 'lineDisplayName lineProfileImage name surname')
       .populate('markedBy', 'lineDisplayName name surname')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
-    return NextResponse.json({ success: true, activities });
+    const hasMore = skip + activities.length < total;
+
+    return NextResponse.json({ success: true, activities, hasMore, total });
   } catch (error) {
     console.error('Get CarWash Error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

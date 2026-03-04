@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import Pusher from 'pusher-js';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import 'dayjs/locale/th';
@@ -25,6 +24,8 @@ import {
 import PageHeader from '@/components/PageHeader';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
+import { getPusherClient } from '@/lib/pusher-client';
+import { formatDateThai } from '@/lib/types';
 
 dayjs.extend(relativeTime);
 dayjs.locale('th');
@@ -39,6 +40,7 @@ const activityTypeLabels: Record<string, string> = {
 const filterOptions = [
   { key: '', label: 'ทั้งหมด' },
   { key: 'car-wash', label: 'ล้างรถ' },
+  { key: 'mine', label: 'ของฉัน' },
 ];
 
 function getImageUrl(url: string) {
@@ -163,7 +165,13 @@ export default function CarWashFeedPage() {
   const [user, setUser] = useState<{ id: string; lineDisplayName: string; lineProfileImage?: string; name?: string; surname?: string } | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [filterType, setFilterType] = useState('');
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const filterTypeRef = useRef(filterType);
+  filterTypeRef.current = filterType;
 
   // Comment states
   const [commentingOn, setCommentingOn] = useState<string | null>(null);
@@ -192,35 +200,61 @@ export default function CarWashFeedPage() {
     setUser(JSON.parse(storedUser));
   }, [router]);
 
-  // Fetch feed with filter
-  useEffect(() => {
-    if (!user) return;
-    fetchFeed();
-  }, [user, filterType]);
-
-  const fetchFeed = async () => {
-    setLoading(true);
+  // Fetch feed with filter + pagination
+  const fetchFeed = useCallback(async (pageNum: number, append = false) => {
+    if (pageNum === 1) setLoading(true);
+    else setLoadingMore(true);
     try {
-      const params = filterType ? `?activityType=${filterType}` : '';
-      const res = await fetch(`/api/car-wash${params}`);
+      const params = new URLSearchParams();
+      params.set('page', String(pageNum));
+      params.set('limit', '10');
+      if (filterType && filterType !== 'mine') params.set('activityType', filterType);
+      if (filterType === 'mine' && user) params.set('userId', user.id);
+      const res = await fetch(`/api/car-wash?${params.toString()}`);
       const data = await res.json();
-      if (data.success) setActivities(data.activities || []);
+      if (data.success) {
+        setActivities((prev) => append ? [...prev, ...(data.activities || [])] : (data.activities || []));
+        setHasMore(data.hasMore ?? false);
+      }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
-  };
+  }, [filterType, user]);
 
-  // Pusher realtime — fetch full data from API on each event
   useEffect(() => {
     if (!user) return;
+    setPage(1);
+    fetchFeed(1);
+  }, [user, filterType, fetchFeed]);
 
-    const pusherClient = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY || '', {
-      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'ap1',
-    });
+  // Infinite scroll
+  useEffect(() => {
+    if (!hasMore || loadingMore) return;
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting && hasMore && !loadingMore) {
+        setPage((p) => {
+          const next = p + 1;
+          fetchFeed(next, true);
+          return next;
+        });
+      }
+    }, { threshold: 0.1 });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loadingMore, fetchFeed]);
 
-    const channel = pusherClient.subscribe('car-wash-feed');
+  // Pusher realtime — singleton, ref-based filter
+  useEffect(() => {
+    if (!user) return;
+    const pusher = getPusherClient();
+    if (!pusher) return;
+
+    const channel = pusher.subscribe('car-wash-feed');
 
     const fetchActivity = async (activityId: string): Promise<Activity | null> => {
       try {
@@ -235,7 +269,9 @@ export default function CarWashFeedPage() {
     channel.bind('new-activity', async (data: { activityId: string }) => {
       const activity = await fetchActivity(data.activityId);
       if (!activity) return;
-      if (filterType && activity.activityType !== filterType) return;
+      const ft = filterTypeRef.current;
+      if (ft === 'mine' && activity.userId?._id !== user.id) return;
+      if (ft && ft !== 'mine' && activity.activityType !== ft) return;
       setActivities((prev) => {
         if (prev.some((a) => a._id === activity._id)) return prev;
         return [activity, ...prev];
@@ -253,9 +289,10 @@ export default function CarWashFeedPage() {
     });
 
     return () => {
-      pusherClient.unsubscribe('car-wash-feed');
+      channel.unbind_all();
+      pusher.unsubscribe('car-wash-feed');
     };
-  }, [user, filterType]);
+  }, [user]);
 
   const updateActivity = (updated: Activity) => {
     setActivities((prev) => prev.map((a) => (a._id === updated._id ? updated : a)));
@@ -451,8 +488,11 @@ export default function CarWashFeedPage() {
                           <p className="text-fluid-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                             {getDisplayName(activity.userId)}
                           </p>
-                          <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>
-                            {dayjs(activity.createdAt).fromNow()} · {activity.activityTime} น.
+                          <p className="text-fluid-xs" style={{ color: 'var(--text-secondary)' }}>
+                            {formatDateThai(activity.activityDate)} · {activity.activityTime} น.
+                          </p>
+                          <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                            โพสต์เมื่อ {dayjs(activity.createdAt).fromNow()}
                           </p>
                         </div>
 
@@ -633,6 +673,14 @@ export default function CarWashFeedPage() {
                     </motion.div>
                   );
                 })}
+                {/* Infinite scroll sentinel */}
+                {hasMore && (
+                  <div ref={sentinelRef} className="flex justify-center py-6">
+                    {loadingMore && (
+                      <div className="w-8 h-8 rounded-full border-[3px] animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--accent)' }} />
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>

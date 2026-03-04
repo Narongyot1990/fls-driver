@@ -11,7 +11,12 @@ interface DatePickerModalProps {
   open: boolean;
   onClose: () => void;
   onConfirm: (range: { from: Date; to: Date }) => void;
+  onConfirmSingle?: (date: Date) => void;
   initialRange?: { from: Date | undefined; to: Date | undefined };
+  initialDate?: Date;
+  mode?: 'range' | 'single';
+  allowPast?: boolean;
+  title?: string;
 }
 
 const THAI_MONTHS = [
@@ -19,17 +24,21 @@ const THAI_MONTHS = [
   'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
 ];
 
-export default function DatePickerModal({ open, onClose, onConfirm, initialRange }: DatePickerModalProps) {
+export default function DatePickerModal({ open, onClose, onConfirm, onConfirmSingle, initialRange, initialDate, mode = 'range', allowPast = false, title }: DatePickerModalProps) {
   const [range, setRange] = useState<DateRange | undefined>(initialRange);
+  const [singleDate, setSingleDate] = useState<Date | undefined>(initialDate);
   const [selectedText, setSelectedText] = useState('');
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   useEffect(() => {
-    if (initialRange?.from && initialRange?.to) {
+    if (mode === 'single' && initialDate) {
+      setSingleDate(initialDate);
+      setSelectedText(dayjs(initialDate).format('D MMM YYYY'));
+    } else if (initialRange?.from && initialRange?.to) {
       setRange(initialRange);
       updateSelectedText(initialRange.from, initialRange.to);
     }
-  }, [initialRange, open]);
+  }, [initialRange, initialDate, open, mode]);
 
   useEffect(() => {
     setCurrentMonth(new Date());
@@ -56,7 +65,10 @@ export default function DatePickerModal({ open, onClose, onConfirm, initialRange
   };
 
   const handleConfirm = () => {
-    if (range?.from && range?.to) {
+    if (mode === 'single' && singleDate) {
+      onConfirmSingle?.(singleDate);
+      onClose();
+    } else if (range?.from && range?.to) {
       onConfirm({ from: range.from, to: range.to });
       onClose();
     }
@@ -95,34 +107,54 @@ export default function DatePickerModal({ open, onClose, onConfirm, initialRange
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>เลือกวันที่ลา</h3>
+              <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{title || (mode === 'single' ? 'เลือกวันที่' : 'เลือกวันที่ลา')}</h3>
               <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-100">
                 <X className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
               </button>
             </div>
 
             <div className="flex justify-center mb-4">
-              <DayPicker
-                mode="range"
-                selected={range}
-                onSelect={handleSelect}
-                fromDate={today}
-                numberOfMonths={1}
-                month={currentMonth}
-                onMonthChange={setCurrentMonth}
-                modifiersClassNames={{
-                  selected: 'bg-[var(--accent)] text-white rounded-full',
-                  today: 'font-bold text-[var(--accent)]',
-                }}
-                className="rdp-custom"
-              />
+              {mode === 'single' ? (
+                <DayPicker
+                  mode="single"
+                  selected={singleDate}
+                  onSelect={(date) => {
+                    setSingleDate(date || undefined);
+                    if (date) setSelectedText(dayjs(date).format('D MMM YYYY'));
+                  }}
+                  {...(!allowPast ? { fromDate: today } : {})}
+                  numberOfMonths={1}
+                  month={currentMonth}
+                  onMonthChange={setCurrentMonth}
+                  modifiersClassNames={{
+                    selected: 'bg-[var(--accent)] text-white rounded-full',
+                    today: 'font-bold text-[var(--accent)]',
+                  }}
+                  className="rdp-custom"
+                />
+              ) : (
+                <DayPicker
+                  mode="range"
+                  selected={range}
+                  onSelect={handleSelect}
+                  fromDate={today}
+                  numberOfMonths={1}
+                  month={currentMonth}
+                  onMonthChange={setCurrentMonth}
+                  modifiersClassNames={{
+                    selected: 'bg-[var(--accent)] text-white rounded-full',
+                    today: 'font-bold text-[var(--accent)]',
+                  }}
+                  className="rdp-custom"
+                />
+              )}
             </div>
 
             <div className="space-y-3 mb-4">
               <div className="flex items-center gap-2 p-3 rounded-lg" style={{ background: 'var(--bg-inset)' }}>
                 <Calendar className="w-4 h-4" style={{ color: 'var(--accent)' }} />
                 <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
-                  {selectedText || 'เลือกวันที่เริ่มต้นและสิ้นสุด'}
+                  {selectedText || (mode === 'single' ? 'เลือกวันที่' : 'เลือกวันที่เริ่มต้นและสิ้นสุด')}
                 </span>
               </div>
             </div>
@@ -133,7 +165,7 @@ export default function DatePickerModal({ open, onClose, onConfirm, initialRange
               </button>
               <button
                 onClick={handleConfirm}
-                disabled={!range?.from || !range?.to}
+                disabled={mode === 'single' ? !singleDate : (!range?.from || !range?.to)}
                 className="btn btn-primary flex-1 disabled:opacity-50"
               >
                 ยืนยัน
