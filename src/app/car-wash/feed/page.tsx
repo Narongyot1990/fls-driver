@@ -39,10 +39,12 @@ const activityTypeLabels: Record<string, string> = {
 const filterOptions = [
   { key: '', label: 'ทั้งหมด' },
   { key: 'car-wash', label: 'ล้างรถ' },
-  { key: 'maintenance', label: 'ซ่อมบำรุง' },
-  { key: 'inspection', label: 'ตรวจสภาพ' },
-  { key: 'refuel', label: 'เติมน้ำมัน' },
 ];
+
+function getImageUrl(url: string) {
+  if (!url) return '';
+  return `/api/car-wash/image?url=${encodeURIComponent(url)}`;
+}
 
 interface UserInfo {
   _id: string;
@@ -239,7 +241,6 @@ export default function CarWashFeedPage() {
 
     return () => {
       pusher.unsubscribe('car-wash-feed');
-      pusher.disconnect();
     };
   }, [user, filterType]);
 
@@ -410,7 +411,7 @@ export default function CarWashFeedPage() {
                 {activities.map((activity, index) => {
                   const isOwner = activity.userId?._id === user.id;
                   const liked = isLiked(activity);
-                  const images = activity.imageUrls || [];
+                  const images = (activity.imageUrls || []).map(getImageUrl);
 
                   return (
                     <motion.div
