@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { put } from '@vercel/blob';
 import dbConnect from '@/lib/mongodb';
 import { CarWashActivity } from '@/models/CarWashActivity';
+import { User } from '@/models/User';
 import { requireAuth } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
