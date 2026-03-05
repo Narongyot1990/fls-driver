@@ -27,6 +27,7 @@ import {
 import PageHeader from '@/components/PageHeader';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
+import ProfileModal, { type ProfileUser } from '@/components/ProfileModal';
 import { getPusherClient } from '@/lib/pusher-client';
 import { formatDateThai } from '@/lib/types';
 
@@ -90,12 +91,13 @@ function getDisplayName(u: UserInfo | undefined) {
   return u.lineDisplayName || 'Unknown';
 }
 
-function Avatar({ user, size = 'md' }: { user?: UserInfo; size?: 'sm' | 'md' | 'lg' }) {
+function Avatar({ user, size = 'md', onClick }: { user?: UserInfo; size?: 'sm' | 'md' | 'lg'; onClick?: () => void }) {
   const sizeMap = { sm: 'w-6 h-6 text-[9px]', md: 'w-9 h-9 text-xs', lg: 'w-11 h-11 text-sm' };
   return (
     <div
-      className={`${sizeMap[size]} rounded-full overflow-hidden shrink-0 flex items-center justify-center text-white font-bold`}
+      className={`${sizeMap[size]} rounded-full overflow-hidden shrink-0 flex items-center justify-center text-white font-bold ${onClick ? 'cursor-pointer' : ''}`}
       style={{ background: 'var(--accent)' }}
+      onClick={onClick}
     >
       {user?.lineProfileImage ? (
         <img src={user.lineProfileImage} alt="" className="w-full h-full object-cover" />
@@ -198,6 +200,16 @@ export default function LeaderCarWashPage() {
   // Gallery preview
   const [galleryImages, setGalleryImages] = useState<string[]>([]);
   const [galleryIndex, setGalleryIndex] = useState(0);
+
+  // Profile modal
+  const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
+  const [showProfile, setShowProfile] = useState(false);
+
+  const openProfile = (u?: UserInfo) => {
+    if (!u) return;
+    setProfileUser(u as unknown as ProfileUser);
+    setShowProfile(true);
+  };
 
   // Activity type filter
   const [filterActivityType, setFilterActivityType] = useState('');
@@ -611,7 +623,7 @@ export default function LeaderCarWashPage() {
                     >
                       {/* Header */}
                       <div className="flex items-center gap-3 p-4 pb-2">
-                        <Avatar user={activity.userId} />
+                        <Avatar user={activity.userId} onClick={() => openProfile(activity.userId)} />
                         <div className="flex-1 min-w-0">
                           <p className="text-fluid-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                             {getDisplayName(activity.userId)}
@@ -938,6 +950,7 @@ export default function LeaderCarWashPage() {
         )}
       </AnimatePresence>
 
+      <ProfileModal user={profileUser} open={showProfile} onClose={() => setShowProfile(false)} />
       <BottomNav role="leader" />
     </div>
   );

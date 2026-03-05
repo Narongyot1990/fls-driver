@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, Download, X, Phone, Star } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
+import ProfileModal, { type ProfileUser } from '@/components/ProfileModal';
 import { getHolidayMap, getHolidaysForMonth, type ThaiHoliday } from '@/lib/thai-holidays';
 
 interface LeaveRequest {
@@ -60,6 +61,8 @@ function DashboardContent() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<DayData | null>(null);
   const [showPopup, setShowPopup] = useState(false);
+  const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
+  const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
     const driverUser = localStorage.getItem('driverUser');
@@ -300,51 +303,23 @@ function DashboardContent() {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.2 }}
-              className="card"
+              className="flex items-center gap-2 overflow-x-auto pb-1"
             >
-              <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid var(--border)' }}>
-                <Star className="w-4 h-4" style={{ color: '#ef4444' }} />
-                <h3 className="text-fluid-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                  วันหยุดบริษัท
-                </h3>
-                <span className="text-fluid-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
-                  {monthHolidays.length}
-                </span>
-              </div>
-              <div 
-                className="divide-y overflow-y-auto" 
-                style={{ 
-                  borderColor: 'var(--border)',
-                  maxHeight: '200px' 
-                }}
-              >
-                {monthHolidays.map((holiday) => {
-                  const d = holiday.date.split('-');
-                  const dayNum = parseInt(d[2]);
-                  const monthNum = parseInt(d[1]);
-                  return (
-                    <div key={holiday.date} className="px-4 py-3 flex items-center gap-3">
-                      <div
-                        className="w-10 h-10 rounded-xl flex flex-col items-center justify-center flex-shrink-0"
-                        style={{ background: 'rgba(239, 68, 68, 0.08)' }}
-                      >
-                        <span className="text-sm font-bold leading-none" style={{ color: '#ef4444' }}>{dayNum}</span>
-                        <span className="text-[9px] font-medium leading-none mt-0.5" style={{ color: '#ef4444', opacity: 0.7 }}>
-                          {THAI_MONTHS[monthNum - 1]?.substring(0, 3)}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-fluid-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
-                          {holiday.nameTh}
-                        </p>
-                        <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>
-                          {holiday.name}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <Star className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#ef4444' }} />
+              <span className="text-fluid-xs flex-shrink-0" style={{ color: 'var(--text-muted)' }}>วันหยุด:</span>
+              {monthHolidays.map((holiday) => {
+                const d = holiday.date.split('-');
+                const dayNum = parseInt(d[2]);
+                return (
+                  <span 
+                    key={holiday.date} 
+                    className="text-fluid-xs px-1.5 py-0.5 rounded flex-shrink-0 whitespace-nowrap"
+                    style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}
+                  >
+                    {dayNum} {holiday.nameTh}
+                  </span>
+                );
+              })}
             </motion.div>
           )}
 
@@ -380,7 +355,11 @@ function DashboardContent() {
               <div className="p-2 space-y-1.5 overflow-y-auto max-h-[55vh]">
                 {selectedDay.leaves.map((leave) => (
                   <div key={leave._id} className="flex items-start gap-2.5 p-2.5 rounded-[var(--radius-md)]" style={{ background: 'var(--bg-inset)' }}>
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-xs overflow-hidden flex-shrink-0" style={{ background: 'var(--accent)' }}>
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-xs overflow-hidden flex-shrink-0 cursor-pointer"
+                      style={{ background: 'var(--accent)' }}
+                      onClick={(e) => { e.stopPropagation(); setProfileUser(leave.userId as ProfileUser); setShowProfile(true); }}
+                    >
                       {leave.userId?.lineProfileImage ? (
                         <img src={leave.userId.lineProfileImage} alt="" className="w-full h-full object-cover" />
                       ) : (
@@ -421,6 +400,8 @@ function DashboardContent() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ProfileModal user={profileUser} open={showProfile} onClose={() => setShowProfile(false)} />
     </div>
   );
 }

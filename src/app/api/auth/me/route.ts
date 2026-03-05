@@ -45,6 +45,14 @@ export async function GET(request: NextRequest) {
           error: 'User not found' 
         }, { status: 404 });
       }
+
+      await User.findByIdAndUpdate(tokenPayload.userId, {
+        lastSeen: new Date(),
+        isOnline: true,
+      });
+      
+      user.lastSeen = new Date();
+      user.isOnline = true;
       
       return NextResponse.json({
         success: true,
@@ -56,10 +64,13 @@ export async function GET(request: NextRequest) {
           name: user.name,
           surname: user.surname,
           phone: user.phone,
+          employeeId: user.employeeId,
           status: user.status,
           vacationDays: user.vacationDays,
           sickDays: user.sickDays,
           personalDays: user.personalDays,
+          lastSeen: user.lastSeen,
+          isOnline: user.isOnline,
           role: 'driver',
         },
       });

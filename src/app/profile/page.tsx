@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, AlertCircle, Pencil, X } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Pencil, X, Circle, User, Phone, Hash, PhoneCall } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
 
@@ -15,6 +15,29 @@ interface DriverUser {
   surname?: string;
   phone?: string;
   employeeId?: string;
+  status?: string;
+  lastSeen?: string;
+  isOnline?: boolean;
+}
+
+function formatLastSeen(dateStr?: string): string {
+  if (!dateStr) return '-';
+  
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  const diffWeeks = Math.floor(diffDays / 7);
+  const diffMonths = Math.floor(diffDays / 30);
+
+  if (diffMins < 1) return 'เมื่อสักครู่';
+  if (diffMins < 60) return `${diffMins} นาทีที่แล้ว`;
+  if (diffHours < 24) return `${diffHours} ชั่วโมงที่แล้ว`;
+  if (diffDays < 7) return `${diffDays} วันที่แล้ว`;
+  if (diffWeeks < 4) return `${diffWeeks} สัปดาห์ที่แล้ว`;
+  return `${diffMonths} เดือนที่แล้ว`;
 }
 
 export default function ProfilePage() {
@@ -27,13 +50,31 @@ export default function ProfilePage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('driverUser');
-    if (!storedUser) {
-      router.push('/login');
-      return;
-    }
-    const userData = JSON.parse(storedUser);
-    setUser(userData);
+    const fetchUser = async () => {
+      try {
+        const response = await fetch('/api/auth/me');
+        const data = await response.json();
+        
+        if (data.success) {
+          localStorage.setItem('driverUser', JSON.stringify(data.user));
+          setUser(data.user);
+        } else {
+          const storedUser = localStorage.getItem('driverUser');
+          if (storedUser) {
+            setUser(JSON.parse(storedUser));
+          } else {
+            router.push('/login');
+          }
+        }
+      } catch (err) {
+        const storedUser = localStorage.getItem('driverUser');
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        }
+      }
+    };
+
+    fetchUser();
   }, [router]);
 
   const handleStartEdit = (field: 'name' | 'phone') => {
@@ -114,53 +155,144 @@ export default function ProfilePage() {
       <Sidebar role="driver" />
 
       <div className="lg:pl-[240px] pb-20 lg:pb-6">
-        <div className="px-4 lg:px-8 py-6">
-          <div className="max-w-2xl mx-auto space-y-4">
-            {success && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="card p-4 flex items-center gap-3"
-              >
-                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: 'var(--success-light)' }}>
-                  <CheckCircle2 className="w-4 h-4" style={{ color: 'var(--success)' }} />
+        {/* Cover & Profile Section - Social Media Style */}
+        <div className="relative">
+          {/* Cover Background */}
+          <div 
+            className="h-32 sm:h-40 w-full"
+            style={{ 
+              background: 'linear-gradient(135deg, var(--accent) 0%, #6366f1 100%)'
+            }}
+          />
+          
+          {/* Profile Info Overlay */}
+          <div className="px-4 sm:px-8 pb-6">
+            <div className="max-w-2xl mx-auto">
+              {/* Avatar - Large & Prominent */}
+              <div className="relative -mt-16 sm:-mt-20 mb-4">
+                <div className="inline-block relative">
+                  <div 
+                    className="w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 shadow-lg"
+                    style={{ 
+                      background: 'var(--accent)',
+                      borderColor: 'var(--bg-surface)'
+                    }}
+                  >
+                    {user.lineProfileImage ? (
+                      <img 
+                        src={user.lineProfileImage} 
+                        alt={user.lineDisplayName} 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <User className="w-12 h-12 sm:w-16 sm:h-16 text-white" />
+                      </div>
+                    )}
+                  </div>
+                  {/* Online Status Badge */}
+                  <div 
+                    className="absolute bottom-2 right-2 w-5 h-5 sm:w-6 sm:h-6 rounded-full border-3 flex items-center justify-center"
+                    style={{ 
+                      background: user.isOnline ? 'var(--success)' : 'var(--text-muted)',
+                      borderColor: 'var(--bg-surface)'
+                    }}
+                  >
+                    <Circle className="w-2 h-2 sm:w-2.5 sm:h-2.5 fill-current text-white" />
+                  </div>
                 </div>
-                <span className="text-fluid-sm font-medium" style={{ color: 'var(--success)' }}>บันทึกข้อมูลสำเร็จ!</span>
-              </motion.div>
-            )}
-
-            {error && (
-              <div className="flex items-center gap-2 p-3 rounded-[var(--radius-md)] text-fluid-sm" style={{ background: 'var(--danger-light)', color: 'var(--danger)' }}>
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                {error}
               </div>
-            )}
 
-            {/* Profile Header */}
-            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="card p-5">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-[var(--radius-md)] flex items-center justify-center overflow-hidden shrink-0" style={{ background: 'var(--accent)' }}>
-                  {user.lineProfileImage ? (
-                    <img src={user.lineProfileImage} alt={user.lineDisplayName} className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-2xl font-bold text-white">{user.lineDisplayName.charAt(0)}</span>
+              {/* Name & Status */}
+              <div className="mb-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-2 flex-wrap flex-1">
+                    <h1 className="text-2xl sm:text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                      {fullName}
+                    </h1>
+                    {user.status === 'active' ? (
+                      <span 
+                        className="px-2 py-0.5 rounded-full text-xs font-medium"
+                        style={{ background: 'var(--success-light)', color: 'var(--success)' }}
+                      >
+                        ใช้งาน
+                      </span>
+                    ) : (
+                      <span 
+                        className="px-2 py-0.5 rounded-full text-xs font-medium"
+                        style={{ background: 'rgba(251, 191, 36, 0.1)', color: 'var(--warning)' }}
+                      >
+                        รออนุมัติ
+                      </span>
+                    )}
+                  </div>
+                  {user.phone && (
+                    <a 
+                      href={`tel:${user.phone}`}
+                      className="w-10 h-10 rounded-full flex items-center justify-center"
+                      style={{ background: 'var(--success)' }}
+                    >
+                      <PhoneCall className="w-5 h-5 text-white" />
+                    </a>
                   )}
                 </div>
-                <div>
-                  <h2 className="text-fluid-lg font-bold" style={{ color: 'var(--text-primary)' }}>{user.lineDisplayName}</h2>
-                  <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>พนักงานขับรถ</p>
-                </div>
+                <p className="text-lg" style={{ color: 'var(--text-muted)' }}>
+                  @{user.lineDisplayName}
+                </p>
+                <p className="text-sm mt-1" style={{ color: user.isOnline ? 'var(--success)' : 'var(--text-muted)' }}>
+                  {user.isOnline ? '● Online' : `Last seen ${formatLastSeen(user.lastSeen)}`}
+                </p>
               </div>
-            </motion.div>
 
-            {/* Profile Info */}
-            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="card p-0 overflow-hidden">
-              {/* Name Field */}
-              <div className="p-4" style={{ borderBottom: '1px solid var(--border)' }}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>ชื่อ-นามสกุล</p>
+              {/* Success/Error Messages */}
+              {success && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="card p-3 flex items-center gap-2 mb-4"
+                >
+                  <CheckCircle2 className="w-4 h-4" style={{ color: 'var(--success)' }} />
+                  <span style={{ color: 'var(--success)' }}>บันทึกข้อมูลสำเร็จ!</span>
+                </motion.div>
+              )}
+
+              {error && (
+                <div 
+                  className="flex items-center gap-2 p-3 rounded-[var(--radius-md)] mb-4"
+                  style={{ background: 'var(--danger-light)', color: 'var(--danger)' }}
+                >
+                  <AlertCircle className="w-4 h-4" />
+                  {error}
+                </div>
+              )}
+
+              {/* Employee Info Card */}
+              <motion.div 
+                initial={{ y: 20, opacity: 0 }} 
+                animate={{ y: 0, opacity: 1 }} 
+                transition={{ delay: 0.1 }}
+                className="card p-0 overflow-hidden"
+              >
+                {/* Employee ID */}
+                <div className="p-4 flex items-center gap-3" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--bg-inset)' }}>
+                    <Hash className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>รหัสพนักงาน</p>
+                    <p className="text-base font-medium" style={{ color: 'var(--text-primary)' }}>
+                      {user.employeeId || '-'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Name */}
+                <div className="p-4 flex items-center gap-3" style={{ borderBottom: '1px solid var(--border)' }}>
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--bg-inset)' }}>
+                    <User className="w-5 h-5" style={{ color: 'var(--accent)' }} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>ชื่อ-นามสกุล</p>
                     {editField === 'name' ? (
                       <div className="flex items-center gap-2 mt-1">
                         <input
@@ -179,22 +311,23 @@ export default function ProfilePage() {
                         </button>
                       </div>
                     ) : (
-                      <p className="text-fluid-base font-medium mt-1" style={{ color: 'var(--text-primary)' }}>{fullName}</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-base font-medium" style={{ color: 'var(--text-primary)' }}>{fullName}</p>
+                        <button onClick={() => handleStartEdit('name')} className="btn btn-ghost p-2">
+                          <Pencil className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                        </button>
+                      </div>
                     )}
                   </div>
-                  {editField !== 'name' && (
-                    <button onClick={() => handleStartEdit('name')} className="btn btn-ghost p-2">
-                      <Pencil className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                    </button>
-                  )}
                 </div>
-              </div>
 
-              {/* Phone Field */}
-              <div className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>เบอร์โทรศัพท์</p>
+                {/* Phone */}
+                <div className="p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--bg-inset)' }}>
+                    <Phone className="w-5 h-5" style={{ color: 'var(--success)' }} />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>เบอร์โทรศัพท์</p>
                     {editField === 'phone' ? (
                       <div className="flex items-center gap-2 mt-1">
                         <input
@@ -213,17 +346,17 @@ export default function ProfilePage() {
                         </button>
                       </div>
                     ) : (
-                      <p className="text-fluid-base font-medium mt-1" style={{ color: 'var(--text-primary)' }}>{user.phone || '-'}</p>
+                      <div className="flex items-center justify-between">
+                        <p className="text-base font-medium" style={{ color: 'var(--text-primary)' }}>{user.phone || '-'}</p>
+                        <button onClick={() => handleStartEdit('phone')} className="btn btn-ghost p-2">
+                          <Pencil className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                        </button>
+                      </div>
                     )}
                   </div>
-                  {editField !== 'phone' && (
-                    <button onClick={() => handleStartEdit('phone')} className="btn btn-ghost p-2">
-                      <Pencil className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                    </button>
-                  )}
                 </div>
-              </div>
-            </motion.div>
+              </motion.div>
+            </div>
           </div>
         </div>
       </div>

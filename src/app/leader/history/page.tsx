@@ -7,6 +7,7 @@ import { Umbrella, Thermometer, Briefcase, Ban, FileText, ClipboardList, Calenda
 import PageHeader from '@/components/PageHeader';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
+import ProfileModal, { type ProfileUser } from '@/components/ProfileModal';
 
 interface LeaveRequest {
   _id: string;
@@ -81,6 +82,8 @@ function LeaderHistoryContent() {
   const [substitutes, setSubstitutes] = useState<SubstituteRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('leave');
+  const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
+  const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('leaderUser');
@@ -204,7 +207,11 @@ function LeaderHistoryContent() {
                         className="card overflow-hidden"
                       >
                         <div className="p-4 flex items-start gap-3" style={{ borderBottom: '1px solid var(--border)' }}>
-                          <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden" style={{ background: 'var(--accent)' }}>
+                          <div
+                            className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden cursor-pointer"
+                            style={{ background: 'var(--accent)' }}
+                            onClick={() => { setProfileUser(request.userId as ProfileUser); setShowProfile(true); }}
+                          >
                             {request.userId?.lineProfileImage ? (
                               <img src={request.userId.lineProfileImage} alt="" className="w-full h-full object-cover" />
                             ) : (
@@ -268,7 +275,11 @@ function LeaderHistoryContent() {
                       className="card overflow-hidden"
                     >
                       <div className="p-4 flex items-start gap-3" style={{ borderBottom: '1px solid var(--border)' }}>
-                        <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden" style={{ background: 'var(--accent)' }}>
+                        <div
+                          className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden cursor-pointer"
+                          style={{ background: 'var(--accent)' }}
+                          onClick={() => { setProfileUser(record.userId as unknown as ProfileUser); setShowProfile(true); }}
+                        >
                           {record.userId?.lineProfileImage ? (
                             <img src={record.userId.lineProfileImage} alt="" className="w-full h-full object-cover" />
                           ) : (
@@ -321,6 +332,7 @@ function LeaderHistoryContent() {
         </div>
       </div>
 
+      <ProfileModal user={profileUser} open={showProfile} onClose={() => setShowProfile(false)} />
       <BottomNav role="leader" />
     </div>
   );

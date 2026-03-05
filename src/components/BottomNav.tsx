@@ -12,9 +12,7 @@ interface NavItem {
 
 const driverNav: NavItem[] = [
   { icon: Home, label: 'หน้าหลัก', href: '/home' },
-  { icon: FileText, label: 'ขอลา', href: '/leave' },
   { icon: Rss, label: 'Moments', href: '/car-wash/feed' },
-  { icon: Clock, label: 'ประวัติ', href: '/leave/history' },
   { icon: User, label: 'โปรไฟล์', href: '/profile' },
 ];
 

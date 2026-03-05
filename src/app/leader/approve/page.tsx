@@ -8,6 +8,7 @@ import { CheckCircle2, XCircle, Bell, Umbrella, Thermometer, Briefcase, Ban, Cal
 import PageHeader from '@/components/PageHeader';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
+import ProfileModal, { type ProfileUser } from '@/components/ProfileModal';
 
 interface LeaveRequest {
   _id: string;
@@ -45,6 +46,8 @@ export default function LeaderApprovePage() {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
+  const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('leaderUser');
@@ -249,7 +252,11 @@ export default function LeaderApprovePage() {
                       >
                         {/* User Info */}
                         <div className="p-4 flex items-start gap-3" style={{ borderBottom: '1px solid var(--border)' }}>
-                          <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden" style={{ background: 'var(--accent)' }}>
+                          <div
+                            className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden cursor-pointer"
+                            style={{ background: 'var(--accent)' }}
+                            onClick={() => { setProfileUser(request.userId as ProfileUser); setShowProfile(true); }}
+                          >
                             {request.userId?.lineProfileImage ? (
                               <img src={request.userId.lineProfileImage} alt="" className="w-full h-full object-cover" />
                             ) : (
@@ -374,6 +381,7 @@ export default function LeaderApprovePage() {
         )}
       </AnimatePresence>
 
+      <ProfileModal user={profileUser} open={showProfile} onClose={() => setShowProfile(false)} />
       <BottomNav role="leader" />
     </div>
   );

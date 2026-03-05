@@ -7,6 +7,7 @@ import { Users, CheckCircle2, AlertCircle, X, Trash2 } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
+import ProfileModal, { type ProfileUser } from '@/components/ProfileModal';
 
 interface Driver {
   _id: string;
@@ -34,6 +35,8 @@ function DriverManagementContent() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
+  const [showProfile, setShowProfile] = useState(false);
 
   const drivers = activeTab === 'all' 
     ? allDrivers 
@@ -239,7 +242,11 @@ function DriverManagementContent() {
                   onClick={() => setSelectedDriver(driver)}
                   className="card p-4 flex items-center gap-3 cursor-pointer"
                 >
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden" style={{ background: 'var(--accent)' }}>
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0 overflow-hidden cursor-pointer"
+                    style={{ background: 'var(--accent)' }}
+                    onClick={(e) => { e.stopPropagation(); setProfileUser(driver as unknown as ProfileUser); setShowProfile(true); }}
+                  >
                     {driver.lineProfileImage ? (
                       <img src={driver.lineProfileImage} alt="" className="w-full h-full object-cover" />
                     ) : (
@@ -426,6 +433,7 @@ function DriverManagementContent() {
         )}
       </AnimatePresence>
 
+      <ProfileModal user={profileUser} open={showProfile} onClose={() => setShowProfile(false)} />
       <BottomNav role="leader" />
     </div>
   );
