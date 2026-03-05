@@ -8,6 +8,7 @@ import PageHeader from '@/components/PageHeader';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
 import ProfileModal, { type ProfileUser } from '@/components/ProfileModal';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
 interface Contact {
   _id: string;
@@ -41,6 +42,14 @@ function formatLastSeen(dateStr?: string): string {
   return `${diffMonths} เดือนที่แล้ว`;
 }
 
+function isUserOnline(contact: Contact): boolean {
+  if (!contact.lastSeen) return false;
+  const lastSeen = new Date(contact.lastSeen);
+  const now = new Date();
+  const diffMins = Math.floor((now.getTime() - lastSeen.getTime()) / 60000);
+  return diffMins < 5;
+}
+
 export default function ContactsPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
@@ -59,6 +68,8 @@ export default function ContactsPage() {
     setUser(JSON.parse(storedUser));
   }, [router]);
 
+  useOnlineStatus(!!user);
+
   useEffect(() => {
     if (!user) return;
 
@@ -71,8 +82,8 @@ export default function ContactsPage() {
           const others = (data.users as Contact[])
             .filter((c) => c._id !== user.id)
             .sort((a, b) => {
-              if (a.isOnline && !b.isOnline) return -1;
-              if (!a.isOnline && b.isOnline) return 1;
+              if (isUserOnline(a) && !isUserOnline(b)) return -1;
+              if (!isUserOnline(a) && isUserOnline(b)) return 1;
               const nameA = a.name || a.lineDisplayName;
               const nameB = b.name || b.lineDisplayName;
               return nameA.localeCompare(nameB, 'th');
@@ -101,7 +112,7 @@ export default function ContactsPage() {
     );
   });
 
-  const onlineCount = contacts.filter((c) => c.isOnline).length;
+  const onlineCount = contacts.filter((c) => isUserOnline(c)).length;
 
   if (!user) return null;
 
@@ -175,7 +186,7 @@ export default function ContactsPage() {
                       <span
                         className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2"
                         style={{
-                          background: contact.isOnline ? 'var(--success)' : 'var(--text-muted)',
+                          background: isUserOnline(contact) ? 'var(--success)' : 'var(--text-muted)',
                           borderColor: 'var(--bg-surface)',
                         }}
                       />
@@ -189,9 +200,9 @@ export default function ContactsPage() {
                       <div className="flex items-center gap-1.5">
                         <span
                           className="text-[11px] font-medium"
-                          style={{ color: contact.isOnline ? 'var(--success)' : 'var(--text-muted)' }}
+                          style={{ color: isUserOnline(contact) ? 'var(--success)' : 'var(--text-muted)' }}
                         >
-                          {contact.isOnline ? 'ออนไลน์' : contact.lastSeen ? formatLastSeen(contact.lastSeen) : 'ไม่ทราบ'}
+                          {isUserOnline(contact) ? 'ออนไลน์' : contact.lastSeen ? formatLastSeen(contact.lastSeen) : 'ไม่ทราบ'}
                         </span>
                         {contact.employeeId && (
                           <>
