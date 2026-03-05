@@ -300,7 +300,7 @@ function DashboardContent() {
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.2 }}
-              className="card overflow-hidden"
+              className="card"
             >
               <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid var(--border)' }}>
                 <Star className="w-4 h-4" style={{ color: '#ef4444' }} />
@@ -311,7 +311,13 @@ function DashboardContent() {
                   {monthHolidays.length}
                 </span>
               </div>
-              <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+              <div 
+                className="divide-y overflow-y-auto" 
+                style={{ 
+                  borderColor: 'var(--border)',
+                  maxHeight: '200px' 
+                }}
+              >
                 {monthHolidays.map((holiday) => {
                   const d = holiday.date.split('-');
                   const dayNum = parseInt(d[2]);
