@@ -2,7 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ONLINE_TIMEOUT_MS } from '@/hooks/useOnlineStatus';
 import { X, Phone, PhoneCall, Hash, User, Circle } from 'lucide-react';
+
+function isUserOnline(user: ProfileUser): boolean {
+  if (!user.lastSeen) return false;
+  const lastSeen = new Date(user.lastSeen);
+  const now = new Date();
+  return now.getTime() - lastSeen.getTime() < ONLINE_TIMEOUT_MS;
+}
 
 export interface ProfileUser {
   _id: string;
@@ -127,11 +135,11 @@ export default function ProfileModal({ user, open, onClose }: ProfileModalProps)
                   )}
                 </div>
                 {/* Online indicator */}
-                {displayUser.isOnline !== undefined && (
+                {displayUser.lastSeen !== undefined && (
                   <div
                     className="absolute bottom-1 right-1 w-5 h-5 rounded-full border-2 flex items-center justify-center"
                     style={{
-                      background: displayUser.isOnline ? 'var(--success)' : 'var(--text-muted)',
+                      background: isUserOnline(displayUser) ? 'var(--success)' : 'var(--text-muted)',
                       borderColor: 'var(--bg-surface)',
                     }}
                   >
@@ -157,10 +165,10 @@ export default function ProfileModal({ user, open, onClose }: ProfileModalProps)
                     <div className="flex items-center justify-center gap-1.5 mt-1">
                       <span
                         className="w-2 h-2 rounded-full inline-block"
-                        style={{ background: displayUser.isOnline ? 'var(--success)' : 'var(--text-muted)' }}
+                        style={{ background: isUserOnline(displayUser) ? 'var(--success)' : 'var(--text-muted)' }}
                       />
-                      <span className="text-fluid-xs font-medium" style={{ color: displayUser.isOnline ? 'var(--success)' : 'var(--text-muted)' }}>
-                        {displayUser.isOnline ? 'ออนไลน์' : displayUser.lastSeen ? formatLastSeen(displayUser.lastSeen) : 'ไม่ทราบ'}
+                      <span className="text-fluid-xs font-medium" style={{ color: isUserOnline(displayUser) ? 'var(--success)' : 'var(--text-muted)' }}>
+                        {isUserOnline(displayUser) ? 'ออนไลน์' : displayUser.lastSeen ? formatLastSeen(displayUser.lastSeen) : 'ไม่ทราบ'}
                       </span>
                     </div>
                   </div>
