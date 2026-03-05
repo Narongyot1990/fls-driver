@@ -3,8 +3,9 @@
 import { useEffect, useState, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, Download, X, Phone } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, X, Phone, Star } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
+import { getHolidayMap, getHolidaysForMonth, type ThaiHoliday } from '@/lib/thai-holidays';
 
 interface LeaveRequest {
   _id: string;
@@ -176,6 +177,9 @@ function DashboardContent() {
     return null;
   }
 
+  const holidayMap = getHolidayMap(year, month);
+  const monthHolidays = getHolidaysForMonth(year, month);
+
   const calendarDays: (number | null)[] = [];
   
   for (let i = firstDayOfMonth - 1; i >= 0; i--) {
@@ -239,20 +243,33 @@ function DashboardContent() {
                 {calendarDays.map((day, index) => {
                   const dayLeaves = day ? getLeavesForDay(day) : [];
                   const hasLeaves = dayLeaves.length > 0;
+                  const holiday = day ? holidayMap.get(day) : undefined;
                   return (
                     <div
                       key={index}
                       onClick={() => day && handleDayClick(day)}
-                      className="min-h-[3.2rem] flex flex-col items-center justify-start pt-2 transition-colors"
-                      style={{ borderBottom: '1px solid var(--border)', borderRight: '1px solid var(--border)', cursor: day ? 'pointer' : 'default', background: day ? 'transparent' : 'var(--bg-inset)' }}
+                      className="min-h-[3.2rem] flex flex-col items-center justify-start pt-2 transition-colors relative"
+                      style={{
+                        borderBottom: '1px solid var(--border)',
+                        borderRight: '1px solid var(--border)',
+                        cursor: day ? 'pointer' : 'default',
+                        background: holiday
+                          ? 'rgba(239, 68, 68, 0.08)'
+                          : day
+                            ? 'transparent'
+                            : 'var(--bg-inset)',
+                      }}
                     >
                       {day && (
                         <>
-                          <span className="text-xs font-medium" style={{ color: hasLeaves ? 'var(--text-primary)' : 'var(--text-muted)' }}>{day}</span>
+                          <span className="text-xs font-medium" style={{ color: holiday ? '#ef4444' : hasLeaves ? 'var(--text-primary)' : 'var(--text-muted)' }}>{day}</span>
                           {hasLeaves && (
                             <div className={`mt-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white ${leaveTypeColors[dayLeaves[0].leaveType]?.bg || 'bg-slate-400'}`}>
                               {dayLeaves.length}
                             </div>
+                          )}
+                          {holiday && !hasLeaves && (
+                            <div className="w-1.5 h-1.5 rounded-full mt-0.5" style={{ background: '#ef4444', opacity: 0.5 }} />
                           )}
                         </>
                       )}
@@ -271,7 +288,59 @@ function DashboardContent() {
                 <span className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>{value.label}</span>
               </div>
             ))}
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full" style={{ background: '#ef4444', opacity: 0.5 }} />
+              <span className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>วันหยุดบริษัท</span>
+            </div>
           </div>
+
+          {/* Company Holidays List */}
+          {monthHolidays.length > 0 && (
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="card overflow-hidden"
+            >
+              <div className="px-4 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid var(--border)' }}>
+                <Star className="w-4 h-4" style={{ color: '#ef4444' }} />
+                <h3 className="text-fluid-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  วันหยุดบริษัท
+                </h3>
+                <span className="text-fluid-xs px-2 py-0.5 rounded-full font-medium" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
+                  {monthHolidays.length}
+                </span>
+              </div>
+              <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+                {monthHolidays.map((holiday) => {
+                  const d = holiday.date.split('-');
+                  const dayNum = parseInt(d[2]);
+                  const monthNum = parseInt(d[1]);
+                  return (
+                    <div key={holiday.date} className="px-4 py-3 flex items-center gap-3">
+                      <div
+                        className="w-10 h-10 rounded-xl flex flex-col items-center justify-center flex-shrink-0"
+                        style={{ background: 'rgba(239, 68, 68, 0.08)' }}
+                      >
+                        <span className="text-sm font-bold leading-none" style={{ color: '#ef4444' }}>{dayNum}</span>
+                        <span className="text-[9px] font-medium leading-none mt-0.5" style={{ color: '#ef4444', opacity: 0.7 }}>
+                          {THAI_MONTHS[monthNum - 1]?.substring(0, 3)}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-fluid-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
+                          {holiday.nameTh}
+                        </p>
+                        <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>
+                          {holiday.name}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
 
         </div>
       </div>
