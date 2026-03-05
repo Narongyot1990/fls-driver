@@ -8,7 +8,7 @@ import PageHeader from '@/components/PageHeader';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
 import ProfileModal, { type ProfileUser } from '@/components/ProfileModal';
-import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { useOnlineStatus, ONLINE_TIMEOUT_MS } from '@/hooks/useOnlineStatus';
 
 interface Contact {
   _id: string;
@@ -46,8 +46,7 @@ function isUserOnline(contact: Contact): boolean {
   if (!contact.lastSeen) return false;
   const lastSeen = new Date(contact.lastSeen);
   const now = new Date();
-  const diffMins = Math.floor((now.getTime() - lastSeen.getTime()) / 60000);
-  return diffMins < 5;
+  return now.getTime() - lastSeen.getTime() < ONLINE_TIMEOUT_MS;
 }
 
 export default function ContactsPage() {

@@ -43,3 +43,5 @@ export function useOnlineStatus(enabled: boolean = true) {
     };
   }, [enabled]);
 }
+
+export const ONLINE_TIMEOUT_MS = 5 * 60 * 1000;
