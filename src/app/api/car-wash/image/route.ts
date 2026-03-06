@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
+// This route proxies the image
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -12,18 +13,10 @@ export async function GET(request: NextRequest) {
     }
 
     const token = process.env.itl_READ_WRITE_TOKEN;
-    if (!token) {
-      console.error('itl_READ_WRITE_TOKEN is not set');
-      return NextResponse.json({ error: 'Blob token not configured' }, { status: 500 });
-    }
 
-    console.log('Fetching blob with token prefix:', token.substring(0, 10));
-
-    // Fetch the private blob with the token
+    // Fetch with token (works for both public and private blobs)
     const response = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
 
     if (!response.ok) {
