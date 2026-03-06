@@ -27,6 +27,16 @@ interface Driver {
   createdAt: string;
 }
 
+// Online timeout: 5 minutes
+const ONLINE_TIMEOUT_MS = 5 * 60 * 1000;
+
+function isDriverOnline(driver: Driver): boolean {
+  if (!driver.lastSeen) return false;
+  const lastSeen = new Date(driver.lastSeen);
+  const now = new Date();
+  return now.getTime() - lastSeen.getTime() < ONLINE_TIMEOUT_MS;
+}
+
 function DriverManagementContent() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
@@ -276,11 +286,13 @@ function DriverManagementContent() {
                         (driver.name || driver.lineDisplayName).charAt(0)
                       )}
                     </div>
-                    {/* Online Status Dot - positioned at bottom-right of profile */}
-                    <div
-                      className="absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white"
-                      style={{ background: driver.isOnline ? '#22c55e' : '#9ca3af' }}
-                      title={driver.isOnline ? 'ออนไลน์' : 'ออฟไลน์'}
+                    {/* Online dot - matching contacts page style */}
+                    <span
+                      className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2"
+                      style={{
+                        background: isDriverOnline(driver) ? 'var(--success)' : 'var(--text-muted)',
+                        borderColor: 'var(--bg-surface)',
+                      }}
                       onClick={(e) => e.stopPropagation()}
                     />
                   </div>
@@ -288,12 +300,25 @@ function DriverManagementContent() {
                     <p className="text-fluid-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                       {driver.name && driver.surname ? `${driver.name} ${driver.surname}` : driver.lineDisplayName}
                     </p>
-                    <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>
-                      {driver.employeeId || '-'} | {driver.phone || '-'}
-                    </p>
-                    <p className="text-[10px] truncate" style={{ color: driver.isOnline ? '#22c55e' : 'var(--text-muted)' }}>
-                      {driver.isOnline ? '● ออนไลน์' : `● ${formatRelativeTime(driver.lastSeen)}`}
-                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <span
+                        className="text-[11px] font-medium"
+                        style={{ color: isDriverOnline(driver) ? 'var(--success)' : 'var(--text-muted)' }}
+                      >
+                        {isDriverOnline(driver) ? 'ออนไลน์' : driver.lastSeen ? formatRelativeTime(driver.lastSeen) : 'ไม่ทราบ'}
+                      </span>
+                      {driver.employeeId && (
+                        <>
+                          <span style={{ color: 'var(--text-muted)' }}>·</span>
+                          <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{driver.employeeId}</span>
+                        </>
+                      )}
+                    </div>
+                    {driver.phone && (
+                      <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
+                        {driver.phone}
+                      </p>
+                    )}
                   </div>
                   <span className={`badge ${driver.status === 'active' ? 'badge-success' : 'badge-warning'}`}>
                     {driver.status === 'active' ? 'พร้อมใช้' : 'รอยืนยัน'}
