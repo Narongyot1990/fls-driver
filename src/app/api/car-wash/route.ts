@@ -92,6 +92,7 @@ export async function POST(request: NextRequest) {
       const blob = await put(filename, image, {
         access: 'public',
         addRandomSuffix: true,
+        token: process.env.itl_READ_WRITE_TOKEN,
       });
       imageUrls.push(blob.url);
     }
