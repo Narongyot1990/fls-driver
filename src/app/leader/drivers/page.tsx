@@ -3,17 +3,22 @@
 import { useEffect, useState, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Users, CheckCircle2, AlertCircle, X, Trash2 } from 'lucide-react';
+import { Users, CheckCircle2, AlertCircle, X, Trash2, Shield } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
 import ProfileModal, { type ProfileUser } from '@/components/ProfileModal';
+import UserAvatar from '@/components/UserAvatar';
+import { PERFORMANCE_TIERS, PERFORMANCE_TIER_CONFIG, type PerformanceTier } from '@/lib/profile-tier';
 
 interface Driver {
   _id: string;
   lineUserId: string;
   lineDisplayName: string;
   lineProfileImage?: string;
+  performanceTier?: PerformanceTier;
+  performancePoints?: number;
+  performanceLevel?: number;
   name?: string;
   surname?: string;
   phone?: string;
@@ -144,6 +149,7 @@ function DriverManagementContent() {
           vacationDays: selectedDriver.vacationDays,
           sickDays: selectedDriver.sickDays,
           personalDays: selectedDriver.personalDays,
+          performanceTier: selectedDriver.performanceTier,
         }),
       });
       const data = await response.json();
@@ -274,26 +280,21 @@ function DriverManagementContent() {
                   onClick={() => setSelectedDriver(driver)}
                   className="card p-4 flex items-center gap-3 cursor-pointer"
                 >
-                  <div className="relative shrink-0">
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm overflow-hidden cursor-pointer"
-                      style={{ background: 'var(--accent)' }}
-                      onClick={(e) => { e.stopPropagation(); setProfileUser(driver as unknown as ProfileUser); setShowProfile(true); }}
-                    >
-                      {driver.lineProfileImage ? (
-                        <img src={driver.lineProfileImage} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        (driver.name || driver.lineDisplayName).charAt(0)
-                      )}
-                    </div>
-                    {/* Online dot - matching contacts page style */}
+                  <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <UserAvatar
+                      imageUrl={driver.lineProfileImage}
+                      displayName={driver.name || driver.lineDisplayName}
+                      tier={driver.performanceTier}
+                      size="sm"
+                      onClick={() => { setProfileUser(driver as unknown as ProfileUser); setShowProfile(true); }}
+                    />
+                    {/* Online dot */}
                     <span
-                      className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2"
+                      className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2"
                       style={{
                         background: isDriverOnline(driver) ? 'var(--success)' : 'var(--text-muted)',
                         borderColor: 'var(--bg-surface)',
                       }}
-                      onClick={(e) => e.stopPropagation()}
                     />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -354,6 +355,53 @@ function DriverManagementContent() {
               </div>
 
               <form onSubmit={handleUpdateDriver} className="space-y-3">
+                {/* Avatar preview */}
+                <div className="flex justify-center pb-1">
+                  <UserAvatar
+                    imageUrl={selectedDriver.lineProfileImage}
+                    displayName={selectedDriver.name || selectedDriver.lineDisplayName}
+                    tier={selectedDriver.performanceTier}
+                    size="xl"
+                    showTierBadge
+                  />
+                </div>
+
+                {/* Tier selector */}
+                <div className="pt-1">
+                  <label className="flex items-center gap-1.5 text-fluid-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>
+                    <Shield className="w-3.5 h-3.5" />
+                    Avatar Frame
+                  </label>
+                  <div className="grid grid-cols-5 gap-2">
+                    {PERFORMANCE_TIERS.map((tier) => {
+                      const cfg = PERFORMANCE_TIER_CONFIG[tier];
+                      const isSelected = (selectedDriver.performanceTier ?? 'standard') === tier;
+                      return (
+                        <button
+                          key={tier}
+                          type="button"
+                          onClick={() => setSelectedDriver({ ...selectedDriver, performanceTier: tier })}
+                          className="flex flex-col items-center gap-1 py-2 px-1 rounded-[var(--radius-md)] transition-all"
+                          style={{
+                            background: isSelected ? 'var(--bg-inset)' : 'transparent',
+                            border: isSelected ? '2px solid var(--accent)' : '2px solid transparent',
+                          }}
+                        >
+                          <UserAvatar
+                            imageUrl={selectedDriver.lineProfileImage}
+                            displayName={selectedDriver.name || selectedDriver.lineDisplayName}
+                            tier={tier}
+                            size="xs"
+                          />
+                          <span className="text-[10px] font-medium leading-none" style={{ color: isSelected ? 'var(--accent)' : 'var(--text-muted)' }}>
+                            {cfg.label}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-fluid-xs mb-1" style={{ color: 'var(--text-muted)' }}>ชื่อ</label>
