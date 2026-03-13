@@ -3,6 +3,7 @@ import dbConnect from '@/lib/mongodb';
 import { LeaveRequest } from '@/models/LeaveRequest';
 import { User, IUser } from '@/models/User';
 import { requireAuth, requireLeader } from '@/lib/api-auth';
+import { triggerPusher, CHANNELS, EVENTS } from '@/lib/pusher';
 import mongoose from 'mongoose';
 
 export const dynamic = 'force-dynamic';
@@ -73,6 +74,12 @@ export async function DELETE(
 
     leaveRequest.status = 'cancelled';
     await leaveRequest.save();
+
+    await triggerPusher(CHANNELS.LEAVE_REQUESTS, EVENTS.LEAVE_CANCELLED, {
+      id: leaveRequest._id.toString(),
+      userId: userId,
+    });
+    await triggerPusher(CHANNELS.DASHBOARD, EVENTS.LEAVE_CANCELLED, { id: leaveRequest._id.toString() });
 
     const response: { success: boolean; message: string; remainingQuota?: { vacationDays: number; sickDays: number; personalDays: number } } = {
       success: true,
@@ -161,6 +168,17 @@ export async function PATCH(
       leaveRequest.rejectedReason = rejectedReason;
     }
     await leaveRequest.save();
+
+    const driverUserId = (leaveRequest.userId as any)?._id?.toString() || leaveRequest.userId.toString();
+    await triggerPusher(CHANNELS.LEAVE_REQUESTS, EVENTS.LEAVE_STATUS_CHANGED, {
+      id: leaveRequest._id.toString(),
+      status,
+      driverUserId,
+    });
+    await triggerPusher(CHANNELS.DASHBOARD, EVENTS.LEAVE_STATUS_CHANGED, {
+      id: leaveRequest._id.toString(),
+      status,
+    });
 
     return NextResponse.json({
       success: true,

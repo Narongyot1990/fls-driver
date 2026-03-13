@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { CheckSquare, Users, PenSquare, CalendarDays, Clock, User, ChevronRight, LogOut, ClipboardCheck, Settings } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
 import ThemeToggle from '@/components/ThemeToggle';
+import { usePusherMulti } from '@/hooks/usePusher';
 
 interface LeaderUser {
   id: string;
@@ -56,6 +57,31 @@ export default function LeaderHomePage() {
 
     fetchCounts();
   }, []);
+
+  // Pusher realtime — update badge counts
+  const refetchCounts = useCallback(async () => {
+    try {
+      const res = await fetch('/api/counts?type=all');
+      const data = await res.json();
+      if (data.success) {
+        setPendingLeaveCount(data.counts.pendingLeaves);
+        setPendingDriverCount(data.counts.pendingDrivers);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  usePusherMulti([
+    { channel: 'leave-requests', bindings: [
+      { event: 'new-leave-request', callback: refetchCounts },
+      { event: 'leave-status-changed', callback: refetchCounts },
+      { event: 'leave-cancelled', callback: refetchCounts },
+    ]},
+    { channel: 'users', bindings: [
+      { event: 'new-driver', callback: refetchCounts },
+      { event: 'driver-activated', callback: refetchCounts },
+      { event: 'driver-deleted', callback: refetchCounts },
+    ]},
+  ], !!user);
 
   const handleLogout = async () => {
     try { await fetch('/api/auth/logout', { method: 'POST' }); } catch {}

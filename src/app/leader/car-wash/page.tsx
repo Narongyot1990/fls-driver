@@ -31,6 +31,7 @@ import ProfileModal, { type ProfileUser } from '@/components/ProfileModal';
 import UserAvatar from '@/components/UserAvatar';
 import LikesPopup from '@/components/LikesPopup';
 import { formatDateThai } from '@/lib/date-utils';
+import { usePusher } from '@/hooks/usePusher';
 
 dayjs.extend(isoWeek);
 dayjs.extend(relativeTime);
@@ -281,6 +282,39 @@ export default function LeaderCarWashPage() {
   const updateActivity = (updated: Activity) => {
     setActivities((prev) => prev.map((a) => (a._id === updated._id ? updated : a)));
   };
+
+  // Pusher realtime
+  const handlePusherNew = useCallback(async (data: { activityId: string }) => {
+    try {
+      const res = await fetch(`/api/car-wash/${data.activityId}`);
+      const json = await res.json();
+      if (!json.success) return;
+      const activity = json.activity as Activity;
+      setActivities((prev) => {
+        if (prev.some((a) => a._id === activity._id)) return prev;
+        return [activity, ...prev];
+      });
+    } catch { /* ignore */ }
+  }, []);
+
+  const handlePusherUpdate = useCallback(async (data: { activityId: string }) => {
+    try {
+      const res = await fetch(`/api/car-wash/${data.activityId}`);
+      const json = await res.json();
+      if (!json.success) return;
+      setActivities((prev) => prev.map((a) => (a._id === data.activityId ? json.activity : a)));
+    } catch { /* ignore */ }
+  }, []);
+
+  const handlePusherDelete = useCallback((data: { activityId: string }) => {
+    setActivities((prev) => prev.filter((a) => a._id !== data.activityId));
+  }, []);
+
+  usePusher('car-wash-feed', [
+    { event: 'new-activity', callback: handlePusherNew },
+    { event: 'update-activity', callback: handlePusherUpdate },
+    { event: 'delete-activity', callback: handlePusherDelete },
+  ], !!user);
 
   // Stats
   const today = dayjs().startOf('day');

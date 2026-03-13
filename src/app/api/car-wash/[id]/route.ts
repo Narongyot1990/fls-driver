@@ -4,6 +4,7 @@ import { del } from '@vercel/blob';
 import dbConnect from '@/lib/mongodb';
 import { CarWashActivity, IComment } from '@/models/CarWashActivity';
 import { requireAuth } from '@/lib/api-auth';
+import { triggerPusher, CHANNELS, EVENTS } from '@/lib/pusher';
 
 export const dynamic = 'force-dynamic';
 
@@ -81,6 +82,8 @@ export async function PATCH(
       await activity.populate('likes', 'lineDisplayName lineProfileImage name surname performanceTier');
       await activity.populate('comments.userId', 'lineDisplayName lineProfileImage name surname performanceTier');
 
+      await triggerPusher(CHANNELS.CAR_WASH, EVENTS.UPDATE_ACTIVITY, { activityId: id });
+
       return NextResponse.json({ success: true, activity });
     }
 
@@ -101,6 +104,8 @@ export async function PATCH(
       await activity.populate('userId', 'lineDisplayName lineProfileImage name surname performanceTier');
       await activity.populate('likes', 'lineDisplayName lineProfileImage name surname performanceTier');
       await activity.populate('comments.userId', 'lineDisplayName lineProfileImage name surname performanceTier');
+
+      await triggerPusher(CHANNELS.CAR_WASH, EVENTS.UPDATE_ACTIVITY, { activityId: id });
 
       return NextResponse.json({ success: true, activity });
     }
@@ -130,6 +135,8 @@ export async function PATCH(
       await activity.populate('likes', 'lineDisplayName lineProfileImage name surname performanceTier');
       await activity.populate('comments.userId', 'lineDisplayName lineProfileImage name surname performanceTier');
 
+      await triggerPusher(CHANNELS.CAR_WASH, EVENTS.UPDATE_ACTIVITY, { activityId: id });
+
       return NextResponse.json({ success: true, activity });
     }
 
@@ -149,6 +156,8 @@ export async function PATCH(
       await activity.populate('likes', 'lineDisplayName lineProfileImage name surname performanceTier');
       await activity.populate('comments.userId', 'lineDisplayName lineProfileImage name surname performanceTier');
       await activity.populate('markedBy', 'lineDisplayName name surname');
+
+      await triggerPusher(CHANNELS.CAR_WASH, EVENTS.UPDATE_ACTIVITY, { activityId: id });
 
       return NextResponse.json({ success: true, activity });
     }
@@ -170,6 +179,8 @@ export async function PATCH(
     await activity.populate('userId', 'lineDisplayName lineProfileImage name surname performanceTier');
     await activity.populate('likes', 'lineDisplayName lineProfileImage name surname performanceTier');
     await activity.populate('comments.userId', 'lineDisplayName lineProfileImage name surname performanceTier');
+
+    await triggerPusher(CHANNELS.CAR_WASH, EVENTS.UPDATE_ACTIVITY, { activityId: id });
 
     return NextResponse.json({ success: true, activity });
   } catch (error) {
@@ -218,6 +229,8 @@ export async function DELETE(
     }
 
     await CarWashActivity.findByIdAndDelete(id);
+
+    await triggerPusher(CHANNELS.CAR_WASH, EVENTS.DELETE_ACTIVITY, { activityId: id });
 
     return NextResponse.json({ success: true });
   } catch (error) {

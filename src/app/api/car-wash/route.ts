@@ -3,6 +3,7 @@ import { put } from '@vercel/blob';
 import dbConnect from '@/lib/mongodb';
 import { CarWashActivity } from '@/models/CarWashActivity';
 import { requireAuth } from '@/lib/api-auth';
+import { triggerPusher, CHANNELS, EVENTS } from '@/lib/pusher';
 
 export const dynamic = 'force-dynamic';
 
@@ -119,6 +120,8 @@ export async function POST(request: NextRequest) {
     });
 
     await activity.populate('userId', 'lineDisplayName lineProfileImage name surname employeeId');
+
+    await triggerPusher(CHANNELS.CAR_WASH, EVENTS.NEW_ACTIVITY, { activityId: activity._id.toString() });
 
     return NextResponse.json({ success: true, activity });
   } catch (error) {

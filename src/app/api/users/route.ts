@@ -5,6 +5,7 @@ import { User, IUser } from '@/models/User';
 import { LeaveRequest } from '@/models/LeaveRequest';
 import { SubstituteRecord } from '@/models/SubstituteRecord';
 import { requireAuth, requireLeader } from '@/lib/api-auth';
+import { triggerPusher, CHANNELS, EVENTS } from '@/lib/pusher';
 
 export const dynamic = 'force-dynamic';
 
@@ -77,6 +78,11 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
+    if (status === 'active') {
+      await triggerPusher(CHANNELS.USERS, EVENTS.DRIVER_ACTIVATED, { userId: userId });
+    }
+    await triggerPusher(CHANNELS.USERS, EVENTS.DRIVER_UPDATED, { userId: userId });
+
     return NextResponse.json({
       success: true,
       user: {
@@ -130,6 +136,8 @@ export async function DELETE(request: NextRequest) {
     await SubstituteRecord.deleteMany({ userId });
     await LeaveRequest.deleteMany({ userId });
     await User.findByIdAndDelete(userId);
+
+    await triggerPusher(CHANNELS.USERS, EVENTS.DRIVER_DELETED, { userId });
 
     return NextResponse.json({ success: true });
   } catch (error) {

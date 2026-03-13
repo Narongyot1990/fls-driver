@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { FilePlus, Clock, CalendarDays, ChevronRight, LogOut, AlertCircle, Umbrella, Thermometer, Briefcase, ClipboardCheck } from 'lucide-react';
@@ -8,6 +8,7 @@ import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
 import ThemeToggle from '@/components/ThemeToggle';
 import UserAvatar from '@/components/UserAvatar';
+import { usePusherMulti } from '@/hooks/usePusher';
 
 interface DriverUser {
   id: string;
@@ -81,6 +82,27 @@ export default function DriverHomePage() {
 
     fetchUser();
   }, [router]);
+
+  // Pusher realtime — refresh user data on leave/task changes
+  const handleRefresh = useCallback(async () => {
+    try {
+      const response = await fetch('/api/auth/me');
+      const data = await response.json();
+      if (data.success) {
+        localStorage.setItem('driverUser', JSON.stringify(data.user));
+        setUser(data.user);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
+  usePusherMulti([
+    { channel: 'leave-requests', bindings: [
+      { event: 'leave-status-changed', callback: handleRefresh },
+    ]},
+    { channel: 'tasks', bindings: [
+      { event: 'new-task', callback: handleRefresh },
+    ]},
+  ], !!user);
 
   if (loading) {
     return (

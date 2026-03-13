@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, XCircle, Bell, CalendarDays, Inbox, Phone } from 'lucide-react';
@@ -11,6 +11,7 @@ import ProfileModal, { type ProfileUser } from '@/components/ProfileModal';
 import UserAvatar from '@/components/UserAvatar';
 import { getLeaveTypeMeta } from '@/lib/leave-types';
 import { formatDateThai, getLeaveDays } from '@/lib/date-utils';
+import { usePusher } from '@/hooks/usePusher';
 
 interface LeaveRequest {
   _id: string;
@@ -75,6 +76,24 @@ export default function LeaderApprovePage() {
     fetchPending();
   }, [user]);
 
+  // Pusher realtime — new leave requests auto-refresh
+  const handleNewLeave = useCallback(() => {
+    setNewRequestAlert(true);
+    fetchPending();
+    const audio = new Audio('/notification.mp3');
+    audio.play().catch(() => {});
+    setTimeout(() => setNewRequestAlert(false), 5000);
+  }, []);
+
+  const handleLeaveStatusChanged = useCallback(() => {
+    fetchPending();
+  }, []);
+
+  usePusher('leave-requests', [
+    { event: 'new-leave-request', callback: handleNewLeave },
+    { event: 'leave-status-changed', callback: handleLeaveStatusChanged },
+    { event: 'leave-cancelled', callback: handleLeaveStatusChanged },
+  ], !!user);
 
   const handleAction = async (id: string, status: 'approved' | 'rejected') => {
     if (!user) return;

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import { Task } from '@/models/Task';
 import { requireAuth, requireLeader } from '@/lib/api-auth';
+import { triggerPusher, CHANNELS, EVENTS } from '@/lib/pusher';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,6 +73,12 @@ export async function POST(request: NextRequest) {
       deadline: deadline ? new Date(deadline) : undefined,
       createdBy,
       status: 'active',
+    });
+
+    await triggerPusher(CHANNELS.TASKS, EVENTS.NEW_TASK, {
+      taskId: task._id.toString(),
+      title: task.title,
+      branches: task.branches,
     });
 
     return NextResponse.json({ success: true, task });

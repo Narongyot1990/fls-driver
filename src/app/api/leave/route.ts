@@ -4,6 +4,7 @@ import dbConnect from '@/lib/mongodb';
 import { LeaveRequest } from '@/models/LeaveRequest';
 import { User } from '@/models/User';
 import { requireAuth } from '@/lib/api-auth';
+import { triggerPusher, CHANNELS, EVENTS } from '@/lib/pusher';
 
 export const dynamic = 'force-dynamic';
 
@@ -129,6 +130,12 @@ export async function POST(request: NextRequest) {
     });
 
     await leaveRequest.populate('userId', 'lineDisplayName employeeId phone name surname lineProfileImage performanceTier performancePoints performanceLevel');
+
+    await triggerPusher(CHANNELS.LEAVE_REQUESTS, EVENTS.NEW_LEAVE, {
+      id: leaveRequest._id.toString(),
+      leaveType,
+      userName: user?.lineDisplayName || 'Unknown',
+    });
 
     return NextResponse.json({
       success: true,

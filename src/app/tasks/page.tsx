@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { ClipboardCheck, CheckCircle2, Clock, ChevronRight, Award, AlertCircle, X } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
+import { usePusher } from '@/hooks/usePusher';
 
 interface TaskQuestion {
   question: string;
@@ -83,6 +84,26 @@ export default function TasksPage() {
     };
     fetchTasks();
   }, [user]);
+
+  // Pusher realtime — task changes
+  const handleTaskChanged = useCallback(async () => {
+    if (!user) return;
+    try {
+      const params = new URLSearchParams();
+      if (user.branch) params.set('branch', user.branch);
+      params.set('userId', user.id);
+      const res = await fetch(`/api/tasks?${params.toString()}`);
+      const data = await res.json();
+      if (data.success) setTasks(data.tasks || []);
+    } catch { /* ignore */ }
+  }, [user]);
+
+  usePusher('tasks', [
+    { event: 'new-task', callback: handleTaskChanged },
+    { event: 'task-updated', callback: handleTaskChanged },
+    { event: 'task-deleted', callback: handleTaskChanged },
+    { event: 'task-submitted', callback: handleTaskChanged },
+  ], !!user);
 
   const pendingTasks = tasks.filter(t => !t.completed && t.status === 'active');
   const completedTasks = tasks.filter(t => t.completed);

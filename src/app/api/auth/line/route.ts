@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import { User } from '@/models/User';
 import { generateAccessToken, generateRefreshToken } from '@/lib/jwt-auth';
+import { triggerPusher, CHANNELS, EVENTS } from '@/lib/pusher';
 
 export const dynamic = 'force-dynamic';
 
@@ -68,17 +69,26 @@ export async function POST(request: NextRequest) {
 
     let user = await User.findOne({ lineUserId: profile.userId });
 
+    let isNewUser = false;
     if (!user) {
       user = await User.create({
         lineUserId: profile.userId,
         lineDisplayName: profile.displayName,
         lineProfileImage: profile.pictureUrl,
       });
+      isNewUser = true;
     } else {
       // Update LINE profile data on every login (display name / profile image may change)
       user.lineDisplayName = profile.displayName;
       user.lineProfileImage = profile.pictureUrl;
       await user.save();
+    }
+
+    if (isNewUser) {
+      await triggerPusher(CHANNELS.USERS, EVENTS.NEW_DRIVER, {
+        userId: user._id.toString(),
+        displayName: user.lineDisplayName,
+      });
     }
 
     const payload = {

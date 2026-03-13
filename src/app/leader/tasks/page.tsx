@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Plus, ClipboardCheck, Trash2, X, Users, CheckCircle2, Award, ChevronDown, ChevronUp } from 'lucide-react';
@@ -8,6 +8,7 @@ import PageHeader from '@/components/PageHeader';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
 import UserAvatar from '@/components/UserAvatar';
+import { usePusher } from '@/hooks/usePusher';
 
 const BRANCHES = ['AYA', 'CBI', 'KSN', 'RA2', 'BBT'];
 
@@ -87,6 +88,18 @@ export default function LeaderTasksPage() {
   };
 
   useEffect(() => { if (user) fetchTasks(); }, [user]);
+
+  // Pusher realtime — task changes
+  const handleTaskChanged = useCallback(() => {
+    fetchTasks();
+  }, []);
+
+  usePusher('tasks', [
+    { event: 'new-task', callback: handleTaskChanged },
+    { event: 'task-updated', callback: handleTaskChanged },
+    { event: 'task-deleted', callback: handleTaskChanged },
+    { event: 'task-submitted', callback: handleTaskChanged },
+  ], !!user);
 
   const addQuestion = () => {
     setQuestions([...questions, { question: '', options: ['', ''], correctIndex: 0 }]);

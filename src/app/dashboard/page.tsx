@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, Download, X, Phone, Star } from 'lucide-react';
@@ -12,6 +12,7 @@ import UserAvatar from '@/components/UserAvatar';
 import { getHolidayMap, getHolidaysForMonth } from '@/lib/thai-holidays';
 import { getLeaveTypeMeta, LEAVE_TYPE_LIST } from '@/lib/leave-types';
 import { formatDateThai as formatDateThaiUtil, getLeaveDays as getLeaveDaysUtil } from '@/lib/date-utils';
+import { usePusher } from '@/hooks/usePusher';
 
 interface LeaveRequest {
   _id: string;
@@ -95,6 +96,20 @@ function DashboardContent() {
 
     fetchLeaves();
   }, [user]);
+
+  // Pusher realtime — calendar auto-refresh on leave changes
+  const handleLeaveChanged = useCallback(async () => {
+    try {
+      const response = await fetch('/api/leave?status=approved');
+      const data = await response.json();
+      if (data.success) setLeaves(data.requests);
+    } catch { /* ignore */ }
+  }, []);
+
+  usePusher('dashboard', [
+    { event: 'leave-status-changed', callback: handleLeaveChanged },
+    { event: 'leave-cancelled', callback: handleLeaveChanged },
+  ], !!user);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();

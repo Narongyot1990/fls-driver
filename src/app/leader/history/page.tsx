@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FileText, ClipboardList, CalendarDays, Phone } from 'lucide-react';
@@ -11,6 +11,7 @@ import ProfileModal, { type ProfileUser } from '@/components/ProfileModal';
 import UserAvatar from '@/components/UserAvatar';
 import { getLeaveTypeMeta, getRecordTypeLabel, getStatusBadge } from '@/lib/leave-types';
 import { formatDateThai, getLeaveDays } from '@/lib/date-utils';
+import { usePusher } from '@/hooks/usePusher';
 
 interface LeaveRequest {
   _id: string;
@@ -105,6 +106,20 @@ function LeaderHistoryContent() {
     fetchData();
   }, [user]);
 
+  // Pusher realtime — leave changes
+  const handleLeaveChanged = useCallback(async () => {
+    try {
+      const res = await fetch('/api/leave');
+      const data = await res.json();
+      if (data.success) setLeaves(data.requests);
+    } catch { /* ignore */ }
+  }, []);
+
+  usePusher('leave-requests', [
+    { event: 'new-leave-request', callback: handleLeaveChanged },
+    { event: 'leave-status-changed', callback: handleLeaveChanged },
+    { event: 'leave-cancelled', callback: handleLeaveChanged },
+  ], !!user);
 
   if (!user) {
     return null;

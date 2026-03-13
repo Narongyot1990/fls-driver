@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import dayjs from 'dayjs';
@@ -10,6 +10,7 @@ import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
 import DatePickerModal from '@/components/DatePickerModal';
 import { LEAVE_TYPE_LIST } from '@/lib/leave-types';
+import { usePusher } from '@/hooks/usePusher';
 
 interface DriverUser {
   id: string;
@@ -69,6 +70,19 @@ export default function LeavePage() {
 
     fetchUserData();
   }, [router]);
+
+  // Pusher realtime — leave status changed (approved/rejected)
+  const handleLeaveStatus = useCallback((data: { status?: string; driverUserId?: string }) => {
+    if (!user) return;
+    // Only react to events for this driver
+    if (data.driverUserId && data.driverUserId !== user.id) return;
+    // Refresh user quota
+    window.location.reload();
+  }, [user]);
+
+  usePusher('leave-requests', [
+    { event: 'leave-status-changed', callback: handleLeaveStatus },
+  ], !!user);
 
   const handleDateSelect = (range: { from: Date; to: Date }) => {
     setStartDate(dayjs(range.from).format('YYYY-MM-DD'));

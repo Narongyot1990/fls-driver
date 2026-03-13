@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, AlertCircle, Save } from 'lucide-react';
@@ -8,6 +8,7 @@ import PageHeader from '@/components/PageHeader';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
 import { RECORD_TYPES } from '@/lib/leave-types';
+import { usePusher } from '@/hooks/usePusher';
 
 interface User {
   _id: string;
@@ -56,6 +57,20 @@ export default function SubstitutePage() {
 
     fetchUsers();
   }, [user]);
+
+  // Pusher realtime — refresh user list on driver changes
+  const handleUserChanged = useCallback(async () => {
+    try {
+      const response = await fetch('/api/users?activeOnly=true');
+      const data = await response.json();
+      if (data.success) setUsers(data.users);
+    } catch { /* ignore */ }
+  }, []);
+
+  usePusher('users', [
+    { event: 'driver-activated', callback: handleUserChanged },
+    { event: 'driver-updated', callback: handleUserChanged },
+  ], !!user);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

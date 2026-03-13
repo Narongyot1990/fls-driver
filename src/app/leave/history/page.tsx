@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { FileText, X, AlertCircle } from 'lucide-react';
@@ -9,6 +9,7 @@ import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
 import { getLeaveTypeMeta, getStatusBadge, LEAVE_TYPE_LIST } from '@/lib/leave-types';
 import { formatDateThai } from '@/lib/date-utils';
+import { usePusher } from '@/hooks/usePusher';
 
 interface LeaveRequest {
   _id: string;
@@ -65,6 +66,21 @@ export default function LeaveHistoryPage() {
 
     fetchHistory();
   }, [user]);
+
+  // Pusher realtime — leave status changes
+  const handleLeaveChanged = useCallback(async () => {
+    if (!user) return;
+    try {
+      const response = await fetch(`/api/leave?userId=${user.id}`);
+      const data = await response.json();
+      if (data.success) setRequests(data.requests);
+    } catch { /* ignore */ }
+  }, [user]);
+
+  usePusher('leave-requests', [
+    { event: 'leave-status-changed', callback: handleLeaveChanged },
+    { event: 'leave-cancelled', callback: handleLeaveChanged },
+  ], !!user);
 
   const handleCancel = async (leaveId: string) => {
     const request = requests.find(r => r._id === leaveId);

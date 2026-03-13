@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Search, Phone, PhoneCall, User, X } from 'lucide-react';
@@ -11,6 +11,7 @@ import ProfileModal, { type ProfileUser } from '@/components/ProfileModal';
 import UserAvatar from '@/components/UserAvatar';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { formatRelativeTime, isUserOnline } from '@/lib/date-utils';
+import { usePusher } from '@/hooks/usePusher';
 
 interface Contact {
   _id: string;
@@ -76,6 +77,32 @@ export default function ContactsPage() {
 
     fetchContacts();
   }, [user]);
+
+  // Pusher realtime — user changes (new driver, activated, etc.)
+  const handleUserChanged = useCallback(async () => {
+    try {
+      const res = await fetch('/api/users?activeOnly=true');
+      const data = await res.json();
+      if (data.success) {
+        const others = (data.users as Contact[])
+          .filter((c) => c._id !== user?.id)
+          .sort((a, b) => {
+            if (isUserOnline(a.lastSeen) && !isUserOnline(b.lastSeen)) return -1;
+            if (!isUserOnline(a.lastSeen) && isUserOnline(b.lastSeen)) return 1;
+            const nameA = a.name || a.lineDisplayName;
+            const nameB = b.name || b.lineDisplayName;
+            return nameA.localeCompare(nameB, 'th');
+          });
+        setContacts(others);
+      }
+    } catch { /* ignore */ }
+  }, [user]);
+
+  usePusher('users', [
+    { event: 'driver-activated', callback: handleUserChanged },
+    { event: 'driver-updated', callback: handleUserChanged },
+    { event: 'driver-deleted', callback: handleUserChanged },
+  ], !!user);
 
   const filtered = contacts.filter((c) => {
     if (!search.trim()) return true;

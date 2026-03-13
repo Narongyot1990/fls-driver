@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Users, CheckCircle2, AlertCircle, X, Trash2, Shield } from 'lucide-react';
@@ -11,6 +11,7 @@ import ProfileModal, { type ProfileUser } from '@/components/ProfileModal';
 import UserAvatar from '@/components/UserAvatar';
 import { PERFORMANCE_TIERS, PERFORMANCE_TIER_CONFIG, type PerformanceTier } from '@/lib/profile-tier';
 import { formatDateThai, formatRelativeTime, isUserOnline } from '@/lib/date-utils';
+import { usePusher } from '@/hooks/usePusher';
 
 interface Driver {
   _id: string;
@@ -82,6 +83,18 @@ function DriverManagementContent() {
     const interval = setInterval(fetchDrivers, 30000);
     return () => clearInterval(interval);
   }, [user]);
+
+  // Pusher realtime — driver list auto-refresh
+  const handleDriverChanged = useCallback(() => {
+    fetchDrivers();
+  }, []);
+
+  usePusher('users', [
+    { event: 'new-driver', callback: handleDriverChanged },
+    { event: 'driver-activated', callback: handleDriverChanged },
+    { event: 'driver-updated', callback: handleDriverChanged },
+    { event: 'driver-deleted', callback: handleDriverChanged },
+  ], !!user);
 
   const handleActivate = async (driverId: string) => {
     setActionLoading(driverId);

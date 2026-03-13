@@ -9,6 +9,39 @@ export const pusher = new Pusher({
 });
 
 export const CHANNELS = {
-  LEAVE_REQUESTS: 'leave-requests',
   CAR_WASH: 'car-wash-feed',
+  LEAVE_REQUESTS: 'leave-requests',
+  USERS: 'users',
+  TASKS: 'tasks',
+  DASHBOARD: 'dashboard',
 };
+
+export const EVENTS = {
+  // Car-wash / Moments
+  NEW_ACTIVITY: 'new-activity',
+  UPDATE_ACTIVITY: 'update-activity',
+  DELETE_ACTIVITY: 'delete-activity',
+  // Leave
+  NEW_LEAVE: 'new-leave-request',
+  LEAVE_STATUS_CHANGED: 'leave-status-changed',
+  LEAVE_CANCELLED: 'leave-cancelled',
+  // Users / Drivers
+  DRIVER_ACTIVATED: 'driver-activated',
+  DRIVER_UPDATED: 'driver-updated',
+  DRIVER_DELETED: 'driver-deleted',
+  NEW_DRIVER: 'new-driver',
+  // Tasks
+  NEW_TASK: 'new-task',
+  TASK_UPDATED: 'task-updated',
+  TASK_DELETED: 'task-deleted',
+  TASK_SUBMITTED: 'task-submitted',
+};
+
+/** Fire-and-forget Pusher trigger — never throws */
+export async function triggerPusher(channel: string, event: string, data: Record<string, unknown>) {
+  try {
+    await pusher.trigger(channel, event, data);
+  } catch (err) {
+    console.error(`Pusher trigger error [${channel}/${event}]:`, err);
+  }
+}

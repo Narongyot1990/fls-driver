@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import dbConnect from '@/lib/mongodb';
 import { Task } from '@/models/Task';
 import { requireAuth, requireLeader } from '@/lib/api-auth';
+import { triggerPusher, CHANNELS, EVENTS } from '@/lib/pusher';
 
 export const dynamic = 'force-dynamic';
 
@@ -87,6 +88,13 @@ export async function PATCH(
       await task.save();
       await task.populate('submissions.userId', 'lineDisplayName lineProfileImage name surname performanceTier');
 
+      await triggerPusher(CHANNELS.TASKS, EVENTS.TASK_SUBMITTED, {
+        taskId: id,
+        userId,
+        score,
+        total,
+      });
+
       return NextResponse.json({ success: true, task, score, total });
     }
 
@@ -105,6 +113,8 @@ export async function PATCH(
     if (status !== undefined) task.status = status;
 
     await task.save();
+
+    await triggerPusher(CHANNELS.TASKS, EVENTS.TASK_UPDATED, { taskId: id });
 
     return NextResponse.json({ success: true, task });
   } catch (error) {
@@ -129,6 +139,8 @@ export async function DELETE(
     if (!task) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
+
+    await triggerPusher(CHANNELS.TASKS, EVENTS.TASK_DELETED, { taskId: id });
 
     return NextResponse.json({ success: true });
   } catch (error) {
