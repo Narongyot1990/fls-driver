@@ -5,11 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import Pusher from 'pusher-js';
 import dayjs from 'dayjs';
-import { AlertCircle, CheckCircle2, Send, Umbrella, Thermometer, Briefcase, Ban, Check, Calendar, LucideIcon } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Send, Check, Calendar } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
 import DatePickerModal from '@/components/DatePickerModal';
+import { LEAVE_TYPE_LIST } from '@/lib/leave-types';
 
 interface DriverUser {
   id: string;
@@ -19,21 +20,6 @@ interface DriverUser {
   sickDays?: number;
   personalDays?: number;
 }
-
-interface LeaveType {
-  value: string;
-  label: string;
-  icon: LucideIcon;
-  color: string;
-  daysKey: 'vacationDays' | 'sickDays' | 'personalDays' | null;
-}
-
-const leaveTypes: LeaveType[] = [
-  { value: 'vacation', label: 'ลาพักร้อน', icon: Umbrella, color: 'var(--accent)', daysKey: 'vacationDays' },
-  { value: 'sick', label: 'ลาป่วย', icon: Thermometer, color: 'var(--danger)', daysKey: 'sickDays' },
-  { value: 'personal', label: 'ลากิจ', icon: Briefcase, color: 'var(--success)', daysKey: 'personalDays' },
-  { value: 'unpaid', label: 'ลากิจ (ไม่รับค่าจ้าง)', icon: Ban, color: 'var(--text-muted)', daysKey: null },
-];
 
 export default function LeavePage() {
   const router = useRouter();
@@ -243,7 +229,7 @@ export default function LeavePage() {
                 ประเภทการลา
               </label>
               <div className="space-y-1.5">
-                {leaveTypes.map((type) => {
+                {LEAVE_TYPE_LIST.map((type) => {
                   const Icon = type.icon;
                   const isSelected = leaveType === type.value;
                   const availableDays = type.daysKey ? user?.[type.daysKey] ?? 0 : null;

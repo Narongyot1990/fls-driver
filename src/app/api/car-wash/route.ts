@@ -47,6 +47,7 @@ export async function GET(request: NextRequest) {
 
     const activities = await CarWashActivity.find(query)
       .populate('userId', 'lineDisplayName lineProfileImage name surname employeeId')
+      .populate('likes', 'lineDisplayName lineProfileImage name surname performanceTier')
       .populate('comments.userId', 'lineDisplayName lineProfileImage name surname')
       .populate('markedBy', 'lineDisplayName name surname')
       .sort({ createdAt: -1 })

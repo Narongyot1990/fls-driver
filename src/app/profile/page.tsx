@@ -7,6 +7,7 @@ import { X, Phone, PhoneCall, User, Hash, Circle, CheckCircle2, AlertCircle, Pen
 import Sidebar from '@/components/Sidebar';
 import BottomNav from '@/components/BottomNav';
 import UserAvatar from '@/components/UserAvatar';
+import { formatRelativeTime, isUserOnline } from '@/lib/date-utils';
 
 interface DriverUser {
   id: string;
@@ -22,26 +23,6 @@ interface DriverUser {
   status?: string;
   lastSeen?: string;
   isOnline?: boolean;
-}
-
-function formatLastSeen(dateStr?: string): string {
-  if (!dateStr) return '-';
-  
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMins / 60);
-  const diffDays = Math.floor(diffHours / 24);
-  const diffWeeks = Math.floor(diffDays / 7);
-  const diffMonths = Math.floor(diffDays / 30);
-
-  if (diffMins < 1) return 'เมื่อสักครู่';
-  if (diffMins < 60) return `${diffMins} นาทีที่แล้ว`;
-  if (diffHours < 24) return `${diffHours} ชั่วโมงที่แล้ว`;
-  if (diffDays < 7) return `${diffDays} วันที่แล้ว`;
-  if (diffWeeks < 4) return `${diffWeeks} สัปดาห์ที่แล้ว`;
-  return `${diffMonths} เดือนที่แล้ว`;
 }
 
 export default function ProfilePage() {
@@ -180,7 +161,7 @@ export default function ProfilePage() {
                   <div 
                     className="absolute bottom-2 right-2 w-5 h-5 sm:w-6 sm:h-6 rounded-full border-3 flex items-center justify-center"
                     style={{ 
-                      background: user.isOnline ? 'var(--success)' : 'var(--text-muted)',
+                      background: isUserOnline(user.lastSeen) ? 'var(--success)' : 'var(--text-muted)',
                       borderColor: 'var(--bg-surface)'
                     }}
                   >
@@ -228,10 +209,10 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-1.5 mt-1">
                   <span
                     className="w-2 h-2 rounded-full inline-block"
-                    style={{ background: user.isOnline ? 'var(--success)' : 'var(--text-muted)' }}
+                    style={{ background: isUserOnline(user.lastSeen) ? 'var(--success)' : 'var(--text-muted)' }}
                   />
-                  <span className="text-sm font-medium" style={{ color: user.isOnline ? 'var(--success)' : 'var(--text-muted)' }}>
-                    {user.isOnline ? 'ออนไลน์' : user.lastSeen ? formatLastSeen(user.lastSeen) : 'ไม่ทราบ'}
+                  <span className="text-sm font-medium" style={{ color: isUserOnline(user.lastSeen) ? 'var(--success)' : 'var(--text-muted)' }}>
+                    {isUserOnline(user.lastSeen) ? 'ออนไลน์' : user.lastSeen ? formatRelativeTime(user.lastSeen) : 'ไม่ทราบ'}
                   </span>
                 </div>
               </div>

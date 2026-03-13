@@ -26,6 +26,7 @@ import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
 import ProfileModal, { type ProfileUser } from '@/components/ProfileModal';
 import UserAvatar from '@/components/UserAvatar';
+import LikesPopup from '@/components/LikesPopup';
 import { getPusherClient } from '@/lib/pusher-client';
 import { formatDateThai } from '@/lib/types';
 
@@ -186,6 +187,10 @@ export default function CarWashFeedPage() {
   // Profile modal
   const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
   const [showProfile, setShowProfile] = useState(false);
+
+  // Likes popup
+  const [likesPopupData, setLikesPopupData] = useState<any[]>([]);
+  const [showLikesPopup, setShowLikesPopup] = useState(false);
 
   const openProfile = (u?: UserInfo) => {
     if (!u) return;
@@ -571,10 +576,13 @@ export default function CarWashFeedPage() {
                         <div className="flex items-center justify-between px-4 py-2 text-fluid-xs" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
                           <span>
                             {activity.likes.length > 0 && (
-                              <span className="flex items-center gap-1">
+                              <button
+                                onClick={() => { setLikesPopupData(activity.likes); setShowLikesPopup(true); }}
+                                className="flex items-center gap-1 hover:underline"
+                              >
                                 <Heart className="w-3 h-3 fill-current" style={{ color: 'var(--danger)' }} />
                                 {activity.likes.length}
-                              </span>
+                              </button>
                             )}
                           </span>
                           <span>
@@ -808,6 +816,7 @@ export default function CarWashFeedPage() {
         )}
       </AnimatePresence>
 
+      <LikesPopup likes={likesPopupData} open={showLikesPopup} onClose={() => setShowLikesPopup(false)} />
       <ProfileModal user={profileUser} open={showProfile} onClose={() => setShowProfile(false)} />
       <BottomNav role="driver" />
     </div>

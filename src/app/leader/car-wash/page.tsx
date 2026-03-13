@@ -28,6 +28,8 @@ import PageHeader from '@/components/PageHeader';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
 import ProfileModal, { type ProfileUser } from '@/components/ProfileModal';
+import UserAvatar from '@/components/UserAvatar';
+import LikesPopup from '@/components/LikesPopup';
 import { getPusherClient } from '@/lib/pusher-client';
 import { formatDateThai } from '@/lib/types';
 
@@ -51,6 +53,7 @@ interface UserInfo {
   _id: string;
   lineDisplayName: string;
   lineProfileImage?: string;
+  performanceTier?: string;
   name?: string;
   surname?: string;
 }
@@ -92,20 +95,8 @@ function getDisplayName(u: UserInfo | undefined) {
 }
 
 function Avatar({ user, size = 'md', onClick }: { user?: UserInfo; size?: 'sm' | 'md' | 'lg'; onClick?: () => void }) {
-  const sizeMap = { sm: 'w-6 h-6 text-[9px]', md: 'w-9 h-9 text-xs', lg: 'w-11 h-11 text-sm' };
-  return (
-    <div
-      className={`${sizeMap[size]} rounded-full overflow-hidden shrink-0 flex items-center justify-center text-white font-bold ${onClick ? 'cursor-pointer' : ''}`}
-      style={{ background: 'var(--accent)' }}
-      onClick={onClick}
-    >
-      {user?.lineProfileImage ? (
-        <img src={user.lineProfileImage} alt="" className="w-full h-full object-cover" />
-      ) : (
-        (user?.name || user?.lineDisplayName)?.charAt(0) || '?'
-      )}
-    </div>
-  );
+  const avatarSize = size === 'sm' ? 'xs' : size === 'lg' ? 'md' : 'sm';
+  return <UserAvatar imageUrl={user?.lineProfileImage} displayName={user?.name || user?.lineDisplayName} tier={user?.performanceTier} size={avatarSize} onClick={onClick} />;
 }
 
 function ImageGrid({ images, onClickImage }: { images: string[]; onClickImage: (index: number) => void }) {
@@ -204,6 +195,10 @@ export default function LeaderCarWashPage() {
   // Profile modal
   const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
   const [showProfile, setShowProfile] = useState(false);
+
+  // Likes popup
+  const [likesPopupData, setLikesPopupData] = useState<any[]>([]);
+  const [showLikesPopup, setShowLikesPopup] = useState(false);
 
   const openProfile = (u?: UserInfo) => {
     if (!u) return;
@@ -715,10 +710,13 @@ export default function LeaderCarWashPage() {
                         <div className="flex items-center justify-between px-4 py-2 text-fluid-xs" style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>
                           <span>
                             {activity.likes.length > 0 && (
-                              <span className="flex items-center gap-1">
+                              <button
+                                onClick={() => { setLikesPopupData(activity.likes); setShowLikesPopup(true); }}
+                                className="flex items-center gap-1 hover:underline"
+                              >
                                 <Heart className="w-3 h-3 fill-current" style={{ color: 'var(--danger)' }} />
                                 {activity.likes.length}
-                              </span>
+                              </button>
                             )}
                           </span>
                           <span>{activity.comments.length > 0 && `${activity.comments.length} ความคิดเห็น`}</span>
@@ -950,6 +948,7 @@ export default function LeaderCarWashPage() {
         )}
       </AnimatePresence>
 
+      <LikesPopup likes={likesPopupData} open={showLikesPopup} onClose={() => setShowLikesPopup(false)} />
       <ProfileModal user={profileUser} open={showProfile} onClose={() => setShowProfile(false)} />
       <BottomNav role="leader" />
     </div>

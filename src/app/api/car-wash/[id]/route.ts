@@ -22,6 +22,7 @@ export async function GET(
 
     const activity = await CarWashActivity.findById(id)
       .populate('userId', 'lineDisplayName lineProfileImage name surname')
+      .populate('likes', 'lineDisplayName lineProfileImage name surname performanceTier')
       .populate('comments.userId', 'lineDisplayName lineProfileImage name surname')
       .populate('markedBy', 'lineDisplayName name surname');
 
@@ -78,6 +79,7 @@ export async function PATCH(
 
       await activity.save();
       await activity.populate('userId', 'lineDisplayName lineProfileImage name surname');
+      await activity.populate('likes', 'lineDisplayName lineProfileImage name surname performanceTier');
       await activity.populate('comments.userId', 'lineDisplayName lineProfileImage name surname');
 
       try {
@@ -106,6 +108,7 @@ export async function PATCH(
 
       await activity.save();
       await activity.populate('userId', 'lineDisplayName lineProfileImage name surname');
+      await activity.populate('likes', 'lineDisplayName lineProfileImage name surname performanceTier');
       await activity.populate('comments.userId', 'lineDisplayName lineProfileImage name surname');
 
       try {
@@ -141,6 +144,7 @@ export async function PATCH(
       (activity.comments as unknown as { pull: (query: object) => void }).pull({ _id: commentId });
       await activity.save();
       await activity.populate('userId', 'lineDisplayName lineProfileImage name surname');
+      await activity.populate('likes', 'lineDisplayName lineProfileImage name surname performanceTier');
       await activity.populate('comments.userId', 'lineDisplayName lineProfileImage name surname');
 
       try {
@@ -165,6 +169,7 @@ export async function PATCH(
 
       await activity.save();
       await activity.populate('userId', 'lineDisplayName lineProfileImage name surname');
+      await activity.populate('likes', 'lineDisplayName lineProfileImage name surname performanceTier');
       await activity.populate('comments.userId', 'lineDisplayName lineProfileImage name surname');
       await activity.populate('markedBy', 'lineDisplayName name surname');
 
@@ -192,6 +197,7 @@ export async function PATCH(
 
     await activity.save();
     await activity.populate('userId', 'lineDisplayName lineProfileImage name surname');
+    await activity.populate('likes', 'lineDisplayName lineProfileImage name surname performanceTier');
     await activity.populate('comments.userId', 'lineDisplayName lineProfileImage name surname');
 
     try {

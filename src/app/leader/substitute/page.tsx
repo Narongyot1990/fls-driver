@@ -7,6 +7,7 @@ import { CheckCircle2, AlertCircle, Save } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
+import { RECORD_TYPES } from '@/lib/leave-types';
 
 interface User {
   _id: string;
@@ -16,17 +17,6 @@ interface User {
   employeeId?: string;
   status: string;
 }
-
-const recordTypes = [
-  { value: 'vacation', label: 'ลาพักร้อน' },
-  { value: 'sick', label: 'ลาป่วย' },
-  { value: 'personal', label: 'ลากิจ' },
-  { value: 'unpaid', label: 'ลาไม่รับค่าจ้าง' },
-  { value: 'absent', label: 'ขาดงาน' },
-  { value: 'late', label: 'มาสาย' },
-  { value: 'accident', label: 'Accident' },
-  { value: 'damage', label: 'ทำสินค้าเสียหาย' },
-];
 
 export default function SubstitutePage() {
   const router = useRouter();
@@ -158,7 +148,7 @@ export default function SubstitutePage() {
             <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="card p-5">
               <label className="block text-fluid-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>ประเภทการบันทึก</label>
               <div className="grid grid-cols-2 gap-2">
-                {recordTypes.map((type) => (
+                {RECORD_TYPES.map((type) => (
                   <button
                     key={type.value}
                     type="button"

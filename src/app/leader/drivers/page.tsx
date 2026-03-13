@@ -10,6 +10,7 @@ import Sidebar from '@/components/Sidebar';
 import ProfileModal, { type ProfileUser } from '@/components/ProfileModal';
 import UserAvatar from '@/components/UserAvatar';
 import { PERFORMANCE_TIERS, PERFORMANCE_TIER_CONFIG, type PerformanceTier } from '@/lib/profile-tier';
+import { formatDateThai, formatRelativeTime, isUserOnline } from '@/lib/date-utils';
 
 interface Driver {
   _id: string;
@@ -30,16 +31,6 @@ interface Driver {
   isOnline?: boolean;
   lastSeen?: string;
   createdAt: string;
-}
-
-// Online timeout: 5 minutes
-const ONLINE_TIMEOUT_MS = 5 * 60 * 1000;
-
-function isDriverOnline(driver: Driver): boolean {
-  if (!driver.lastSeen) return false;
-  const lastSeen = new Date(driver.lastSeen);
-  const now = new Date();
-  return now.getTime() - lastSeen.getTime() < ONLINE_TIMEOUT_MS;
 }
 
 function DriverManagementContent() {
@@ -183,30 +174,6 @@ function DriverManagementContent() {
     }
   };
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('th-TH', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
-  const formatRelativeTime = (dateStr?: string) => {
-    if (!dateStr) return 'ไม่เคยออนไลน์';
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return 'ออนไลน์ตอนนี้';
-    if (diffMins < 60) return `${diffMins} นาทีที่แล้ว`;
-    if (diffHours < 24) return `${diffHours} ชั่วโมงที่แล้ว`;
-    if (diffDays < 7) return `${diffDays} วันที่แล้ว`;
-    return formatDate(dateStr);
-  };
-
   if (!user) return null;
 
   return (
@@ -292,7 +259,7 @@ function DriverManagementContent() {
                     <span
                       className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2"
                       style={{
-                        background: isDriverOnline(driver) ? 'var(--success)' : 'var(--text-muted)',
+                        background: isUserOnline(driver.lastSeen) ? 'var(--success)' : 'var(--text-muted)',
                         borderColor: 'var(--bg-surface)',
                       }}
                     />
@@ -305,9 +272,9 @@ function DriverManagementContent() {
                     <div className="flex items-center gap-1.5">
                       <span
                         className="text-[11px] font-medium"
-                        style={{ color: isDriverOnline(driver) ? 'var(--success)' : 'var(--text-muted)' }}
+                        style={{ color: isUserOnline(driver.lastSeen) ? 'var(--success)' : 'var(--text-muted)' }}
                       >
-                        {isDriverOnline(driver) ? 'ออนไลน์' : driver.lastSeen ? formatRelativeTime(driver.lastSeen) : 'ไม่ทราบ'}
+                        {isUserOnline(driver.lastSeen) ? 'ออนไลน์' : formatRelativeTime(driver.lastSeen)}
                       </span>
                     </div>
                     {driver.phone && (
