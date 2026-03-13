@@ -4,7 +4,6 @@ import dbConnect from '@/lib/mongodb';
 import { User, IUser } from '@/models/User';
 import { LeaveRequest } from '@/models/LeaveRequest';
 import { SubstituteRecord } from '@/models/SubstituteRecord';
-import { pusher } from '@/lib/pusher';
 import { requireAuth, requireLeader } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
@@ -76,16 +75,6 @@ export async function PATCH(request: NextRequest) {
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    if (status === 'active') {
-      try {
-        await pusher.trigger(`driver-${userId}`, 'driver-activated', {
-          message: 'บัญชีของคุณได้รับการยืนยันแล้ว! ตอนนี้คุณสามารถใช้งานระบบได้แล้ว',
-        });
-      } catch (pusherError) {
-        console.error('Pusher Error:', pusherError);
-      }
     }
 
     return NextResponse.json({

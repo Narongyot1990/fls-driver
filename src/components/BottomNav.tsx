@@ -14,7 +14,7 @@ const driverNav: NavItem[] = [
   { icon: Home, label: 'หน้าหลัก', href: '/home' },
   { icon: CalendarDays, label: 'ปฏิทิน', href: '/dashboard' },
   { icon: Rss, label: 'Moments', href: '/car-wash/feed' },
-  { icon: ClipboardCheck, label: 'Tasks', href: '/tasks' },
+  { icon: Contact2, label: 'ผู้ติดต่อ', href: '/contacts' },
   { icon: User, label: 'โปรไฟล์', href: '/profile' },
 ];
 

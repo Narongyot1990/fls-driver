@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { X, Phone, PhoneCall, User, Hash, Circle, CheckCircle2, AlertCircle, Pencil, MapPin, Flag } from 'lucide-react';
+import { X, Phone, PhoneCall, User, Hash, Circle, CheckCircle2, AlertCircle, Pencil, MapPin, Flag, Brain, Trophy, Star, Zap, BookOpen, TrendingUp } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import BottomNav from '@/components/BottomNav';
 import UserAvatar from '@/components/UserAvatar';
@@ -35,6 +35,7 @@ export default function ProfilePage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [approvedCount, setApprovedCount] = useState(0);
+  const [knowledgeData, setKnowledgeData] = useState<any>(null);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -69,6 +70,11 @@ export default function ProfilePage() {
     fetch(`/api/car-wash?userId=${user.id}&marked=true&countOnly=true`)
       .then(r => r.json())
       .then(data => { if (data.success) setApprovedCount(data.total ?? 0); })
+      .catch(() => {});
+
+    fetch(`/api/tasks/scores?userId=${user.id}`)
+      .then(r => r.json())
+      .then(data => { if (data.success) setKnowledgeData(data.data); })
       .catch(() => {});
   }, [user?.id]);
 
@@ -269,6 +275,174 @@ export default function ProfilePage() {
                     <p className="text-2xl font-extrabold" style={{ color: 'var(--success)' }}>{approvedCount}</p>
                     <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>กิจกรรมที่ได้รับ Approved</p>
                   </div>
+                </motion.div>
+              )}
+
+              {/* Knowledge Level Section */}
+              {knowledgeData && knowledgeData.completedTasks > 0 && (
+                <motion.div
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.15 }}
+                  className="card p-0 overflow-hidden mb-4"
+                >
+                  {/* Header with gradient */}
+                  <div
+                    className="p-5 relative overflow-hidden"
+                    style={{
+                      background: `linear-gradient(135deg, ${knowledgeData.levelColor}22 0%, ${knowledgeData.levelColor}08 100%)`,
+                    }}
+                  >
+                    <div className="flex items-center gap-4">
+                      {/* Level badge - circular with glow */}
+                      <div className="relative">
+                        <div
+                          className="w-16 h-16 rounded-full flex items-center justify-center relative"
+                          style={{
+                            background: `linear-gradient(135deg, ${knowledgeData.levelColor}, ${knowledgeData.levelColor}cc)`,
+                            boxShadow: `0 4px 20px ${knowledgeData.levelColor}40`,
+                          }}
+                        >
+                          <Brain className="w-7 h-7 text-white" />
+                        </div>
+                        {/* Animated ring */}
+                        <svg className="absolute -inset-1 w-[calc(100%+8px)] h-[calc(100%+8px)]" viewBox="0 0 72 72">
+                          <circle cx="36" cy="36" r="33" fill="none" stroke={`${knowledgeData.levelColor}20`} strokeWidth="3" />
+                          <circle
+                            cx="36" cy="36" r="33"
+                            fill="none"
+                            stroke={knowledgeData.levelColor}
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeDasharray={`${(knowledgeData.overallPercentage / 100) * 207} 207`}
+                            transform="rotate(-90 36 36)"
+                            style={{ transition: 'stroke-dasharray 1s ease-out' }}
+                          />
+                        </svg>
+                      </div>
+
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-lg font-bold" style={{ color: knowledgeData.levelColor }}>
+                            {knowledgeData.knowledgeLevel}
+                          </h3>
+                          {knowledgeData.overallPercentage >= 90 && (
+                            <Trophy className="w-4 h-4" style={{ color: '#f59e0b' }} />
+                          )}
+                        </div>
+                        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                          {knowledgeData.knowledgeLevelTh} · ระดับความรู้
+                        </p>
+                        <div className="flex items-center gap-3 mt-1.5">
+                          <div className="flex items-center gap-1">
+                            <Zap className="w-3.5 h-3.5" style={{ color: knowledgeData.levelColor }} />
+                            <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                              {knowledgeData.overallPercentage}%
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <BookOpen className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
+                            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>
+                              {knowledgeData.completedTasks} แบบทดสอบ
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Overall score bar */}
+                    <div className="mt-4">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>คะแนนรวม</span>
+                        <span className="text-xs font-bold" style={{ color: knowledgeData.levelColor }}>
+                          {knowledgeData.totalScore}/{knowledgeData.totalQuestions}
+                        </span>
+                      </div>
+                      <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--bg-inset)' }}>
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${knowledgeData.overallPercentage}%` }}
+                          transition={{ duration: 1, ease: 'easeOut', delay: 0.3 }}
+                          className="h-full rounded-full"
+                          style={{ background: `linear-gradient(90deg, ${knowledgeData.levelColor}, ${knowledgeData.levelColor}cc)` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Category breakdown */}
+                  {Object.keys(knowledgeData.categoryScores).length > 0 && (
+                    <div className="px-5 py-3" style={{ borderTop: `1px solid var(--border)` }}>
+                      <p className="text-xs font-semibold uppercase tracking-wider mb-2.5" style={{ color: 'var(--text-muted)' }}>
+                        คะแนนตามหมวดหมู่
+                      </p>
+                      <div className="space-y-2.5">
+                        {Object.entries(knowledgeData.categoryScores).map(([cat, data]: [string, any]) => {
+                          const pct = data.total > 0 ? Math.round((data.score / data.total) * 100) : 0;
+                          return (
+                            <div key={cat}>
+                              <div className="flex justify-between items-center mb-0.5">
+                                <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{cat}</span>
+                                <span className="text-xs font-semibold" style={{ color: pct >= 75 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)' }}>
+                                  {pct}% ({data.score}/{data.total})
+                                </span>
+                              </div>
+                              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--bg-inset)' }}>
+                                <motion.div
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${pct}%` }}
+                                  transition={{ duration: 0.8, ease: 'easeOut', delay: 0.5 }}
+                                  className="h-full rounded-full"
+                                  style={{ background: pct >= 75 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)' }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Recent scores */}
+                  {knowledgeData.recentScores.length > 0 && (
+                    <div className="px-5 py-3" style={{ borderTop: `1px solid var(--border)` }}>
+                      <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>
+                        ผลทดสอบล่าสุด
+                      </p>
+                      <div className="space-y-1.5">
+                        {knowledgeData.recentScores.map((s: any, i: number) => (
+                          <div key={i} className="flex items-center gap-2 py-1">
+                            <div
+                              className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                              style={{
+                                background: s.percentage >= 80 ? 'var(--success-light)' : s.percentage >= 50 ? 'rgba(251,191,36,0.1)' : 'var(--danger-light)',
+                              }}
+                            >
+                              {s.percentage >= 80 ? (
+                                <Star className="w-3.5 h-3.5" style={{ color: 'var(--success)' }} />
+                              ) : s.percentage >= 50 ? (
+                                <TrendingUp className="w-3.5 h-3.5" style={{ color: 'var(--warning)' }} />
+                              ) : (
+                                <BookOpen className="w-3.5 h-3.5" style={{ color: 'var(--danger)' }} />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium truncate" style={{ color: 'var(--text-primary)' }}>{s.title}</p>
+                            </div>
+                            <span
+                              className="text-xs font-bold px-2 py-0.5 rounded-full"
+                              style={{
+                                background: s.percentage >= 80 ? 'var(--success-light)' : s.percentage >= 50 ? 'rgba(251,191,36,0.1)' : 'var(--danger-light)',
+                                color: s.percentage >= 80 ? 'var(--success)' : s.percentage >= 50 ? 'var(--warning)' : 'var(--danger)',
+                              }}
+                            >
+                              {s.score}/{s.total}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </motion.div>
               )}
 

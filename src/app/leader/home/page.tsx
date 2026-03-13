@@ -7,7 +7,6 @@ import { CheckSquare, Users, PenSquare, CalendarDays, Clock, User, ChevronRight,
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
 import ThemeToggle from '@/components/ThemeToggle';
-import Pusher from 'pusher-js';
 
 interface LeaderUser {
   id: string;
@@ -56,19 +55,6 @@ export default function LeaderHomePage() {
     };
 
     fetchCounts();
-
-    const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY || '', {
-      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER || '',
-    });
-
-    const channel = pusher.subscribe('leave-requests');
-    channel.bind('new-leave-request', () => {
-      setPendingLeaveCount(prev => prev + 1);
-    });
-
-    return () => {
-      pusher.unsubscribe('leave-requests');
-    };
   }, []);
 
   const handleLogout = async () => {

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { FilePlus, Clock, CalendarDays, ChevronRight, LogOut, AlertCircle, Umbrella, Thermometer, Briefcase } from 'lucide-react';
+import { FilePlus, Clock, CalendarDays, ChevronRight, LogOut, AlertCircle, Umbrella, Thermometer, Briefcase, ClipboardCheck } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -26,7 +26,7 @@ interface DriverUser {
 const menuItems = [
   { icon: FilePlus, label: 'ขอลา', sub: 'ยื่นคำขอลาใหม่', href: '/leave', color: 'var(--accent)' },
   { icon: Clock, label: 'ประวัติการลา', sub: 'ดูสถานะคำขอทั้งหมด', href: '/leave/history', color: 'var(--success)' },
-  { icon: CalendarDays, label: 'ปฏิทิน', sub: 'ดูตารางวันลา', href: '/dashboard', color: 'var(--info)' },
+  { icon: ClipboardCheck, label: 'Tasks', sub: 'แบบทดสอบ/งานที่ได้รับ', href: '/tasks', color: 'var(--warning)' },
 ];
 
 export default function DriverHomePage() {

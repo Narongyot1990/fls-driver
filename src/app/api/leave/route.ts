@@ -3,7 +3,6 @@ import mongoose from 'mongoose';
 import dbConnect from '@/lib/mongodb';
 import { LeaveRequest } from '@/models/LeaveRequest';
 import { User } from '@/models/User';
-import { pusher, CHANNELS } from '@/lib/pusher';
 import { requireAuth } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
@@ -130,21 +129,6 @@ export async function POST(request: NextRequest) {
     });
 
     await leaveRequest.populate('userId', 'lineDisplayName employeeId phone name surname lineProfileImage performanceTier performancePoints performanceLevel');
-
-    try {
-      await pusher.trigger(CHANNELS.LEAVE_REQUESTS, 'new-leave-request', {
-        id: leaveRequest._id,
-        leaveType: leaveRequest.leaveType,
-        startDate: leaveRequest.startDate,
-        endDate: leaveRequest.endDate,
-        reason: leaveRequest.reason,
-        userName: user?.lineDisplayName || 'Unknown',
-        employeeId: user?.employeeId || '',
-        createdAt: leaveRequest.createdAt,
-      });
-    } catch (pusherError) {
-      console.error('Pusher Error:', pusherError);
-    }
 
     return NextResponse.json({
       success: true,

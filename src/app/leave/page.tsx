@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import Pusher from 'pusher-js';
 import dayjs from 'dayjs';
 import { AlertCircle, CheckCircle2, Send, Check, Calendar } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
@@ -69,28 +68,6 @@ export default function LeavePage() {
     };
 
     fetchUserData();
-
-    const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY || '', {
-      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'ap1',
-    });
-
-    const channel = pusher.subscribe(`driver-${userData.id}`);
-    
-    channel.bind('leave-status-changed', (data: any) => {
-      console.log('Leave status changed:', data);
-      
-      if (data.status === 'approved') {
-        alert(`✅ คำขอลาของคุณได้รับการอนุมัติ!\nประเภท: ${data.leaveType}\nวันที่: ${new Date(data.startDate).toLocaleDateString('th-TH')} - ${new Date(data.endDate).toLocaleDateString('th-TH')}`);
-      } else if (data.status === 'rejected') {
-        alert(`❌ คำขอลาของคุณไม่ได้รับการอนุมัติ\nเหตุผล: ${data.reason}`);
-      }
-      
-      window.location.reload();
-    });
-
-    return () => {
-      pusher.unsubscribe(`driver-${userData.id}`);
-    };
   }, [router]);
 
   const handleDateSelect = (range: { from: Date; to: Date }) => {

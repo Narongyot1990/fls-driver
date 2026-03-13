@@ -1,13 +1,15 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, Download, X, Phone, Star } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
+import BottomNav from '@/components/BottomNav';
+import Sidebar from '@/components/Sidebar';
 import ProfileModal, { type ProfileUser } from '@/components/ProfileModal';
 import UserAvatar from '@/components/UserAvatar';
-import { getHolidayMap, getHolidaysForMonth, type ThaiHoliday } from '@/lib/thai-holidays';
+import { getHolidayMap, getHolidaysForMonth } from '@/lib/thai-holidays';
 import { getLeaveTypeMeta, LEAVE_TYPE_LIST } from '@/lib/leave-types';
 import { formatDateThai as formatDateThaiUtil, getLeaveDays as getLeaveDaysUtil } from '@/lib/date-utils';
 
@@ -47,6 +49,7 @@ const THAI_DAYS = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
 function DashboardContent() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [role, setRole] = useState<'driver' | 'leader'>('driver');
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -66,8 +69,10 @@ function DashboardContent() {
     
     if (driverUser) {
       setUser(JSON.parse(driverUser));
+      setRole('driver');
     } else if (leaderUser) {
       setUser(JSON.parse(leaderUser));
+      setRole('leader');
     }
   }, [router]);
 
@@ -180,6 +185,9 @@ function DashboardContent() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
+      <Sidebar role={role} />
+
+      <div className="lg:pl-[240px] pb-20 lg:pb-6">
       <PageHeader
         title="Dashboard"
         backHref="/home"
@@ -196,14 +204,14 @@ function DashboardContent() {
           {/* Month Selector */}
           <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="card p-4">
             <div className="flex items-center justify-between">
-              <button onClick={goToPrevMonth} className="btn btn-ghost w-9 h-9 p-0">
-                <ChevronLeft className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+              <button onClick={goToPrevMonth} className="btn btn-ghost w-10 h-10 p-0">
+                <ChevronLeft className="w-6 h-6" style={{ color: 'var(--text-primary)' }} />
               </button>
               <h2 className="text-fluid-base font-bold" style={{ color: 'var(--text-primary)' }}>
                 {THAI_MONTHS[month]} {year + 543}
               </h2>
-              <button onClick={goToNextMonth} className="btn btn-ghost w-9 h-9 p-0">
-                <ChevronRight className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
+              <button onClick={goToNextMonth} className="btn btn-ghost w-10 h-10 p-0">
+                <ChevronRight className="w-6 h-6" style={{ color: 'var(--text-primary)' }} />
               </button>
             </div>
           </motion.div>
@@ -396,6 +404,8 @@ function DashboardContent() {
       </AnimatePresence>
 
       <ProfileModal user={profileUser} open={showProfile} onClose={() => setShowProfile(false)} />
+      </div>
+      <BottomNav role={role} />
     </div>
   );
 }

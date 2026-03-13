@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import Pusher from 'pusher-js';
 import { CheckCircle2, XCircle, Bell, CalendarDays, Inbox, Phone } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import BottomNav from '@/components/BottomNav';
@@ -76,32 +75,6 @@ export default function LeaderApprovePage() {
     fetchPending();
   }, [user]);
 
-  // Pusher realtime
-  useEffect(() => {
-    if (!user) return;
-
-    const pusher = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY || '', {
-      cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER || 'ap1',
-    });
-
-    const channel = pusher.subscribe('leave-requests');
-    
-    channel.bind('new-leave-request', (data: any) => {
-      console.log('New leave request:', data);
-      setNewRequestAlert(true);
-      fetchPending();
-      
-      // Play notification sound
-      const audio = new Audio('/notification.mp3');
-      audio.play().catch(() => {});
-      
-      setTimeout(() => setNewRequestAlert(false), 5000);
-    });
-
-    return () => {
-      pusher.unsubscribe('leave-requests');
-    };
-  }, [user]);
 
   const handleAction = async (id: string, status: 'approved' | 'rejected') => {
     if (!user) return;

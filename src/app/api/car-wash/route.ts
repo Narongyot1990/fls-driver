@@ -3,7 +3,6 @@ import { put } from '@vercel/blob';
 import dbConnect from '@/lib/mongodb';
 import { CarWashActivity } from '@/models/CarWashActivity';
 import { requireAuth } from '@/lib/api-auth';
-import { pusher, CHANNELS } from '@/lib/pusher';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,9 +55,9 @@ export async function GET(request: NextRequest) {
     }
 
     const activities = await CarWashActivity.find(query)
-      .populate('userId', 'lineDisplayName lineProfileImage name surname employeeId')
+      .populate('userId', 'lineDisplayName lineProfileImage name surname employeeId performanceTier')
       .populate('likes', 'lineDisplayName lineProfileImage name surname performanceTier')
-      .populate('comments.userId', 'lineDisplayName lineProfileImage name surname')
+      .populate('comments.userId', 'lineDisplayName lineProfileImage name surname performanceTier')
       .populate('markedBy', 'lineDisplayName name surname')
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -120,15 +119,6 @@ export async function POST(request: NextRequest) {
     });
 
     await activity.populate('userId', 'lineDisplayName lineProfileImage name surname employeeId');
-
-    // Pusher realtime — new post (send only ID to stay under 10KB limit)
-    try {
-      await pusher.trigger(CHANNELS.CAR_WASH, 'new-activity', {
-        activityId: activity._id.toString(),
-      });
-    } catch (pusherError) {
-      console.error('Pusher Error:', pusherError);
-    }
 
     return NextResponse.json({ success: true, activity });
   } catch (error) {

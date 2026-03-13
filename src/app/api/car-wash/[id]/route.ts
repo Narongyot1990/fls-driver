@@ -4,7 +4,6 @@ import { del } from '@vercel/blob';
 import dbConnect from '@/lib/mongodb';
 import { CarWashActivity, IComment } from '@/models/CarWashActivity';
 import { requireAuth } from '@/lib/api-auth';
-import { pusher, CHANNELS } from '@/lib/pusher';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,9 +20,9 @@ export async function GET(
     await dbConnect();
 
     const activity = await CarWashActivity.findById(id)
-      .populate('userId', 'lineDisplayName lineProfileImage name surname')
+      .populate('userId', 'lineDisplayName lineProfileImage name surname performanceTier')
       .populate('likes', 'lineDisplayName lineProfileImage name surname performanceTier')
-      .populate('comments.userId', 'lineDisplayName lineProfileImage name surname')
+      .populate('comments.userId', 'lineDisplayName lineProfileImage name surname performanceTier')
       .populate('markedBy', 'lineDisplayName name surname');
 
     if (!activity) {
@@ -78,17 +77,9 @@ export async function PATCH(
       }
 
       await activity.save();
-      await activity.populate('userId', 'lineDisplayName lineProfileImage name surname');
+      await activity.populate('userId', 'lineDisplayName lineProfileImage name surname performanceTier');
       await activity.populate('likes', 'lineDisplayName lineProfileImage name surname performanceTier');
-      await activity.populate('comments.userId', 'lineDisplayName lineProfileImage name surname');
-
-      try {
-        await pusher.trigger(CHANNELS.CAR_WASH, 'update-activity', {
-          activityId: id,
-        });
-      } catch (pusherError) {
-        console.error('Pusher Error:', pusherError);
-      }
+      await activity.populate('comments.userId', 'lineDisplayName lineProfileImage name surname performanceTier');
 
       return NextResponse.json({ success: true, activity });
     }
@@ -107,17 +98,9 @@ export async function PATCH(
       } as IComment);
 
       await activity.save();
-      await activity.populate('userId', 'lineDisplayName lineProfileImage name surname');
+      await activity.populate('userId', 'lineDisplayName lineProfileImage name surname performanceTier');
       await activity.populate('likes', 'lineDisplayName lineProfileImage name surname performanceTier');
-      await activity.populate('comments.userId', 'lineDisplayName lineProfileImage name surname');
-
-      try {
-        await pusher.trigger(CHANNELS.CAR_WASH, 'update-activity', {
-          activityId: id,
-        });
-      } catch (pusherError) {
-        console.error('Pusher Error:', pusherError);
-      }
+      await activity.populate('comments.userId', 'lineDisplayName lineProfileImage name surname performanceTier');
 
       return NextResponse.json({ success: true, activity });
     }
@@ -143,15 +126,9 @@ export async function PATCH(
 
       (activity.comments as unknown as { pull: (query: object) => void }).pull({ _id: commentId });
       await activity.save();
-      await activity.populate('userId', 'lineDisplayName lineProfileImage name surname');
+      await activity.populate('userId', 'lineDisplayName lineProfileImage name surname performanceTier');
       await activity.populate('likes', 'lineDisplayName lineProfileImage name surname performanceTier');
-      await activity.populate('comments.userId', 'lineDisplayName lineProfileImage name surname');
-
-      try {
-        await pusher.trigger(CHANNELS.CAR_WASH, 'update-activity', { activityId: id });
-      } catch (pusherError) {
-        console.error('Pusher Error:', pusherError);
-      }
+      await activity.populate('comments.userId', 'lineDisplayName lineProfileImage name surname performanceTier');
 
       return NextResponse.json({ success: true, activity });
     }
@@ -168,16 +145,10 @@ export async function PATCH(
       activity.markedAt = activity.marked ? new Date() : undefined;
 
       await activity.save();
-      await activity.populate('userId', 'lineDisplayName lineProfileImage name surname');
+      await activity.populate('userId', 'lineDisplayName lineProfileImage name surname performanceTier');
       await activity.populate('likes', 'lineDisplayName lineProfileImage name surname performanceTier');
-      await activity.populate('comments.userId', 'lineDisplayName lineProfileImage name surname');
+      await activity.populate('comments.userId', 'lineDisplayName lineProfileImage name surname performanceTier');
       await activity.populate('markedBy', 'lineDisplayName name surname');
-
-      try {
-        await pusher.trigger(CHANNELS.CAR_WASH, 'update-activity', { activityId: id });
-      } catch (pusherError) {
-        console.error('Pusher Error:', pusherError);
-      }
 
       return NextResponse.json({ success: true, activity });
     }
@@ -196,15 +167,9 @@ export async function PATCH(
     if (activityTime !== undefined) activity.activityTime = activityTime;
 
     await activity.save();
-    await activity.populate('userId', 'lineDisplayName lineProfileImage name surname');
+    await activity.populate('userId', 'lineDisplayName lineProfileImage name surname performanceTier');
     await activity.populate('likes', 'lineDisplayName lineProfileImage name surname performanceTier');
-    await activity.populate('comments.userId', 'lineDisplayName lineProfileImage name surname');
-
-    try {
-      await pusher.trigger(CHANNELS.CAR_WASH, 'update-activity', { activityId: id });
-    } catch (pusherError) {
-      console.error('Pusher Error:', pusherError);
-    }
+    await activity.populate('comments.userId', 'lineDisplayName lineProfileImage name surname performanceTier');
 
     return NextResponse.json({ success: true, activity });
   } catch (error) {
@@ -253,13 +218,6 @@ export async function DELETE(
     }
 
     await CarWashActivity.findByIdAndDelete(id);
-
-    // Pusher realtime — delete
-    try {
-      await pusher.trigger(CHANNELS.CAR_WASH, 'delete-activity', { activityId: id });
-    } catch (pusherError) {
-      console.error('Pusher Error:', pusherError);
-    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

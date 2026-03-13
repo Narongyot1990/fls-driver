@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import { LeaveRequest } from '@/models/LeaveRequest';
 import { User, IUser } from '@/models/User';
-import { pusher } from '@/lib/pusher';
 import { requireAuth, requireLeader } from '@/lib/api-auth';
 import mongoose from 'mongoose';
 
@@ -162,21 +161,6 @@ export async function PATCH(
       leaveRequest.rejectedReason = rejectedReason;
     }
     await leaveRequest.save();
-
-    const userId = leaveRequest.userId as unknown as mongoose.Types.ObjectId;
-    try {
-      await pusher.trigger(`driver-${userId._id}`, 'leave-status-changed', {
-        id: leaveRequest._id,
-        status: status,
-        leaveType: leaveRequest.leaveType,
-        startDate: leaveRequest.startDate,
-        endDate: leaveRequest.endDate,
-        reason: leaveRequest.reason,
-        approvedAt: leaveRequest.approvedAt,
-      });
-    } catch (pusherError) {
-      console.error('Pusher Error:', pusherError);
-    }
 
     return NextResponse.json({
       success: true,

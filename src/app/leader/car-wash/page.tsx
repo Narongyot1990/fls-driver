@@ -30,8 +30,7 @@ import Sidebar from '@/components/Sidebar';
 import ProfileModal, { type ProfileUser } from '@/components/ProfileModal';
 import UserAvatar from '@/components/UserAvatar';
 import LikesPopup from '@/components/LikesPopup';
-import { getPusherClient } from '@/lib/pusher-client';
-import { formatDateThai } from '@/lib/types';
+import { formatDateThai } from '@/lib/date-utils';
 
 dayjs.extend(isoWeek);
 dayjs.extend(relativeTime);
@@ -166,7 +165,6 @@ export default function LeaderCarWashPage() {
   const [pageNum, setPageNum] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const filterActivityTypeRef = useRef('');
 
   // Filters
   const [selectedDriver, setSelectedDriver] = useState('');
@@ -229,9 +227,6 @@ export default function LeaderCarWashPage() {
       .catch(console.error);
   }, [user]);
 
-  // Keep ref in sync
-  filterActivityTypeRef.current = filterActivityType;
-
   // Fetch activities with pagination
   const fetchActivities = useCallback(async (pg: number, append = false) => {
     if (pg === 1) setLoading(true);
@@ -282,51 +277,6 @@ export default function LeaderCarWashPage() {
     observer.observe(sentinel);
     return () => observer.disconnect();
   }, [hasMore, loadingMore, fetchActivities]);
-
-  // Pusher realtime — singleton, ref-based filter
-  useEffect(() => {
-    if (!user) return;
-    const pusher = getPusherClient();
-    if (!pusher) return;
-
-    const channel = pusher.subscribe('car-wash-feed');
-
-    const fetchActivity = async (activityId: string): Promise<Activity | null> => {
-      try {
-        const res = await fetch(`/api/car-wash/${activityId}`);
-        const data = await res.json();
-        return data.success ? data.activity : null;
-      } catch {
-        return null;
-      }
-    };
-
-    channel.bind('new-activity', async (data: { activityId: string }) => {
-      const activity = await fetchActivity(data.activityId);
-      if (!activity) return;
-      const ft = filterActivityTypeRef.current;
-      if (ft && activity.activityType !== ft) return;
-      setActivities((prev) => {
-        if (prev.some((a) => a._id === activity._id)) return prev;
-        return [activity, ...prev];
-      });
-    });
-
-    channel.bind('update-activity', async (data: { activityId: string }) => {
-      const activity = await fetchActivity(data.activityId);
-      if (!activity) return;
-      setActivities((prev) => prev.map((a) => (a._id === data.activityId ? activity : a)));
-    });
-
-    channel.bind('delete-activity', (data: { activityId: string }) => {
-      setActivities((prev) => prev.filter((a) => a._id !== data.activityId));
-    });
-
-    return () => {
-      channel.unbind_all();
-      pusher.unsubscribe('car-wash-feed');
-    };
-  }, [user]);
 
   const updateActivity = (updated: Activity) => {
     setActivities((prev) => prev.map((a) => (a._id === updated._id ? updated : a)));
