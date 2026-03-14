@@ -94,11 +94,11 @@ export default function DriverProfile({ user, isMe = true, onEditClick }: Driver
   const tierConfig = PERFORMANCE_TIER_CONFIG[tier];
   
   const tierTheme = {
-    standard: { primary: "slate", gradient: "from-slate-400 to-slate-600" },
-    bronze: { primary: "amber", gradient: "from-amber-500 to-amber-700" },
-    silver: { primary: "slate", gradient: "from-slate-300 to-slate-500" },
-    gold: { primary: "yellow", gradient: "from-yellow-400 to-yellow-600" },
-    platinum: { primary: "violet", gradient: "from-violet-400 to-violet-600" },
+    standard: { primary: "slate", gradient: "from-slate-400 to-slate-600", accent: "#94a3b8" },
+    bronze: { primary: "amber", gradient: "from-amber-500 to-amber-700", accent: "#f59e0b" },
+    silver: { primary: "slate", gradient: "from-slate-300 to-slate-500", accent: "#cbd5e1" },
+    gold: { primary: "yellow", gradient: "from-yellow-400 to-yellow-600", accent: "#fbbf24" },
+    platinum: { primary: "violet", gradient: "from-violet-400 to-violet-600", accent: "#a78bfa" },
   }[tier];
 
   const colorMap: Record<string, string> = {
@@ -108,269 +108,203 @@ export default function DriverProfile({ user, isMe = true, onEditClick }: Driver
     violet: 'text-violet-400'
   };
 
-  const bgMap: Record<string, string> = {
-    slate: 'bg-slate-500/10',
-    amber: 'bg-amber-500/10',
-    yellow: 'bg-yellow-400/10',
-    violet: 'bg-violet-400/10'
-  };
-
   const glowMap: Record<string, string> = {
-    slate: 'bg-slate-400/20',
-    amber: 'bg-amber-500/20',
-    yellow: 'bg-yellow-400/20',
-    violet: 'bg-violet-400/20'
+    slate: 'bg-slate-400/5',
+    amber: 'bg-amber-500/5',
+    yellow: 'bg-yellow-400/5',
+    violet: 'bg-violet-400/5'
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0c] text-white p-3 md:p-6 font-sans selection:bg-purple-500/30 overflow-x-hidden">
+    <div className="min-h-screen bg-[#09090b] text-white p-3 md:p-6 font-sans selection:bg-purple-500/30 overflow-x-hidden">
       {/* Background Glow */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className={`absolute -top-24 -left-24 w-80 h-80 ${glowMap[tierTheme.primary]} rounded-full blur-[100px]`} />
-        <div className="absolute top-1/2 -right-24 w-64 h-64 bg-purple-500/10 rounded-full blur-[80px]" />
+        <div className={`absolute -top-40 -left-40 w-[500px] h-[500px] ${glowMap[tierTheme.primary]} rounded-full blur-[120px] opacity-50`} />
+        <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-purple-500/5 rounded-full blur-[100px] opacity-30" />
       </div>
 
-      <div className="max-w-4xl mx-auto relative z-10">
+      <div className="max-w-2xl mx-auto relative z-10 pt-4">
         
-        {/* Compact Header Section */}
-        <div className="flex items-center gap-4 mb-6 mt-2">
+        {/* Extreme Compact Header */}
+        <div className="flex items-center gap-5 mb-8">
           <motion.div 
-            initial={{ scale: 0, rotate: -15 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ type: "spring", stiffness: 260, damping: 20 }}
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 200, damping: 25 }}
             className="relative shrink-0"
           >
-            <div className={`absolute inset-0 bg-gradient-to-tr ${tierTheme.gradient} rounded-3xl blur-lg opacity-30`} />
-            <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-3xl overflow-hidden border border-white/20 p-0.5 bg-[#151518]">
+            <div className={`absolute inset-0 bg-gradient-to-tr ${tierTheme.gradient} rounded-full blur-xl opacity-20`} />
+            <div className="relative w-20 h-20 rounded-[28px] overflow-hidden border border-white/10 p-0.5 bg-[#121214]">
               {user.lineProfileImage ? (
-                <img 
-                  src={user.lineProfileImage} 
-                  alt={displayName} 
-                  className="w-full h-full object-cover rounded-[22px]"
-                />
+                <img src={user.lineProfileImage} alt={displayName} className="w-full h-full object-cover rounded-[26px]" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-white/5 rounded-[22px]">
-                  <UserIcon className="w-10 h-10 text-white/20" />
+                <div className="w-full h-full flex items-center justify-center bg-white/5 rounded-[26px]">
+                  <UserIcon className="w-10 h-10 text-white/10" />
                 </div>
               )}
             </div>
+            {/* Tier Badge overlapping avatar */}
+            <motion.div 
+              initial={{ x: 20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className={`absolute -bottom-2 -right-2 px-2.5 py-1 rounded-lg border border-white/10 bg-[#121214] shadow-2xl flex items-center gap-1.5`}
+            >
+              <Award className={`w-3 h-3 ${colorMap[tierTheme.primary]}`} />
+              <span className={`text-[10px] font-black uppercase tracking-widest ${colorMap[tierTheme.primary]}`}>{tier}</span>
+            </motion.div>
           </motion.div>
 
           <div className="flex-1 min-w-0">
-            <motion.div
-              initial={{ opacity: 0, x: -15 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black bg-white/5 border border-white/5 ${colorMap[tierTheme.primary]} uppercase tracking-widest`}>
-                  {tier}
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+              <div className="flex items-center gap-2 mb-1.5">
+                <div className={`w-1.5 h-1.5 rounded-full ${user.isOnline ? 'bg-emerald-500' : 'bg-white/20'}`} />
+                <span className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em]">
+                  {user.isOnline ? 'Online' : 'Offline'} • {user.branch || 'No Branch'}
                 </span>
-                {user.branch && (
-                  <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest flex items-center gap-1">
-                    <MapPin className="w-2.5 h-2.5" /> {user.branch}
-                  </span>
-                )}
               </div>
-              <h1 className="text-2xl md:text-3xl font-black tracking-tighter truncate text-transparent bg-clip-text bg-gradient-to-br from-white to-white/60">
+              <h1 className="text-2xl font-black tracking-tight mb-1 truncate">
                 {displayName}
               </h1>
-              <p className="text-[10px] text-white/40 font-bold uppercase tracking-[0.2em] mt-0.5">
-                Driver ID: {user.employeeId || 'NO-ID'}
-              </p>
-            </motion.div>
-          </div>
-
-          <div className="hidden md:block">
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              transition={{ delay: 0.3 }}
-              className={`px-3 py-1.5 rounded-xl border border-white/5 bg-white/5 flex items-center gap-2`}
-            >
-              <div className={`w-2 h-2 rounded-full ${user.isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-white/20'}`} />
-              <span className="text-[10px] font-black uppercase tracking-widest text-white/60">
-                {user.isOnline ? 'Online' : 'Offline'}
-              </span>
-              <span className="w-1 h-1 rounded-full bg-white/10" />
-              <span className={`text-[9px] font-bold uppercase tracking-wider ${user.status === 'active' ? 'text-emerald-400/60' : 'text-amber-400/60'}`}>
-                {user.status === 'active' ? 'Approved' : 'Pending'}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] text-white/30 font-bold uppercase tracking-widest">ID: {user.employeeId || '---'}</span>
+                <span className="w-1 h-1 rounded-full bg-white/10" />
+                <span className={`text-[10px] font-black uppercase tracking-widest ${user.status === 'active' ? 'text-emerald-500/80' : 'text-amber-500/80'}`}>
+                  {user.status === 'active' ? 'Approved' : 'Pending'}
+                </span>
+              </div>
             </motion.div>
           </div>
         </div>
 
-        {/* Compact Bento Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        {/* Action Buttons - Moved up for accessibility */}
+        <div className="grid grid-cols-2 gap-3 mb-8">
+          <motion.button 
+            whileTap={{ scale: 0.97 }}
+            onClick={onEditClick}
+            className="h-11 rounded-2xl bg-white text-black text-[11px] font-black uppercase tracking-wider hover:bg-white/90 transition-all flex items-center justify-center gap-2 shadow-xl shadow-white/5"
+          >
+            Edit Profile
+          </motion.button>
+          <motion.button 
+            whileTap={{ scale: 0.97 }}
+            className="h-11 rounded-2xl bg-white/5 border border-white/10 text-white text-[11px] font-black uppercase tracking-wider hover:bg-white/10 transition-all"
+          >
+            Support
+          </motion.button>
+        </div>
+
+        {/* Bento Grid - Compacted */}
+        <div className="grid grid-cols-2 gap-3">
           
-          {/* Main Stats Card */}
-          <BentoCard className="col-span-2 p-5 flex flex-col justify-between min-h-[160px]" delay={0.2}>
-            <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${tierTheme.gradient} opacity-10 blur-2xl -mr-16 -mt-16`} />
-            
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className={`p-2.5 rounded-xl bg-gradient-to-br ${tierTheme.gradient} shadow-md`}>
-                  <Award className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-black tracking-tight leading-none mb-0.5">{tierConfig.label}</h3>
-                  <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest">Performance Tier</p>
-                </div>
-              </div>
-              
-              <div className="space-y-3">
-                <div className="flex justify-between items-end">
-                  <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest">Efficiency Points</span>
-                  <span className="text-base font-black">{user.performancePoints || 0} <span className="text-[10px] font-medium text-white/20">/ 2500</span></span>
-                </div>
-                <div className="h-1.5 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                  <motion.div 
-                    initial={{ width: 0 }}
-                    animate={{ width: `${Math.min(((user.performancePoints || 0) / 2500) * 100, 100)}%` }}
-                    transition={{ duration: 1.2, ease: "circOut", delay: 0.5 }}
-                    className={`h-full bg-gradient-to-r ${tierTheme.gradient}`}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center">
-                  <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-                </div>
-                <span className="text-[10px] font-black text-white/50 tracking-tight">Top 15% in Branch</span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-white/20" />
-            </div>
-          </BentoCard>
-
-          {/* Real Quiz Scores Card */}
-          <BentoCard className="p-4 flex flex-col justify-between" delay={0.3}>
-            <div className="flex items-center justify-between mb-2">
-              <Zap className="w-4 h-4 text-yellow-400" />
-              <span className="text-[9px] font-black text-white/20 uppercase">Testing</span>
+          {/* Real Quiz Scores */}
+          <BentoCard className="p-5 flex flex-col justify-between" delay={0.1}>
+            <div className="flex items-center justify-between mb-3">
+              <Zap className="w-4 h-4 text-emerald-400" />
+              <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Testing</span>
             </div>
             {loadingScores ? (
-              <div className="h-12 flex items-center justify-center"><div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" /></div>
-            ) : taskScores ? (
-              <div>
-                <h4 className="text-2xl font-black leading-none mb-1" style={{ color: taskScores.levelColor }}>
-                  {taskScores.overallPercentage}%
-                </h4>
-                <p className="text-[10px] font-bold text-white/60 uppercase">{taskScores.knowledgeLevelTh}</p>
-              </div>
+              <div className="py-4"><div className="w-5 h-5 border-2 border-white/10 border-t-emerald-400 rounded-full animate-spin" /></div>
             ) : (
-              <div className="text-[10px] text-white/40 font-bold uppercase italic">No data</div>
+              <div>
+                <div className="text-3xl font-black tracking-tighter mb-1 text-emerald-400">
+                  {taskScores?.overallPercentage || 0}<span className="text-lg opacity-50">%</span>
+                </div>
+                <p className="text-[11px] font-bold text-white/60 uppercase">{taskScores?.knowledgeLevelTh || 'กำลังประเมิน'}</p>
+              </div>
             )}
-            <div className="text-[9px] text-white/30 font-bold border-t border-white/5 pt-2 mt-2">
-              Quiz Results
+            <div className="text-[9px] text-white/20 font-bold border-t border-white/5 pt-3 mt-4 flex items-center justify-between">
+              <span>Quiz Impact</span>
+              <TrendingUp className="w-3 h-3" />
             </div>
           </BentoCard>
 
-          {/* Level Card */}
-          <BentoCard className="p-4 flex flex-col justify-between" delay={0.4}>
-            <div className="flex items-center justify-between mb-2">
-              <Shield className="w-4 h-4 text-cyan-400" />
-              <span className="text-[9px] font-black text-white/20 uppercase">Ranking</span>
+          {/* Ranking Card */}
+          <BentoCard className="p-5 flex flex-col justify-between" delay={0.2}>
+            <div className="flex items-center justify-between mb-3">
+              <Shield className="w-4 h-4 text-white/40" />
+              <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Ranking</span>
             </div>
             <div>
-              <h4 className="text-2xl font-black leading-none mb-1">Level {user.performanceLevel || 1}</h4>
-              <p className="text-[10px] font-bold text-white/60 uppercase">Seniority</p>
+              <div className="text-3xl font-black tracking-tighter mb-1">
+                Lvl <span className="text-white/40">{user.performanceLevel || 1}</span>
+              </div>
+              <p className="text-[11px] font-bold text-white/60 uppercase">System Rank</p>
             </div>
-            <div className="text-[9px] text-white/30 font-bold border-t border-white/5 pt-2 mt-2">
-              System Rank
+            <div className="text-[9px] text-white/20 font-bold border-t border-white/5 pt-3 mt-4">
+              {user.performancePoints || 0} Efficiency pts
             </div>
           </BentoCard>
 
-          {/* Leave Quotas */}
-          <BentoCard className="col-span-2 p-4" delay={0.5}>
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="text-[9px] font-black uppercase tracking-widest text-white/30">Leave Balance</h4>
-              <Calendar className="w-3.5 h-3.5 text-white/20" />
+          {/* Leave Balance - Wide */}
+          <BentoCard className="col-span-2 p-5" delay={0.3}>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30">Leave Balance</h4>
+              <Calendar className="w-4 h-4 text-white/20" />
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-3">
               {[
-                { label: 'Vacation', val: user.vacationDays, icon: Umbrella, color: 'sky' },
-                { label: 'Sick', val: user.sickDays, icon: Thermometer, color: 'rose' },
-                { label: 'Personal', val: user.personalDays, icon: Briefcase, color: 'indigo' }
+                { label: 'Vacation', val: user.vacationDays, icon: Umbrella, color: 'text-sky-400' },
+                { label: 'Sick', val: user.sickDays, icon: Thermometer, color: 'text-rose-400' },
+                { label: 'Personal', val: user.personalDays, icon: Briefcase, color: 'text-indigo-400' }
               ].map((q) => (
-                <div key={q.label} className="text-center p-2 rounded-xl bg-white/[0.03] border border-white/5">
-                  <q.icon className={`w-3.5 h-3.5 mx-auto mb-1 text-${q.color}-400`} />
-                  <div className="text-sm font-black leading-none">{q.val || 0}</div>
-                  <div className="text-[8px] font-bold text-white/40 uppercase mt-0.5">{q.label}</div>
+                <div key={q.label} className="text-center py-3 rounded-2xl bg-white/[0.02] border border-white/5">
+                  <q.icon className={`w-4 h-4 mx-auto mb-2 ${q.color}`} />
+                  <div className="text-lg font-black leading-none">{q.val || 0}</div>
+                  <div className="text-[9px] font-bold text-white/30 uppercase mt-1.5">{q.label}</div>
                 </div>
               ))}
             </div>
           </BentoCard>
 
-          {/* Task Impact Card */}
-          <BentoCard className="col-span-2 p-4 flex items-center gap-4" delay={0.6}>
-            <div className="p-3 rounded-2xl bg-emerald-500/10 shrink-0">
-              <CheckCircle2 className="w-6 h-6 text-emerald-400" />
+          {/* Tasks Completed */}
+          <BentoCard className="col-span-2 p-5 flex items-center gap-5" delay={0.4}>
+            <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center shrink-0 border border-white/5">
+              <CheckCircle2 className="w-6 h-6 text-emerald-500/80" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Tasks Completed</p>
-              <h4 className="text-lg font-black">{taskScores?.completedTasks || 0} Modules</h4>
-              <div className="flex items-center gap-1 mt-0.5">
-                <span className="text-[9px] text-emerald-400 font-bold">Excellent Progress</span>
-                <TrendingUp className="w-2.5 h-2.5 text-emerald-400" />
-              </div>
+              <p className="text-[9px] font-bold text-white/30 uppercase tracking-[0.2em] mb-0.5">Modules Completed</p>
+              <h4 className="text-xl font-black truncate">{taskScores?.completedTasks || 0} <span className="text-sm font-bold text-white/40">Modules</span></h4>
             </div>
-            <ChevronRight className="w-4 h-4 text-white/10" />
+            <div className="flex flex-col items-end">
+              <div className="text-[10px] font-black text-emerald-500">+12%</div>
+              <div className="text-[8px] font-bold text-white/20 uppercase tracking-tighter">This month</div>
+            </div>
           </BentoCard>
 
-          {/* Contact & Branch Info */}
-          <BentoCard className="col-span-2 p-4" delay={0.7}>
-            <div className="space-y-3">
+          {/* Contact Support Info */}
+          <BentoCard className="col-span-2 p-5" delay={0.5}>
+            <div className="grid grid-cols-2 gap-6">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                  <Phone className="w-4 h-4 text-white/40" />
+                <div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center shrink-0 border border-white/5">
+                  <Phone className="w-4 h-4 text-white/30" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest">Phone</p>
+                  <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest leading-none mb-1">Phone</p>
                   <p className="text-xs font-black truncate">{user.phone || 'N/A'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/5 flex items-center justify-center shrink-0 border border-emerald-500/10">
                   <MessageSquare className="w-4 h-4 text-emerald-400" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest">LINE</p>
+                  <p className="text-[9px] font-bold text-emerald-400/40 uppercase tracking-widest leading-none mb-1">LINE</p>
                   <p className="text-xs font-black truncate text-emerald-400">@{user.lineDisplayName || 'N/A'}</p>
                 </div>
               </div>
             </div>
           </BentoCard>
 
-          {/* Actions */}
-          <div className="col-span-2 grid grid-cols-2 gap-3">
-            <motion.button 
-              whileTap={{ scale: 0.95 }}
-              onClick={onEditClick}
-              className="py-3 rounded-xl bg-white text-black text-[10px] font-black uppercase tracking-tight hover:bg-white/90 transition-all flex items-center justify-center gap-2"
-            >
-              Edit Profile
-            </motion.button>
-            <motion.button 
-              whileTap={{ scale: 0.95 }}
-              className="py-3 rounded-xl bg-white/5 border border-white/10 text-white text-[10px] font-black uppercase tracking-tight hover:bg-white/10 transition-all"
-            >
-              Support
-            </motion.button>
-          </div>
-
         </div>
 
-        {/* Compact Footer */}
-        <motion.div 
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1 }}
-          className="mt-8 text-center pb-6"
-        >
-          <p className="text-[8px] font-bold text-white/20 uppercase tracking-[0.3em]">
-            ITL Logistics Driver Network • V2.5.0
-          </p>
+        {/* Footer */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }} className="mt-12 text-center pb-12">
+          <div className="inline-block px-4 py-1.5 rounded-full bg-white/[0.02] border border-white/5">
+            <p className="text-[9px] font-black text-white/10 uppercase tracking-[0.4em]">
+              ITL Logistics Driver Network • V2.6.0
+            </p>
+          </div>
         </motion.div>
 
       </div>
