@@ -64,10 +64,14 @@ export async function GET(request: NextRequest) {
       .populate('userId', 'lineDisplayName employeeId phone name surname lineProfileImage performanceTier performancePoints performanceLevel branch')
       .sort({ createdAt: -1 });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       requests,
     });
+
+    // Prevent caching for real-time leave data
+    response.headers.set('Cache-Control', 'no-store, max-age=0');
+    return response;
   } catch (error) {
     console.error('Get Leave Error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

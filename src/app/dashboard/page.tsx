@@ -85,34 +85,47 @@ function DashboardContent() {
     fetchMe();
   }, [router]);
 
-  useEffect(() => {
+  const fetchLeaves = useCallback(async () => {
     if (!user) return;
+    setLoading(true);
+    try {
+      let url = `/api/leave?status=approved&t=${Date.now()}`;
+      
+      if (role === 'admin' && selectedBranch !== 'all') {
+        url += `&branch=${selectedBranch}`;
+      }
+      
+      const response = await fetch(url, { cache: 'no-store' });
+      const data = await response.json();
+      if (data.success) {
+        setLeaves(data.requests);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [user, role, selectedBranch]);
 
-    const fetchLeaves = async () => {
-      setLoading(true);
-      try {
-        let url = '/api/leave?status=approved';
-        
-        // Driver and Leader: API uses JWT token to determine branch automatically
-        // Admin with specific branch filter
-        if (role === 'admin' && selectedBranch !== 'all') {
-          url += `&branch=${selectedBranch}`;
-        }
-        
-        const response = await fetch(url);
-        const data = await response.json();
-        if (data.success) {
-          setLeaves(data.requests);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
+  useEffect(() => {
+    fetchLeaves();
+
+    // Re-fetch when tab becomes visible to prevent "missing" data after sleep/background
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchLeaves();
       }
     };
 
-    fetchLeaves();
-  }, [user, role, selectedBranch]);
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+    // Also periodic refresh every 2 mins as a safety measure
+    const interval = setInterval(fetchLeaves, 2 * 60 * 1000);
+
+    return () => {
+      window.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(interval);
+    };
+  }, [fetchLeaves]);
 
   // Pusher realtime — calendar auto-refresh on leave changes
   const handleLeaveChanged = useCallback(async () => {

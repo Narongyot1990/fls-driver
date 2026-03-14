@@ -58,6 +58,26 @@ const BentoCard = ({ children, className = "", delay = 0 }: { children: React.Re
   </motion.div>
 );
 
+const getStatusText = (user: ProfileUserData) => {
+  if (!user.lastSeen) return "Offline";
+  const lastSeen = new Date(user.lastSeen);
+  const now = new Date();
+  const diffInMins = Math.floor((now.getTime() - lastSeen.getTime()) / 60000);
+
+  if (diffInMins < 5) return "Online";
+  if (diffInMins < 60) return `Active ${diffInMins}m ago`;
+  if (diffInMins < 1440) return `Active ${Math.floor(diffInMins / 60)}h ago`;
+  return `Active ${Math.floor(diffInMins / 1440)}d ago`;
+};
+
+const getStatusColor = (user: ProfileUserData) => {
+  if (!user.lastSeen) return "bg-white/20";
+  const lastSeen = new Date(user.lastSeen);
+  const now = new Date();
+  const diffInMins = Math.floor((now.getTime() - lastSeen.getTime()) / 60000);
+  return diffInMins < 5 ? "bg-emerald-500" : "bg-white/40";
+};
+
 export default function DriverProfile({ user, isMe = true, onEditClick }: DriverProfileProps) {
   const [mounted, setMounted] = useState(false);
   const [taskScores, setTaskScores] = useState<TaskScores | null>(null);
@@ -158,9 +178,9 @@ export default function DriverProfile({ user, isMe = true, onEditClick }: Driver
           <div className="flex-1 min-w-0">
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
               <div className="flex items-center gap-1.5 mb-0.5">
-                <div className={`w-1 h-1 rounded-full ${user.isOnline ? 'bg-emerald-500' : 'bg-white/20'}`} />
+                <div className={`w-1 h-1 rounded-full ${getStatusColor(user)}`} />
                 <span className="text-[9px] font-bold text-white/30 uppercase tracking-[0.15em]">
-                  {user.isOnline ? 'Online' : 'Offline'} • {user.branch || '---'}
+                  {getStatusText(user)} • {user.branch || '---'}
                 </span>
               </div>
               <h1 className="text-xl font-black tracking-tight mb-0.5 truncate leading-tight">
@@ -177,21 +197,13 @@ export default function DriverProfile({ user, isMe = true, onEditClick }: Driver
           </div>
         </div>
 
-        {/* Dense Action Buttons */}
-        <div className="grid grid-cols-2 gap-2 mb-6">
-          <motion.button 
-            whileTap={{ scale: 0.98 }}
-            onClick={onEditClick}
-            className="h-10 rounded-xl bg-white text-black text-[10px] font-black uppercase tracking-wider hover:bg-white/90 transition-all flex items-center justify-center gap-2 shadow-lg shadow-white/5"
-          >
-            Edit Profile
-          </motion.button>
-          <motion.button 
-            whileTap={{ scale: 0.98 }}
-            className="h-10 rounded-xl bg-white/5 border border-white/10 text-white text-[10px] font-black uppercase tracking-wider hover:bg-white/10 transition-all"
-          >
-            Support
-          </motion.button>
+        {/* Dense Action Buttons - Cleaned up unused ones */}
+        <div className="mb-6">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="h-[1px] w-full bg-gradient-to-r from-transparent via-white/10 to-transparent"
+          />
         </div>
 
         {/* Bento Grid - densified */}
@@ -272,18 +284,21 @@ export default function DriverProfile({ user, isMe = true, onEditClick }: Driver
             </div>
           </BentoCard>
 
-          {/* Densified Contact Info */}
+          {/* Densified Contact Info - Click to call enabled */}
           <BentoCard className="col-span-2 p-4" delay={0.5}>
             <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-white/[0.03] flex items-center justify-center shrink-0 border border-white/5">
-                  <Phone className="w-3.5 h-3.5 text-white/20" />
+              <a 
+                href={user.phone ? `tel:${user.phone}` : "#"} 
+                className="flex items-center gap-2.5 group active:scale-95 transition-transform"
+              >
+                <div className="w-8 h-8 rounded-lg bg-white/[0.03] group-hover:bg-white/10 flex items-center justify-center shrink-0 border border-white/5">
+                  <Phone className="w-3.5 h-3.5 text-white/20 group-hover:text-emerald-400 transition-colors" />
                 </div>
                 <div className="min-w-0">
                   <p className="text-[8px] font-bold text-white/20 uppercase tracking-widest leading-none mb-1">Phone</p>
-                  <p className="text-[11px] font-black truncate">{user.phone || '---'}</p>
+                  <p className="text-[11px] font-black truncate group-hover:text-emerald-400 transition-colors">{user.phone || '---'}</p>
                 </div>
-              </div>
+              </a>
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-emerald-500/[0.03] flex items-center justify-center shrink-0 border border-emerald-500/5">
                   <MessageSquare className="w-3.5 h-3.5 text-emerald-400/60" />
