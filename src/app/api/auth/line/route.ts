@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
     const payload = {
       userId: user._id.toString(),
       role: 'driver' as const,
+      branch: user.branch || undefined,
     };
 
     const accessToken = generateAccessToken(payload);
@@ -105,6 +106,7 @@ export async function POST(request: NextRequest) {
         status: user.status,
         name: user.name,
         surname: user.surname,
+        branch: user.branch,
         role: 'driver',
       },
     });
