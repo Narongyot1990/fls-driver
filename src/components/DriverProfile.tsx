@@ -52,7 +52,7 @@ const BentoCard = ({ children, className = "", delay = 0 }: { children: React.Re
     initial={{ opacity: 0, y: 15 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.4, delay }}
-    className={`relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md shadow-lg ${className}`}
+    className={`relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] backdrop-blur-md shadow-lg ${className}`}
   >
     {children}
   </motion.div>
@@ -71,11 +71,11 @@ const getStatusText = (user: ProfileUserData) => {
 };
 
 const getStatusColor = (user: ProfileUserData) => {
-  if (!user.lastSeen) return "bg-white/20";
+  if (!user.lastSeen) return "bg-[var(--text-muted)]/20";
   const lastSeen = new Date(user.lastSeen);
   const now = new Date();
   const diffInMins = Math.floor((now.getTime() - lastSeen.getTime()) / 60000);
-  return diffInMins < 5 ? "bg-emerald-500" : "bg-white/40";
+  return diffInMins < 5 ? "bg-emerald-500" : "bg-[var(--text-muted)]/40";
 };
 
 export default function DriverProfile({ user, isMe = true, onEditClick }: DriverProfileProps) {
@@ -136,7 +136,7 @@ export default function DriverProfile({ user, isMe = true, onEditClick }: Driver
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-white p-3 md:p-6 font-sans selection:bg-purple-500/30 overflow-x-hidden">
+    <div className="min-h-screen bg-[var(--bg-base)] text-[var(--text-primary)] p-3 md:p-6 font-sans selection:bg-purple-500/30 overflow-x-hidden">
       {/* Background Glow */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className={`absolute -top-40 -left-40 w-[400px] h-[400px] ${glowMap[tierTheme.primary]} rounded-full blur-[100px] opacity-40`} />
@@ -154,12 +154,12 @@ export default function DriverProfile({ user, isMe = true, onEditClick }: Driver
             className="relative shrink-0"
           >
             <div className={`absolute inset-0 bg-gradient-to-tr ${tierTheme.gradient} rounded-full blur-xl opacity-20`} />
-            <div className="relative w-16 h-16 rounded-[22px] overflow-hidden border border-white/10 p-0.5 bg-[#121214]">
+            <div className="relative w-16 h-16 rounded-[22px] overflow-hidden border border-[var(--border)] p-0.5 bg-[var(--bg-surface)]">
               {user.lineProfileImage ? (
                 <img src={user.lineProfileImage} alt={displayName} className="w-full h-full object-cover rounded-[20px]" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-white/5 rounded-[20px]">
-                  <UserIcon className="w-8 h-8 text-white/10" />
+                <div className="w-full h-full flex items-center justify-center bg-[var(--bg-inset)] rounded-[20px]">
+                  <UserIcon className="w-8 h-8 text-[var(--text-muted)]" />
                 </div>
               )}
             </div>
@@ -168,7 +168,7 @@ export default function DriverProfile({ user, isMe = true, onEditClick }: Driver
               initial={{ x: 10, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               transition={{ delay: 0.4 }}
-              className={`absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-lg border border-white/10 bg-[#121214] shadow-2xl flex items-center gap-1`}
+              className={`absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] shadow-2xl flex items-center gap-1`}
             >
               <Award className={`w-2.5 h-2.5 ${colorMap[tierTheme.primary]}`} />
               <span className={`text-[8px] font-black uppercase tracking-widest ${colorMap[tierTheme.primary]}`}>{tier}</span>
@@ -179,7 +179,7 @@ export default function DriverProfile({ user, isMe = true, onEditClick }: Driver
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
               <div className="flex items-center gap-1.5 mb-0.5">
                 <div className={`w-1 h-1 rounded-full ${getStatusColor(user)}`} />
-                <span className="text-[9px] font-bold text-white/30 uppercase tracking-[0.15em]">
+                <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-[0.15em]">
                   {getStatusText(user)} • {user.branch || '---'}
                 </span>
               </div>
@@ -187,9 +187,9 @@ export default function DriverProfile({ user, isMe = true, onEditClick }: Driver
                 {displayName}
               </h1>
               <div className="flex items-center gap-2">
-                <span className="text-[9px] text-white/20 font-bold uppercase tracking-widest">ID: {user.employeeId || '---'}</span>
-                <span className="w-0.5 h-0.5 rounded-full bg-white/10" />
-                <span className={`text-[9px] font-black uppercase tracking-widest ${user.status === 'active' ? 'text-emerald-500/60' : 'text-amber-500/60'}`}>
+                <span className="text-[9px] text-[var(--text-muted)] font-bold uppercase tracking-widest">ID: {user.employeeId || '---'}</span>
+                <span className="w-0.5 h-0.5 rounded-full bg-[var(--border)]" />
+                <span className={`text-[9px] font-black uppercase tracking-widest ${user.status === 'active' ? 'text-emerald-500/80' : 'text-amber-500/80'}`}>
                   {user.status === 'active' ? 'Approved' : 'Pending'}
                 </span>
               </div>
@@ -197,12 +197,12 @@ export default function DriverProfile({ user, isMe = true, onEditClick }: Driver
           </div>
         </div>
 
-        {/* Dense Action Buttons - Cleaned up unused ones */}
+        {/* Action Buttons Area - Simple separator */}
         <div className="mb-6">
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="h-[1px] w-full bg-gradient-to-r from-transparent via-white/10 to-transparent"
+            className="h-[1px] w-full bg-gradient-to-r from-transparent via-[var(--border)] to-transparent"
           />
         </div>
 
@@ -212,20 +212,20 @@ export default function DriverProfile({ user, isMe = true, onEditClick }: Driver
           {/* Real Quiz Scores */}
           <BentoCard className="p-4 flex flex-col justify-between" delay={0.1}>
             <div className="flex items-center justify-between mb-2">
-              <Zap className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-[8px] font-black text-white/10 uppercase tracking-widest">Testing</span>
+              <Zap className="w-3.5 h-3.5 text-emerald-500" />
+              <span className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-widest">Testing</span>
             </div>
             {loadingScores ? (
-              <div className="py-2"><div className="w-4 h-4 border-2 border-white/5 border-t-emerald-400 rounded-full animate-spin" /></div>
+              <div className="py-2"><div className="w-4 h-4 border-2 border-[var(--border)] border-t-emerald-500 rounded-full animate-spin" /></div>
             ) : (
               <div>
-                <div className="text-2xl font-black tracking-tighter mb-0.5 text-emerald-400">
+                <div className="text-2xl font-black tracking-tighter mb-0.5 text-emerald-500">
                   {taskScores?.overallPercentage || 0}<span className="text-sm opacity-50 ml-0.5">%</span>
                 </div>
-                <p className="text-[10px] font-bold text-white/50 uppercase truncate">{taskScores?.knowledgeLevelTh || 'ประเมิน...'}</p>
+                <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase truncate">{taskScores?.knowledgeLevelTh || 'ประเมิน...'}</p>
               </div>
             )}
-            <div className="text-[8px] text-white/10 font-bold border-t border-white/5 pt-2 mt-3 flex items-center justify-between">
+            <div className="text-[8px] text-[var(--text-muted)] font-bold border-t border-[var(--border)] pt-2 mt-3 flex items-center justify-between">
               <span>Quiz Impact</span>
               <TrendingUp className="w-2.5 h-2.5" />
             </div>
@@ -234,16 +234,16 @@ export default function DriverProfile({ user, isMe = true, onEditClick }: Driver
           {/* Ranking Card */}
           <BentoCard className="p-4 flex flex-col justify-between" delay={0.2}>
             <div className="flex items-center justify-between mb-2">
-              <Shield className="w-3.5 h-3.5 text-white/30" />
-              <span className="text-[8px] font-black text-white/10 uppercase tracking-widest">Ranking</span>
+              <Shield className="w-3.5 h-3.5 text-[var(--text-muted)]" />
+              <span className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-widest">Ranking</span>
             </div>
             <div>
               <div className="text-2xl font-black tracking-tighter mb-0.5">
-                Lvl <span className="text-white/30">{user.performanceLevel || 1}</span>
+                Lvl <span className="text-[var(--text-muted)]">{user.performanceLevel || 1}</span>
               </div>
-              <p className="text-[10px] font-bold text-white/50 uppercase">System Rank</p>
+              <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase">System Rank</p>
             </div>
-            <div className="text-[8px] text-white/10 font-bold border-t border-white/5 pt-2 mt-3">
+            <div className="text-[8px] text-[var(--text-muted)] font-bold border-t border-[var(--border)] pt-2 mt-3">
               {user.performancePoints || 0} pts
             </div>
           </BentoCard>
@@ -251,19 +251,19 @@ export default function DriverProfile({ user, isMe = true, onEditClick }: Driver
           {/* Leave Balance - Dense Wide */}
           <BentoCard className="col-span-2 p-4" delay={0.3}>
             <div className="flex items-center justify-between mb-3">
-              <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20">Leave Balance</h4>
-              <Calendar className="w-3.5 h-3.5 text-white/10" />
+              <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">Leave Balance</h4>
+              <Calendar className="w-3.5 h-3.5 text-[var(--text-muted)]/50" />
             </div>
             <div className="grid grid-cols-3 gap-2">
               {[
-                { label: 'Vacation', val: user.vacationDays, icon: Umbrella, color: 'text-sky-400' },
-                { label: 'Sick', val: user.sickDays, icon: Thermometer, color: 'text-rose-400' },
-                { label: 'Personal', val: user.personalDays, icon: Briefcase, color: 'text-indigo-400' }
+                { label: 'Vacation', val: user.vacationDays, icon: Umbrella, color: 'text-sky-500' },
+                { label: 'Sick', val: user.sickDays, icon: Thermometer, color: 'text-rose-500' },
+                { label: 'Personal', val: user.personalDays, icon: Briefcase, color: 'text-indigo-500' }
               ].map((q) => (
-                <div key={q.label} className="text-center py-2.5 rounded-xl bg-white/[0.015] border border-white/5">
+                <div key={q.label} className="text-center py-2.5 rounded-xl bg-[var(--bg-inset)] border border-[var(--border)]">
                   <q.icon className={`w-3.5 h-3.5 mx-auto mb-1 ${q.color} opacity-80`} />
                   <div className="text-base font-black leading-none">{q.val || 0}</div>
-                  <div className="text-[8px] font-bold text-white/20 uppercase mt-1">{q.label}</div>
+                  <div className="text-[8px] font-bold text-[var(--text-muted)] uppercase mt-1">{q.label}</div>
                 </div>
               ))}
             </div>
@@ -271,16 +271,16 @@ export default function DriverProfile({ user, isMe = true, onEditClick }: Driver
 
           {/* Tasks Completed */}
           <BentoCard className="col-span-2 p-4 flex items-center gap-4" delay={0.4}>
-            <div className="w-10 h-10 rounded-xl bg-white/[0.03] flex items-center justify-center shrink-0 border border-white/5">
+            <div className="w-10 h-10 rounded-xl bg-[var(--bg-inset)] flex items-center justify-center shrink-0 border border-[var(--border)]">
               <CheckCircle2 className="w-5 h-5 text-emerald-500/60" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[8px] font-bold text-white/20 uppercase tracking-[0.2em] mb-0.5">Modules Completed</p>
-              <h4 className="text-lg font-black truncate leading-tight">{taskScores?.completedTasks || 0} <span className="text-xs font-bold text-white/30 uppercase ml-1">Tasks</span></h4>
+              <p className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-[0.2em] mb-0.5">Modules Completed</p>
+              <h4 className="text-lg font-black truncate leading-tight">{taskScores?.completedTasks || 0} <span className="text-xs font-bold text-[var(--text-muted)] uppercase ml-1">Tasks</span></h4>
             </div>
             <div className="flex flex-col items-end opacity-60">
               <div className="text-[9px] font-black text-emerald-500 leading-tight">+12%</div>
-              <div className="text-[7px] font-bold text-white/20 uppercase tracking-tighter">Month</div>
+              <div className="text-[7px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">Month</div>
             </div>
           </BentoCard>
 
@@ -291,21 +291,21 @@ export default function DriverProfile({ user, isMe = true, onEditClick }: Driver
                 href={user.phone ? `tel:${user.phone}` : "#"} 
                 className="flex items-center gap-2.5 group active:scale-95 transition-transform"
               >
-                <div className="w-8 h-8 rounded-lg bg-white/[0.03] group-hover:bg-white/10 flex items-center justify-center shrink-0 border border-white/5">
-                  <Phone className="w-3.5 h-3.5 text-white/20 group-hover:text-emerald-400 transition-colors" />
+                <div className="w-8 h-8 rounded-lg bg-[var(--bg-inset)] group-hover:bg-[var(--bg-hover)] flex items-center justify-center shrink-0 border border-[var(--border)] transition-colors">
+                  <Phone className="w-3.5 h-3.5 text-[var(--text-muted)] group-hover:text-emerald-500 transition-colors" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[8px] font-bold text-white/20 uppercase tracking-widest leading-none mb-1">Phone</p>
-                  <p className="text-[11px] font-black truncate group-hover:text-emerald-400 transition-colors">{user.phone || '---'}</p>
+                  <p className="text-[8px] font-bold text-[var(--text-muted)] uppercase tracking-widest leading-none mb-1">Phone</p>
+                  <p className="text-[11px] font-black truncate group-hover:text-emerald-500 transition-colors">{user.phone || '---'}</p>
                 </div>
               </a>
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-emerald-500/[0.03] flex items-center justify-center shrink-0 border border-emerald-500/5">
-                  <MessageSquare className="w-3.5 h-3.5 text-emerald-400/60" />
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/5 flex items-center justify-center shrink-0 border border-emerald-500/10">
+                  <MessageSquare className="w-3.5 h-3.5 text-emerald-500/60" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[8px] font-bold text-emerald-400/30 uppercase tracking-widest leading-none mb-1">LINE</p>
-                  <p className="text-[11px] font-black truncate text-emerald-400/80">@{user.lineDisplayName || '---'}</p>
+                  <p className="text-[8px] font-bold text-emerald-500/40 uppercase tracking-widest leading-none mb-1">LINE</p>
+                  <p className="text-[11px] font-black truncate text-emerald-500/80">@{user.lineDisplayName || '---'}</p>
                 </div>
               </div>
             </div>
@@ -315,7 +315,7 @@ export default function DriverProfile({ user, isMe = true, onEditClick }: Driver
 
         {/* Minimalist Footer */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8 }} className="mt-8 text-center pb-10">
-          <p className="text-[8px] font-black text-white/[0.05] uppercase tracking-[0.5em]">
+          <p className="text-[8px] font-black text-[var(--text-muted)] opacity-20 uppercase tracking-[0.5em]">
             ITL Logistics Driver Network • V2.7.0
           </p>
         </motion.div>

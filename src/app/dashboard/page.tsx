@@ -89,19 +89,28 @@ function DashboardContent() {
     if (!user) return;
     setLoading(true);
     try {
+      // Aggressive cache-busting with timestamp
       let url = `/api/leave?status=approved&t=${Date.now()}`;
       
       if (role === 'admin' && selectedBranch !== 'all') {
         url += `&branch=${selectedBranch}`;
+      } else if (role === 'leader' && user?.branch) {
+        url += `&branch=${user.branch}`;
       }
       
-      const response = await fetch(url, { cache: 'no-store' });
+      const response = await fetch(url, { 
+        cache: 'no-store',
+        headers: {
+          'Pragma': 'no-cache',
+          'Cache-Control': 'no-cache'
+        }
+      });
       const data = await response.json();
       if (data.success) {
         setLeaves(data.requests);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Dashboard fetch error:", err);
     } finally {
       setLoading(false);
     }
@@ -110,7 +119,6 @@ function DashboardContent() {
   useEffect(() => {
     fetchLeaves();
 
-    // Re-fetch when tab becomes visible to prevent "missing" data after sleep/background
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         fetchLeaves();
@@ -118,7 +126,6 @@ function DashboardContent() {
     };
 
     window.addEventListener('visibilitychange', handleVisibilityChange);
-    // Also periodic refresh every 2 mins as a safety measure
     const interval = setInterval(fetchLeaves, 2 * 60 * 1000);
 
     return () => {
@@ -127,22 +134,15 @@ function DashboardContent() {
     };
   }, [fetchLeaves]);
 
-  // Pusher realtime — calendar auto-refresh on leave changes
-  const handleLeaveChanged = useCallback(async () => {
-    try {
-      let url = '/api/leave?status=approved';
-      if (role === 'admin' && selectedBranch !== 'all') {
-        url += `&branch=${selectedBranch}`;
-      }
-      const response = await fetch(url);
-      const data = await response.json();
-      if (data.success) setLeaves(data.requests);
-    } catch { /* ignore */ }
-  }, [role, selectedBranch]);
-
+  // Comprehensive Pusher listener for all leave changes
   usePusher('dashboard', [
-    { event: 'leave-status-changed', callback: handleLeaveChanged },
-    { event: 'leave-cancelled', callback: handleLeaveChanged },
+    { event: 'leave-status-changed', callback: fetchLeaves },
+    { event: 'leave-cancelled', callback: fetchLeaves },
+  ], !!user);
+
+  usePusher('leave-requests', [
+    { event: 'new-leave-request', callback: fetchLeaves },
+    { event: 'leave-status-changed', callback: fetchLeaves },
   ], !!user);
 
   const year = currentDate.getFullYear();
@@ -241,9 +241,19 @@ function DashboardContent() {
         title="Dashboard"
         backHref="/home"
         rightContent={
-          <button onClick={exportToCSV} className="btn btn-ghost w-10 h-10 p-0" title="Export CSV">
-            <Download className="w-[18px] h-[18px]" style={{ color: 'var(--text-secondary)' }} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button 
+              onClick={() => fetchLeaves()} 
+              disabled={loading}
+              className={`btn btn-ghost w-10 h-10 p-0 ${loading ? 'animate-spin' : ''}`} 
+              title="รีเฟรช"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+            </button>
+            <button onClick={exportToCSV} className="btn btn-ghost w-10 h-10 p-0" title="Export CSV">
+              <Download className="w-[18px] h-[18px]" style={{ color: 'var(--text-secondary)' }} />
+            </button>
+          </div>
         }
       />
 
