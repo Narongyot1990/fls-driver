@@ -26,10 +26,24 @@ const leaderNav: NavItem[] = [
   { icon: Users, label: 'พนักงาน', href: '/leader/drivers' },
 ];
 
-export default function BottomNav({ role }: { role: 'driver' | 'leader' }) {
+const adminNav: NavItem[] = [
+  { icon: Home, label: 'หน้าหลัก', href: '/leader/home' },
+  { icon: CalendarDays, label: 'Dashboard', href: '/dashboard' },
+  { icon: CheckSquare, label: 'อนุมัติ', href: '/leader/approve' },
+  { icon: Users, label: 'พนักงาน', href: '/leader/drivers' },
+  { icon: User, label: 'โปรไฟล์', href: '/leader/profile-edit' },
+];
+
+export default function BottomNav({ role }: { role: 'driver' | 'leader' | 'admin' }) {
   const pathname = usePathname();
   const router = useRouter();
-  const items = role === 'leader' ? leaderNav : driverNav;
+  
+  let items = driverNav;
+  if (role === 'admin') {
+    items = adminNav;
+  } else if (role === 'leader') {
+    items = leaderNav;
+  }
 
   return (
     <nav
@@ -38,7 +52,7 @@ export default function BottomNav({ role }: { role: 'driver' | 'leader' }) {
     >
       <div className="flex items-center justify-around px-2 h-16 max-w-lg mx-auto">
           {items.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = pathname === item.href || (item.href !== '/home' && item.href !== '/leader/home' && pathname.startsWith(item.href));
           const Icon = item.icon;
 
           return (

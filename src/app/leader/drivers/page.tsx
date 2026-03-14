@@ -37,36 +37,58 @@ interface Driver {
   createdAt?: string;
 }
 
+const BRANCHES = ['BKK', 'CNX', 'HKP', 'LCH', 'NRT', 'PKT', 'STW'];
+
 function DriverManagementContent() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [role, setRole] = useState<'leader' | 'admin'>('leader');
   const [allDrivers, setAllDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'active'>('all');
+  const [activeTab, setActiveTab ] = useState<'all' | 'pending' | 'active'>('all');
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
   const [showProfile, setShowProfile] = useState(false);
+  const [selectedBranch, setSelectedBranch] = useState<string>('all');
 
-  const drivers = activeTab === 'all' 
+  const drivers = (activeTab === 'all' 
     ? allDrivers 
-    : allDrivers.filter(d => d.status === activeTab);
+    : allDrivers.filter(d => d.status === activeTab));
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('leaderUser');
-    if (!storedUser) {
-      router.push('/leader/login');
-      return;
-    }
-    setUser(JSON.parse(storedUser));
+    const fetchMe = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        const data = await res.json();
+        if (data.success) {
+          setUser(data.user);
+          setRole(data.user.role || 'leader');
+          if (data.user.role === 'admin') {
+            setSelectedBranch('all');
+          } else {
+            setSelectedBranch(data.user.branch || 'all');
+          }
+        } else {
+          router.push('/leader/login');
+        }
+      } catch {
+        router.push('/leader/login');
+      }
+    };
+    fetchMe();
   }, [router]);
 
   const fetchDrivers = async () => {
     try {
       const params = new URLSearchParams();
-      if (user?.branch) params.set('branch', user.branch);
+      if (role === 'admin' && selectedBranch !== 'all') {
+        params.set('branch', selectedBranch);
+      } else if (role === 'leader' && user?.branch) {
+        params.set('branch', user.branch);
+      }
       const response = await fetch(`/api/users?${params.toString()}`);
       const data = await response.json();
       if (data.success) {
@@ -86,19 +108,19 @@ function DriverManagementContent() {
     // Refresh every 30 seconds to update online status
     const interval = setInterval(fetchDrivers, 30000);
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, role, selectedBranch]);
 
   const { showToast } = useToast();
 
   // Pusher realtime — driver list auto-refresh
   const handleDriverChanged = useCallback(() => {
     fetchDrivers();
-  }, []);
+  }, [role, selectedBranch]);
 
   const handleNewDriver = useCallback((data: { displayName?: string }) => {
     fetchDrivers();
     showToast('notification', `พนักงานใหม่ลงทะเบียน: ${data?.displayName || 'พนักงาน'}`);
-  }, [showToast]);
+  }, [showToast, role, selectedBranch]);
 
   usePusher('users', [
     { event: 'new-driver', callback: handleNewDriver },
@@ -205,13 +227,34 @@ function DriverManagementContent() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
-      <Sidebar role="leader" />
+      <Sidebar role={role} />
 
       <div className="lg:pl-[240px] pb-20 lg:pb-6">
         <PageHeader title="จัดการพนักงาน" subtitle="เพิ่ม/แก้ไข/เปิดใช้งานพนักงาน" backHref="/leader/home" />
 
         <div className="px-4 lg:px-8 py-4">
           <div className="max-w-3xl mx-auto flex flex-col gap-4">
+
+        {/* Branch Filter for Admin */}
+        {role === 'admin' && (
+          <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex overflow-x-auto pb-2 gap-2 scrollbar-hide">
+            <button
+              onClick={() => setSelectedBranch('all')}
+              className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${selectedBranch === 'all' ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'bg-surface text-muted border border-border'}`}
+            >
+              ทุกสาขา
+            </button>
+            {BRANCHES.map(b => (
+              <button
+                key={b}
+                onClick={() => setSelectedBranch(b)}
+                className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${selectedBranch === b ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'bg-surface text-muted border border-border'}`}
+              >
+                สาขา {b}
+              </button>
+            ))}
+          </motion.div>
+        )}
 
         {/* Stats - Clickable */}
         <div className="grid grid-cols-3 gap-3">

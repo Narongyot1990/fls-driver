@@ -8,24 +8,37 @@ import PageHeader from '@/components/PageHeader';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
 
-const BRANCHES = ['AYA', 'CBI', 'KSN', 'RA2', 'BBT'];
+const ALL_BRANCHES = ['BKK', 'CNX', 'HKP', 'LCH', 'NRT', 'PKT', 'STW'];
 
 export default function LeaderSettingsPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [role, setRole] = useState<'leader' | 'admin'>('leader');
   const [activeBranches, setActiveBranches] = useState<string[]>([]);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('leaderUser');
-    if (!storedUser) { router.push('/leader/login'); return; }
-    setUser(JSON.parse(storedUser));
+    const fetchMe = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        const data = await res.json();
+        if (data.success) {
+          setUser(data.user);
+          setRole(data.user.role || 'leader');
+        } else {
+          router.push('/leader/login');
+        }
+      } catch {
+        router.push('/leader/login');
+      }
+    };
+    fetchMe();
 
     const storedBranches = localStorage.getItem('leaderBranches');
     if (storedBranches) {
       setActiveBranches(JSON.parse(storedBranches));
     } else {
-      setActiveBranches([...BRANCHES]);
+      setActiveBranches([...ALL_BRANCHES]);
     }
   }, [router]);
 
@@ -43,7 +56,7 @@ export default function LeaderSettingsPage() {
   };
 
   const selectAll = () => {
-    setActiveBranches([...BRANCHES]);
+    setActiveBranches([...ALL_BRANCHES]);
     setSaved(false);
   };
 
@@ -51,7 +64,7 @@ export default function LeaderSettingsPage() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
-      <Sidebar role="leader" />
+      <Sidebar role={role} />
 
       <div className="lg:pl-[240px] pb-20 lg:pb-6">
         <PageHeader title="ตั้งค่า" backHref="/leader/home" />
@@ -83,7 +96,7 @@ export default function LeaderSettingsPage() {
               </div>
 
               <div className="grid grid-cols-5 gap-3 mb-4">
-                {BRANCHES.map((branch) => {
+                {ALL_BRANCHES.map((branch) => {
                   const isActive = activeBranches.includes(branch);
                   return (
                     <motion.button
@@ -106,7 +119,7 @@ export default function LeaderSettingsPage() {
               </div>
 
               <div className="flex items-center gap-2 text-fluid-xs mb-4" style={{ color: 'var(--text-muted)' }}>
-                <span>เลือกแล้ว {activeBranches.length} / {BRANCHES.length} สาขา</span>
+                <span>เลือกแล้ว {activeBranches.length} / {ALL_BRANCHES.length} สาขา</span>
                 <button onClick={selectAll} className="font-medium" style={{ color: 'var(--accent)' }}>
                   เลือกทั้งหมด
                 </button>
@@ -121,7 +134,7 @@ export default function LeaderSettingsPage() {
         </div>
       </div>
 
-      <BottomNav role="leader" />
+      <BottomNav role={role} />
     </div>
   );
 }

@@ -89,12 +89,29 @@ function redirectToLogin(pathname: string, baseUrl: string): NextResponse {
 }
 
 function checkRoleAccess(role: string, pathname: string, request: NextRequest): NextResponse {
-  if (role === 'leader' && !pathname.startsWith('/leader') && !pathname.startsWith('/api') && !pathname.startsWith('/dashboard')) {
-    return NextResponse.redirect(new URL('/leader/home', request.url));
+  // Admin has access to everything
+  if (role === 'admin') {
+    return NextResponse.next();
   }
-  if (role === 'driver' && pathname.startsWith('/leader/') && !pathname.startsWith('/leader/login')) {
-    return NextResponse.redirect(new URL('/home', request.url));
+
+  // Leader access control
+  if (role === 'leader') {
+    // Leaders should stay in /leader paths or dashboard
+    if (!pathname.startsWith('/leader') && !pathname.startsWith('/api') && !pathname.startsWith('/dashboard')) {
+      return NextResponse.redirect(new URL('/leader/home', request.url));
+    }
+    return NextResponse.next();
   }
+
+  // Driver access control
+  if (role === 'driver') {
+    // Drivers cannot access /leader paths
+    if (pathname.startsWith('/leader/') && !pathname.startsWith('/leader/login')) {
+      return NextResponse.redirect(new URL('/home', request.url));
+    }
+    return NextResponse.next();
+  }
+
   return NextResponse.next();
 }
 

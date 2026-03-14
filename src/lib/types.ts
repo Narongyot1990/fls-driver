@@ -11,14 +11,19 @@ export interface DriverUser {
   vacationDays?: number;
   sickDays?: number;
   personalDays?: number;
-  role?: 'driver';
+  personalDays?: number;
+  role?: 'driver' | 'leader' | 'admin';
+  branch?: string;
 }
 
 export interface LeaderUser {
   id: string;
   name: string;
   email: string;
-  role?: 'leader';
+  name: string;
+  email: string;
+  role?: 'driver' | 'leader' | 'admin';
+  branch?: string;
 }
 
 export interface LeaveRequestItem {

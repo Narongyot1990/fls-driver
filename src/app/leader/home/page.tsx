@@ -26,49 +26,67 @@ const menuItems = [
   { icon: Settings, label: 'ตั้งค่า', sub: 'ตั้งค่าสาขาที่ดูแล', href: '/leader/settings', color: 'var(--text-muted)' },
 ];
 
+const BRANCHES = ['BKK', 'CNX', 'HKP', 'LCH', 'NRT', 'PKT', 'STW'];
+
 export default function LeaderHomePage() {
   const router = useRouter();
-  const [user, setUser] = useState<LeaderUser | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const [role, setRole] = useState<'leader' | 'admin'>('leader');
   const [pendingLeaveCount, setPendingLeaveCount] = useState(0);
   const [pendingDriverCount, setPendingDriverCount] = useState(0);
+  const [selectedBranch, setSelectedBranch] = useState<string>('all');
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('leaderUser');
-    if (!storedUser) {
-      router.push('/leader/login');
-      return;
-    }
-    setUser(JSON.parse(storedUser));
-  }, [router]);
-
-  useEffect(() => {
-    const fetchCounts = async () => {
+    const fetchMe = async () => {
       try {
-        const res = await fetch('/api/counts?type=all');
+        const res = await fetch('/api/auth/me');
         const data = await res.json();
         if (data.success) {
-          setPendingLeaveCount(data.counts.pendingLeaves);
-          setPendingDriverCount(data.counts.pendingDrivers);
+          setUser(data.user);
+          setRole(data.user.role || 'leader');
+          if (data.user.role === 'admin') {
+            setSelectedBranch('all');
+          } else {
+            setSelectedBranch(data.user.branch || 'all');
+          }
+        } else {
+          router.push('/leader/login');
         }
-      } catch (err) {
-        console.error('Failed to fetch counts:', err);
+      } catch {
+        router.push('/leader/login');
       }
     };
+    fetchMe();
+  }, [router]);
 
-    fetchCounts();
-  }, []);
-
-  // Pusher realtime — update badge counts
-  const refetchCounts = useCallback(async () => {
+  const fetchCounts = async () => {
     try {
-      const res = await fetch('/api/counts?type=all');
+      let url = '/api/counts?type=all';
+      if (role === 'admin' && selectedBranch !== 'all') {
+        url += `&branch=${selectedBranch}`;
+      } else if (role === 'leader' && user?.branch) {
+        url += `&branch=${user.branch}`;
+      }
+      const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
         setPendingLeaveCount(data.counts.pendingLeaves);
         setPendingDriverCount(data.counts.pendingDrivers);
       }
-    } catch { /* ignore */ }
-  }, []);
+    } catch (err) {
+      console.error('Failed to fetch counts:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (!user) return;
+    fetchCounts();
+  }, [user, role, selectedBranch]);
+
+  // Pusher realtime — update badge counts
+  const refetchCounts = useCallback(async () => {
+    fetchCounts();
+  }, [role, selectedBranch, user]);
 
   usePusherMulti([
     { channel: 'leave-requests', bindings: [
@@ -86,6 +104,7 @@ export default function LeaderHomePage() {
   const handleLogout = async () => {
     try { await fetch('/api/auth/logout', { method: 'POST' }); } catch {}
     localStorage.removeItem('leaderUser');
+    localStorage.removeItem('driverUser');
     router.push('/leader/login');
   };
 
@@ -93,7 +112,7 @@ export default function LeaderHomePage() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
-      <Sidebar role="leader" />
+      <Sidebar role={role} />
 
       <div className="lg:pl-[240px] pb-20 lg:pb-6">
         {/* Header */}
@@ -112,7 +131,9 @@ export default function LeaderHomePage() {
               </div>
               <div className="flex-1 min-w-0">
                 <h1 className="text-fluid-lg font-bold truncate" style={{ color: 'var(--text-primary)' }}>{user.name}</h1>
-                <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>หัวหน้างาน</p>
+                <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>
+                  {role === 'admin' ? 'ผู้ดูแลระบบ (ทุกสาขา)' : `หัวหน้างาน (สาขา ${user.branch || '-'})`}
+                </p>
               </div>
               <ThemeToggle />
             </motion.div>
@@ -120,7 +141,29 @@ export default function LeaderHomePage() {
         </header>
 
         <div className="px-4 lg:px-8 py-4">
-          <div className="max-w-3xl mx-auto space-y-2">
+          <div className="max-w-3xl mx-auto space-y-4">
+            
+            {/* Branch Filter for Admin */}
+            {role === 'admin' && (
+              <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex overflow-x-auto pb-2 gap-2 scrollbar-hide">
+                <button
+                  onClick={() => setSelectedBranch('all')}
+                  className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${selectedBranch === 'all' ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'bg-surface text-muted border border-border'}`}
+                >
+                  ทุกสาขา
+                </button>
+                {BRANCHES.map(b => (
+                  <button
+                    key={b}
+                    onClick={() => setSelectedBranch(b)}
+                    className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${selectedBranch === b ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'bg-surface text-muted border border-border'}`}
+                  >
+                    สาขา {b}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+
             <p className="text-fluid-xs font-semibold uppercase tracking-wider px-1 mb-2" style={{ color: 'var(--text-muted)' }}>
               เมนู
             </p>

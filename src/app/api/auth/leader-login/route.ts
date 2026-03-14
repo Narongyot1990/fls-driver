@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import { Leader } from '@/models/Leader';
 import bcrypt from 'bcryptjs';
-import { generateAccessToken, generateRefreshToken } from '@/lib/jwt-auth';
+import { generateAccessToken, generateRefreshToken, TokenPayload } from '@/lib/jwt-auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +16,39 @@ export async function POST(request: NextRequest) {
     }
 
     await dbConnect();
+
+    // Special case for Administrator
+    if (email === 'administrator@fls.com' && password === 'itl@1234') {
+      const payload: TokenPayload = {
+        userId: 'admin_root',
+        email: 'administrator@fls.com',
+        role: 'admin',
+      };
+      const accessToken = generateAccessToken(payload);
+      const refreshToken = generateRefreshToken(payload);
+
+      const response = NextResponse.json({
+        success: true,
+        user: { id: 'admin_root', email: 'administrator@fls.com', name: 'ITL Administrator', role: 'admin' },
+      });
+
+      response.cookies.set('accessToken', accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 15 * 60,
+        path: '/',
+      });
+      response.cookies.set('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60,
+        path: '/',
+      });
+      return response;
+    }
+
     const leader = await Leader.findOne({ email });
 
     if (!leader) {
@@ -28,10 +61,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    const payload = {
+    const payload: TokenPayload = {
       userId: leader._id.toString(),
       email: leader.email,
-      role: 'leader' as const,
+      role: 'leader',
+      branch: leader.branch,
     };
 
     const accessToken = generateAccessToken(payload);

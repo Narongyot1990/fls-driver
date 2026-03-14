@@ -19,7 +19,8 @@ const REFRESH_TOKEN_EXPIRY = '7d';
 export interface TokenPayload {
   userId: string;
   email?: string;
-  role: 'driver' | 'leader';
+  role: 'driver' | 'leader' | 'admin';
+  branch?: string;
 }
 
 export function generateAccessToken(payload: TokenPayload): string {

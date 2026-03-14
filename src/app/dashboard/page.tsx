@@ -47,10 +47,12 @@ const THAI_MONTHS = [
 
 const THAI_DAYS = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
 
+const BRANCHES = ['BKK', 'CNX', 'HKP', 'LCH', 'NRT', 'PKT', 'STW'];
+
 function DashboardContent() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
-  const [role, setRole] = useState<'driver' | 'leader'>('driver');
+  const [role, setRole] = useState<'driver' | 'leader' | 'admin'>('driver');
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -58,31 +60,42 @@ function DashboardContent() {
   const [showPopup, setShowPopup] = useState(false);
   const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
   const [showProfile, setShowProfile] = useState(false);
+  const [selectedBranch, setSelectedBranch] = useState<string>('all');
 
   useEffect(() => {
-    const driverUser = localStorage.getItem('driverUser');
-    const leaderUser = localStorage.getItem('leaderUser');
-    
-    if (!driverUser && !leaderUser) {
-      router.push('/login');
-      return;
-    }
-    
-    if (driverUser) {
-      setUser(JSON.parse(driverUser));
-      setRole('driver');
-    } else if (leaderUser) {
-      setUser(JSON.parse(leaderUser));
-      setRole('leader');
-    }
+    const fetchMe = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        const data = await res.json();
+        if (data.success) {
+          setUser(data.user);
+          setRole(data.user.role || 'driver');
+          if (data.user.role === 'admin') {
+            setSelectedBranch('all');
+          } else {
+            setSelectedBranch(data.user.branch || 'all');
+          }
+        } else {
+          router.push('/login');
+        }
+      } catch {
+        router.push('/login');
+      }
+    };
+    fetchMe();
   }, [router]);
 
   useEffect(() => {
     if (!user) return;
 
     const fetchLeaves = async () => {
+      setLoading(true);
       try {
-        const response = await fetch('/api/leave?status=approved');
+        let url = '/api/leave?status=approved';
+        if (role === 'admin' && selectedBranch !== 'all') {
+          url += `&branch=${selectedBranch}`;
+        }
+        const response = await fetch(url);
         const data = await response.json();
         if (data.success) {
           setLeaves(data.requests);
@@ -95,16 +108,20 @@ function DashboardContent() {
     };
 
     fetchLeaves();
-  }, [user]);
+  }, [user, role, selectedBranch]);
 
   // Pusher realtime — calendar auto-refresh on leave changes
   const handleLeaveChanged = useCallback(async () => {
     try {
-      const response = await fetch('/api/leave?status=approved');
+      let url = '/api/leave?status=approved';
+      if (role === 'admin' && selectedBranch !== 'all') {
+        url += `&branch=${selectedBranch}`;
+      }
+      const response = await fetch(url);
       const data = await response.json();
       if (data.success) setLeaves(data.requests);
     } catch { /* ignore */ }
-  }, []);
+  }, [role, selectedBranch]);
 
   usePusher('dashboard', [
     { event: 'leave-status-changed', callback: handleLeaveChanged },
@@ -215,6 +232,27 @@ function DashboardContent() {
 
       <div className="px-4 lg:px-8 py-4">
         <div className="max-w-3xl mx-auto space-y-4">
+
+          {/* Branch Filter for Admin */}
+          {role === 'admin' && (
+            <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex overflow-x-auto pb-2 gap-2 scrollbar-hide">
+              <button
+                onClick={() => setSelectedBranch('all')}
+                className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${selectedBranch === 'all' ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'bg-surface text-muted border border-border'}`}
+              >
+                ทุกสาขา
+              </button>
+              {BRANCHES.map(b => (
+                <button
+                  key={b}
+                  onClick={() => setSelectedBranch(b)}
+                  className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${selectedBranch === b ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'bg-surface text-muted border border-border'}`}
+                >
+                  สาขา {b}
+                </button>
+              ))}
+            </motion.div>
+          )}
 
           {/* Month Selector */}
           <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="card p-4">

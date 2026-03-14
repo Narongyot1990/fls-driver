@@ -20,6 +20,17 @@ export async function GET(request: NextRequest) {
     await dbConnect();
 
     const query: Record<string, unknown> = {};
+    const { role, branch, userId: authUserId } = authResult.payload;
+
+    if (role === 'driver') {
+      query.userId = authUserId;
+    } else if (role === 'leader' && branch) {
+      // Find all users in this branch
+      const branchUsers = await User.find({ branch }).select('_id');
+      const branchUserIds = branchUsers.map(u => u._id);
+      query.userId = { $in: branchUserIds };
+    }
+
     if (userId) {
       query.userId = userId;
     }
@@ -28,7 +39,7 @@ export async function GET(request: NextRequest) {
     }
 
     const requests = await LeaveRequest.find(query)
-      .populate('userId', 'lineDisplayName employeeId phone name surname lineProfileImage performanceTier performancePoints performanceLevel')
+      .populate('userId', 'lineDisplayName employeeId phone name surname lineProfileImage performanceTier performancePoints performanceLevel branch')
       .sort({ createdAt: -1 });
 
     return NextResponse.json({

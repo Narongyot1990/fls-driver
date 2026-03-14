@@ -43,3 +43,11 @@ export function requireDriver(request: NextRequest): { payload: TokenPayload } |
   }
   return result;
 }
+export function requireAdmin(request: NextRequest): { payload: TokenPayload } | { error: NextResponse } {
+  const result = requireAuth(request);
+  if ('error' in result) return result;
+  if (result.payload.role !== 'admin') {
+    return { error: NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 }) };
+  }
+  return result;
+}

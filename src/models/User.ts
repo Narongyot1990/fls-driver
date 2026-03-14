@@ -16,6 +16,7 @@ export interface IUser extends Document {
   phone?: string;
   employeeId?: string;
   branch?: string;
+  role: 'driver' | 'leader' | 'admin';
   status: DriverStatus;
   vacationDays: number;
   sickDays: number;
@@ -40,6 +41,7 @@ const UserSchema = new Schema<IUser>(
     phone: { type: String },
     employeeId: { type: String },
     branch: { type: String, enum: ['AYA', 'CBI', 'KSN', 'RA2', 'BBT'], default: undefined },
+    role: { type: String, enum: ['driver', 'leader', 'admin'], default: 'driver' },
     status: { type: String, enum: ['pending', 'active'], default: 'pending' },
     vacationDays: { type: Number, default: 10 },
     sickDays: { type: Number, default: 10 },

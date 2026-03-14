@@ -10,7 +10,8 @@ import Sidebar from '@/components/Sidebar';
 import UserAvatar from '@/components/UserAvatar';
 import { usePusher } from '@/hooks/usePusher';
 
-const BRANCHES = ['AYA', 'CBI', 'KSN', 'RA2', 'BBT'];
+const ALL_BRANCHES = ['BKK', 'CNX', 'HKP', 'LCH', 'NRT', 'PKT', 'STW'];
+const BRANCHES = ALL_BRANCHES;
 
 const CATEGORIES = [
   { value: 'safety', label: 'ความปลอดภัย' },
@@ -67,8 +68,10 @@ interface Task {
 export default function LeaderTasksPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [role, setRole] = useState<'leader' | 'admin'>('leader');
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedBranch, setSelectedBranch] = useState<string>('all');
 
   // Create modal
   const [showCreate, setShowCreate] = useState(false);
@@ -89,15 +92,38 @@ export default function LeaderTasksPage() {
   const [showPending, setShowPending] = useState<string | null>(null);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('leaderUser');
-    if (!storedUser) { router.push('/leader/login'); return; }
-    setUser(JSON.parse(storedUser));
+    const fetchMe = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        const data = await res.json();
+        if (data.success) {
+          setUser(data.user);
+          setRole(data.user.role || 'leader');
+          if (data.user.role === 'admin') {
+            setSelectedBranch('all');
+          } else {
+            setSelectedBranch(data.user.branch || 'all');
+          }
+        } else {
+          router.push('/leader/login');
+        }
+      } catch {
+        router.push('/leader/login');
+      }
+    };
+    fetchMe();
   }, [router]);
 
   const fetchTasks = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/tasks');
+      let url = '/api/tasks';
+      if (role === 'admin' && selectedBranch !== 'all') {
+        url += `?branch=${selectedBranch}`;
+      } else if (role === 'leader' && user?.branch) {
+        url += `?branch=${user.branch}`;
+      }
+      const res = await fetch(url);
       const data = await res.json();
       if (data.success) setTasks(data.tasks || []);
     } catch (err) { console.error(err); }
@@ -107,12 +133,21 @@ export default function LeaderTasksPage() {
   useEffect(() => {
     if (!user) return;
     fetchTasks();
+    
     // Fetch active drivers for un-submitted tracking
-    fetch('/api/users?status=active')
+    const userUrl = new URL('/api/users', window.location.origin);
+    userUrl.searchParams.set('status', 'active');
+    if (role === 'admin' && selectedBranch !== 'all') {
+      userUrl.searchParams.set('branch', selectedBranch);
+    } else if (role === 'leader' && user?.branch) {
+      userUrl.searchParams.set('branch', user.branch);
+    }
+    
+    fetch(userUrl.toString())
       .then(r => r.json())
       .then(data => { if (data.success) setActiveDrivers(data.users || []); })
       .catch(() => {});
-  }, [user]);
+  }, [user, role, selectedBranch]);
 
   // Pusher realtime — task changes
   const handleTaskChanged = useCallback(() => {
@@ -214,14 +249,14 @@ export default function LeaderTasksPage() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
-      <Sidebar role="leader" />
+      <Sidebar role={role} />
 
       <div className="lg:pl-[240px] pb-20 lg:pb-6">
         <PageHeader
           title="จัดการ Tasks"
           backHref="/leader/home"
           rightContent={
-            <button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-fluid-xs font-medium" style={{ background: 'var(--accent)', color: '#fff' }}>
+            <button onClick={() => { setBranches([]); setShowCreate(true); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-fluid-xs font-medium" style={{ background: 'var(--accent)', color: '#fff' }}>
               <Plus className="w-3.5 h-3.5" />
               สร้าง Task
             </button>
@@ -229,7 +264,28 @@ export default function LeaderTasksPage() {
         />
 
         <div className="px-4 lg:px-8 py-4">
-          <div className="max-w-3xl mx-auto space-y-3">
+          <div className="max-w-3xl mx-auto space-y-4">
+            
+            {/* Branch Filter for Admin */}
+            {role === 'admin' && (
+              <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex overflow-x-auto pb-2 gap-2 scrollbar-hide">
+                <button
+                  onClick={() => setSelectedBranch('all')}
+                  className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${selectedBranch === 'all' ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'bg-surface text-muted border border-border'}`}
+                >
+                  ทุกสาขา
+                </button>
+                {ALL_BRANCHES.map(b => (
+                  <button
+                    key={b}
+                    onClick={() => setSelectedBranch(b)}
+                    className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${selectedBranch === b ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'bg-surface text-muted border border-border'}`}
+                  >
+                    สาขา {b}
+                  </button>
+                ))}
+              </motion.div>
+            )}
             {loading ? (
               <div className="flex justify-center py-16">
                 <div className="w-10 h-10 rounded-full border-[3px] animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--accent)' }} />

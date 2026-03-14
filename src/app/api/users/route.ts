@@ -22,14 +22,21 @@ export async function GET(request: NextRequest) {
     await dbConnect();
 
     const query: Record<string, unknown> = {};
+    const { role, branch: userBranch, userId } = authResult.payload;
+
+    if (role === 'leader' && userBranch) {
+      query.branch = userBranch;
+    } else if (role === 'driver') {
+      query._id = userId;
+    } else if (branch) {
+      query.branch = branch;
+    }
+
     if (status) {
       query.status = status;
     }
     if (activeOnly === 'true') {
       query.status = 'active';
-    }
-    if (branch) {
-      query.branch = branch;
     }
 
     const users = await User.find(query)

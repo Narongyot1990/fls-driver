@@ -34,10 +34,26 @@ const leaderNav: NavItem[] = [
   { icon: User, label: 'แก้ไขโปรไฟล์', href: '/leader/profile-edit' },
 ];
 
-export default function Sidebar({ role }: { role: 'driver' | 'leader' }) {
+const adminNav: NavItem[] = [
+  { icon: Home, label: 'หน้าหลัก', href: '/leader/home' },
+  { icon: CalendarDays, label: 'ภาพรวมทุกสาขา', href: '/dashboard' },
+  { icon: CheckSquare, label: 'อนุมัติการลา', href: '/leader/approve' },
+  { icon: Users, label: 'จัดการพนักงาน', href: '/leader/drivers' },
+  { icon: ClipboardList, label: 'ประวัติทั้งหมด', href: '/leader/history' },
+  { icon: Rss, label: 'Moments กิจกรรม', href: '/leader/car-wash' },
+  { icon: User, label: 'แก้ไขโปรไฟล์', href: '/leader/profile-edit' },
+];
+
+export default function Sidebar({ role }: { role: 'driver' | 'leader' | 'admin' }) {
   const pathname = usePathname();
   const router = useRouter();
-  const items = role === 'leader' ? leaderNav : driverNav;
+  
+  let items = driverNav;
+  if (role === 'admin') {
+    items = adminNav;
+  } else if (role === 'leader') {
+    items = leaderNav;
+  }
 
   return (
     <aside
@@ -50,11 +66,11 @@ export default function Sidebar({ role }: { role: 'driver' | 'leader' }) {
           className="w-8 h-8 rounded-[var(--radius-sm)] flex items-center justify-center font-bold text-white text-sm"
           style={{ background: 'var(--accent)' }}
         >
-          ITL
+          {role === 'admin' ? 'ADM' : 'ITL'}
         </div>
         <div>
           <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>ITL Leave</p>
-          <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>ระบบจัดการลา</p>
+          <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{role === 'admin' ? 'ระบบผู้ดูแลสูงสุด' : 'ระบบจัดการลา'}</p>
         </div>
       </div>
 
@@ -86,18 +102,23 @@ export default function Sidebar({ role }: { role: 'driver' | 'leader' }) {
       {/* Bottom */}
       <div className="px-4 py-3 flex items-center justify-between" style={{ borderTop: '1px solid var(--border)' }}>
         <ThemeToggle />
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={() => {
-            localStorage.clear();
-            router.push(role === 'leader' ? '/leader/login' : '/login');
-          }}
-          className="w-10 h-10 flex items-center justify-center rounded-[var(--radius-md)] transition-colors"
-          style={{ color: 'var(--danger)' }}
-          title="ออกจากระบบ"
-        >
-          <LogOut className="w-[18px] h-[18px]" />
-        </motion.button>
+        <div className="flex items-center gap-2">
+           {role === 'admin' && (
+             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-600 uppercase">Admin</span>
+           )}
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={() => {
+              localStorage.clear();
+              router.push(role === 'driver' ? '/login' : '/leader/login');
+            }}
+            className="w-10 h-10 flex items-center justify-center rounded-[var(--radius-md)] transition-colors"
+            style={{ color: 'var(--danger)' }}
+            title="ออกจากระบบ"
+          >
+            <LogOut className="w-[18px] h-[18px]" />
+          </motion.button>
+        </div>
       </div>
     </aside>
   );

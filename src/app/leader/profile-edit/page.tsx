@@ -16,7 +16,8 @@ interface LeaderUser {
 
 export default function LeaderProfileEditPage() {
   const router = useRouter();
-  const [user, setUser] = useState<LeaderUser | null>(null);
+  const [user, setUser] = useState<any>(null);
+  const [role, setRole] = useState<'leader' | 'admin'>('leader');
   const [name, setName] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -26,14 +27,22 @@ export default function LeaderProfileEditPage() {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('leaderUser');
-    if (!storedUser) {
-      router.push('/leader/login');
-      return;
-    }
-    const userData = JSON.parse(storedUser);
-    setUser(userData);
-    setName(userData.name || '');
+    const fetchMe = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        const data = await res.json();
+        if (data.success) {
+          setUser(data.user);
+          setRole(data.user.role || 'leader');
+          setName(data.user.name || '');
+        } else {
+          router.push('/leader/login');
+        }
+      } catch {
+        router.push('/leader/login');
+      }
+    };
+    fetchMe();
   }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -104,7 +113,7 @@ export default function LeaderProfileEditPage() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
-      <Sidebar role="leader" />
+      <Sidebar role={role} />
 
       <div className="lg:pl-[240px] pb-20 lg:pb-6">
         <PageHeader title="แก้ไขโปรไฟล์" backHref="/leader/home" />

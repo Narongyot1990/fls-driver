@@ -50,24 +50,42 @@ interface SubstituteRecord {
 }
 
 
+const BRANCHES = ['BKK', 'CNX', 'HKP', 'LCH', 'NRT', 'PKT', 'STW'];
+
 function LeaderHistoryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [user, setUser] = useState<any>(null);
+  const [role, setRole] = useState<'leader' | 'admin'>('leader');
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
   const [substitutes, setSubstitutes] = useState<SubstituteRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('leave');
   const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
   const [showProfile, setShowProfile] = useState(false);
+  const [selectedBranch, setSelectedBranch] = useState<string>('all');
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('leaderUser');
-    if (!storedUser) {
-      router.push('/leader/login');
-      return;
-    }
-    setUser(JSON.parse(storedUser));
+    const fetchMe = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        const data = await res.json();
+        if (data.success) {
+          setUser(data.user);
+          setRole(data.user.role || 'leader');
+          if (data.user.role === 'admin') {
+            setSelectedBranch('all');
+          } else {
+            setSelectedBranch(data.user.branch || 'all');
+          }
+        } else {
+          router.push('/leader/login');
+        }
+      } catch {
+        router.push('/leader/login');
+      }
+    };
+    fetchMe();
   }, [router]);
 
   useEffect(() => {
@@ -77,43 +95,54 @@ function LeaderHistoryContent() {
     }
   }, [searchParams]);
 
+  const fetchData = async () => {
+    try {
+      let leaveUrl = '/api/leave';
+      let subUrl = '/api/substitute';
+      
+      const queryParams = new URLSearchParams();
+      if (role === 'admin' && selectedBranch !== 'all') {
+        queryParams.set('branch', selectedBranch);
+      } else if (role === 'leader' && user?.branch) {
+        queryParams.set('branch', user.branch);
+      }
+      
+      const queryString = queryParams.toString();
+      if (queryString) {
+        leaveUrl += `?${queryString}`;
+        subUrl += `?${queryString}`;
+      }
+
+      const [leaveRes, substituteRes] = await Promise.all([
+        fetch(leaveUrl),
+        fetch(subUrl),
+      ]);
+
+      const leaveData = await leaveRes.json();
+      const substituteData = await substituteRes.json();
+
+      if (leaveData.success) {
+        setLeaves(leaveData.requests);
+      }
+      if (substituteData.success) {
+        setSubstitutes(substituteData.records);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!user) return;
-
-    const fetchData = async () => {
-      try {
-        const [leaveRes, substituteRes] = await Promise.all([
-          fetch('/api/leave'),
-          fetch('/api/substitute'),
-        ]);
-
-        const leaveData = await leaveRes.json();
-        const substituteData = await substituteRes.json();
-
-        if (leaveData.success) {
-          setLeaves(leaveData.requests);
-        }
-        if (substituteData.success) {
-          setSubstitutes(substituteData.records);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
-  }, [user]);
+  }, [user, role, selectedBranch]);
 
   // Pusher realtime — leave changes
   const handleLeaveChanged = useCallback(async () => {
-    try {
-      const res = await fetch('/api/leave');
-      const data = await res.json();
-      if (data.success) setLeaves(data.requests);
-    } catch { /* ignore */ }
-  }, []);
+    fetchData();
+  }, [role, selectedBranch]);
 
   usePusher('leave-requests', [
     { event: 'new-leave-request', callback: handleLeaveChanged },
@@ -127,13 +156,34 @@ function LeaderHistoryContent() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
-      <Sidebar role="leader" />
+      <Sidebar role={role} />
 
       <div className="lg:pl-[240px] pb-20 lg:pb-6">
         <PageHeader title="ประวัติทั้งหมด" backHref="/leader/home" />
 
         <div className="px-4 lg:px-8 py-4">
           <div className="max-w-3xl mx-auto flex flex-col gap-4">
+
+            {/* Branch Filter for Admin */}
+            {role === 'admin' && (
+              <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex overflow-x-auto pb-2 gap-2 scrollbar-hide">
+                <button
+                  onClick={() => setSelectedBranch('all')}
+                  className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${selectedBranch === 'all' ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'bg-surface text-muted border border-border'}`}
+                >
+                  ทุกสาขา
+                </button>
+                {BRANCHES.map(b => (
+                  <button
+                    key={b}
+                    onClick={() => setSelectedBranch(b)}
+                    className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${selectedBranch === b ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'bg-surface text-muted border border-border'}`}
+                  >
+                    สาขา {b}
+                  </button>
+                ))}
+              </motion.div>
+            )}
 
             {/* Tabs */}
             <div className="flex gap-2">

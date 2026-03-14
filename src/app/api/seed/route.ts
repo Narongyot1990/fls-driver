@@ -57,6 +57,8 @@ export async function POST(request: NextRequest) {
       email,
       password: hashedPassword,
       name,
+      role: body.role || 'leader',
+      branch: body.branch || undefined,
     });
 
     return NextResponse.json({

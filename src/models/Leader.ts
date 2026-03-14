@@ -5,6 +5,7 @@ export interface ILeader extends Document {
   password: string;
   name: string;
   branch?: string;
+  role?: 'leader' | 'admin';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -15,6 +16,7 @@ const LeaderSchema = new Schema<ILeader>(
     password: { type: String, required: true },
     name: { type: String, required: true },
     branch: { type: String },
+    role: { type: String, enum: ['leader', 'admin'], default: 'leader' },
   },
   { timestamps: true }
 );

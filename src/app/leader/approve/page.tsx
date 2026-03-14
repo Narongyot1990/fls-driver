@@ -35,9 +35,12 @@ interface LeaveRequest {
 }
 
 
+const BRANCHES = ['BKK', 'CNX', 'HKP', 'LCH', 'NRT', 'PKT', 'STW'];
+
 export default function LeaderApprovePage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [role, setRole] = useState<'leader' | 'admin'>('leader');
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -47,20 +50,41 @@ export default function LeaderApprovePage() {
   const [rejectReason, setRejectReason] = useState('');
   const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
   const [showProfile, setShowProfile] = useState(false);
+  const [selectedBranch, setSelectedBranch] = useState<string>('all');
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('leaderUser');
-    if (!storedUser) {
-      router.push('/leader/login');
-      return;
-    }
-    setUser(JSON.parse(storedUser));
+    const fetchMe = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        const data = await res.json();
+        if (data.success) {
+          setUser(data.user);
+          setRole(data.user.role || 'leader');
+          if (data.user.role === 'admin') {
+            setSelectedBranch('all');
+          } else {
+            setSelectedBranch(data.user.branch || 'all');
+          }
+        } else {
+          router.push('/leader/login');
+        }
+      } catch {
+        router.push('/leader/login');
+      }
+    };
+    fetchMe();
   }, [router]);
 
   // Fetch pending requests
   const fetchPending = async () => {
     try {
-      const response = await fetch('/api/leave?status=pending');
+      let url = '/api/leave?status=pending';
+      if (role === 'admin' && selectedBranch !== 'all') {
+        url += `&branch=${selectedBranch}`;
+      } else if (role === 'leader' && user?.branch) {
+        url += `&branch=${user.branch}`;
+      }
+      const response = await fetch(url);
       const data = await response.json();
       if (data.success) {
         setRequests(data.requests);
@@ -75,7 +99,7 @@ export default function LeaderApprovePage() {
   useEffect(() => {
     if (!user) return;
     fetchPending();
-  }, [user]);
+  }, [user, role, selectedBranch]);
 
   const { showToast } = useToast();
 
@@ -87,11 +111,11 @@ export default function LeaderApprovePage() {
     const audio = new Audio('/notification.mp3');
     audio.play().catch(() => {});
     setTimeout(() => setNewRequestAlert(false), 5000);
-  }, [showToast]);
+  }, [showToast, role, selectedBranch]);
 
   const handleLeaveStatusChanged = useCallback(() => {
     fetchPending();
-  }, []);
+  }, [role, selectedBranch]);
 
   usePusher('leave-requests', [
     { event: 'new-leave-request', callback: handleNewLeave },
@@ -174,7 +198,7 @@ export default function LeaderApprovePage() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
-      <Sidebar role="leader" />
+      <Sidebar role={role} />
 
       {/* New Request Alert */}
       <AnimatePresence>
@@ -202,7 +226,27 @@ export default function LeaderApprovePage() {
         />
 
         <div className="px-4 lg:px-8 py-4">
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-3xl mx-auto space-y-4">
+            {/* Branch Filter for Admin */}
+            {role === 'admin' && (
+              <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex overflow-x-auto pb-2 gap-2 scrollbar-hide">
+                <button
+                  onClick={() => setSelectedBranch('all')}
+                  className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${selectedBranch === 'all' ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'bg-surface text-muted border border-border'}`}
+                >
+                  ทุกสาขา
+                </button>
+                {BRANCHES.map(b => (
+                  <button
+                    key={b}
+                    onClick={() => setSelectedBranch(b)}
+                    className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${selectedBranch === b ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'bg-surface text-muted border border-border'}`}
+                  >
+                    สาขา {b}
+                  </button>
+                ))}
+              </motion.div>
+            )}
             {loading ? (
               <div className="flex justify-center py-16">
                 <div className="w-10 h-10 rounded-full border-[3px] animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--accent)' }} />

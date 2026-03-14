@@ -6,7 +6,8 @@ const REFRESH_SECRET = new TextEncoder().encode(process.env.REFRESH_SECRET || ''
 export interface TokenPayload {
   userId: string;
   email?: string;
-  role: 'driver' | 'leader';
+  role: 'driver' | 'leader' | 'admin';
+  branch?: string;
 }
 
 export async function verifyAccessTokenEdge(token: string): Promise<TokenPayload | null> {
