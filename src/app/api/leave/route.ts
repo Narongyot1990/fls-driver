@@ -22,6 +22,7 @@ export async function GET(request: NextRequest) {
     const query: Record<string, unknown> = {};
     const { role, branch, userId: authUserId } = authResult.payload;
 
+    // Admin (superuser) can see all leave requests - no branch filter
     if (role === 'driver') {
       query.userId = authUserId;
     } else if (role === 'leader' && branch) {
@@ -29,7 +30,13 @@ export async function GET(request: NextRequest) {
       const branchUsers = await User.find({ branch }).select('_id');
       const branchUserIds = branchUsers.map(u => u._id);
       query.userId = { $in: branchUserIds };
+    } else if (role === 'admin' && branch) {
+      // Admin with specific branch filter (optional)
+      const branchUsers = await User.find({ branch }).select('_id');
+      const branchUserIds = branchUsers.map(u => u._id);
+      query.userId = { $in: branchUserIds };
     }
+    // Admin without branch = see all (no filter)
 
     if (userId) {
       query.userId = userId;

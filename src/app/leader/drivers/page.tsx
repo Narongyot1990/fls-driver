@@ -12,6 +12,7 @@ import UserAvatar from '@/components/UserAvatar';
 import { PERFORMANCE_TIERS, PERFORMANCE_TIER_CONFIG, type PerformanceTier } from '@/lib/profile-tier';
 import { formatDateThai, formatRelativeTime, isUserOnline } from '@/lib/date-utils';
 import { usePusher } from '@/hooks/usePusher';
+import { useBranches } from '@/hooks/useBranches';
 import { useToast } from '@/components/Toast';
 
 interface Driver {
@@ -36,11 +37,9 @@ interface Driver {
   isOnline?: boolean;
   createdAt?: string;
 }
-
-const BRANCHES = ['BKK', 'CNX', 'HKP', 'LCH', 'NRT', 'PKT', 'STW'];
-
 function DriverManagementContent() {
   const router = useRouter();
+  const { branches, loading: branchesLoading } = useBranches();
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<'leader' | 'admin'>('leader');
   const [allDrivers, setAllDrivers] = useState<Driver[]>([]);
@@ -244,13 +243,13 @@ function DriverManagementContent() {
             >
               ทุกสาขา
             </button>
-            {BRANCHES.map(b => (
+            {(branchesLoading ? [] : branches).map(b => (
               <button
-                key={b}
-                onClick={() => setSelectedBranch(b)}
-                className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${selectedBranch === b ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'bg-surface text-muted border border-border'}`}
+                key={b.code}
+                onClick={() => setSelectedBranch(b.code)}
+                className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${selectedBranch === b.code ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'bg-surface text-muted border border-border'}`}
               >
-                สาขา {b}
+                สาขา {b.code}
               </button>
             ))}
           </motion.div>

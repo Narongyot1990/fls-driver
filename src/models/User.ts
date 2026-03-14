@@ -40,7 +40,7 @@ const UserSchema = new Schema<IUser>(
     surname: { type: String },
     phone: { type: String },
     employeeId: { type: String },
-    branch: { type: String, enum: ['AYA', 'CBI', 'KSN', 'RA2', 'BBT'], default: undefined },
+    branch: { type: String, default: undefined },
     role: { type: String, enum: ['driver', 'leader', 'admin'], default: 'driver' },
     status: { type: String, enum: ['pending', 'active'], default: 'pending' },
     vacationDays: { type: Number, default: 10 },

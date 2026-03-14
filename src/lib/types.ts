@@ -11,15 +11,12 @@ export interface DriverUser {
   vacationDays?: number;
   sickDays?: number;
   personalDays?: number;
-  personalDays?: number;
   role?: 'driver' | 'leader' | 'admin';
   branch?: string;
 }
 
 export interface LeaderUser {
   id: string;
-  name: string;
-  email: string;
   name: string;
   email: string;
   role?: 'driver' | 'leader' | 'admin';

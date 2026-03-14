@@ -51,3 +51,13 @@ export function requireAdmin(request: NextRequest): { payload: TokenPayload } | 
   }
   return result;
 }
+
+export function requireSuperuser(request: NextRequest): { payload: TokenPayload } | { error: NextResponse } {
+  // Superuser = admin only (not leader)
+  const result = requireAuth(request);
+  if ('error' in result) return result;
+  if (result.payload.role !== 'admin') {
+    return { error: NextResponse.json({ error: 'Forbidden: Superuser access required' }, { status: 403 }) };
+  }
+  return result;
+}

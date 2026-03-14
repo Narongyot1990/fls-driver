@@ -50,7 +50,7 @@ interface SubstituteRecord {
 }
 
 
-const BRANCHES = ['BKK', 'CNX', 'HKP', 'LCH', 'NRT', 'PKT', 'STW'];
+const BRANCHES = ['AYA', 'CBI', 'RA2', 'KSN', 'BBT'];
 
 function LeaderHistoryContent() {
   const router = useRouter();

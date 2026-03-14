@@ -35,7 +35,7 @@ const leaderNav: NavItem[] = [
 ];
 
 const adminNav: NavItem[] = [
-  { icon: Home, label: 'หน้าหลัก', href: '/leader/home' },
+  { icon: Home, label: 'หน้าหลัก', href: '/admin/home' },
   { icon: CalendarDays, label: 'ภาพรวมทุกสาขา', href: '/dashboard' },
   { icon: CheckSquare, label: 'อนุมัติการลา', href: '/leader/approve' },
   { icon: Users, label: 'จัดการพนักงาน', href: '/leader/drivers' },

@@ -109,8 +109,18 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authResult = requireLeader(request);
+    const authResult = requireAuth(request);
     if ('error' in authResult) return authResult.error;
+
+    const { role } = authResult.payload;
+    
+    // Only leader or admin can approve/reject
+    if (role !== 'leader' && role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Forbidden' },
+        { status: 403 }
+      );
+    }
 
     const { id } = await params;
     const body = await request.json();
@@ -138,6 +148,17 @@ export async function PATCH(
       return NextResponse.json(
         { error: 'Leave request not found' },
         { status: 404 }
+      );
+    }
+
+    // Check branch permission for leaders (admin can approve any)
+    const { branch: leaderBranch } = authResult.payload;
+    const driverBranch = (leaveRequest.userId as any)?.branch;
+    
+    if (role === 'leader' && leaderBranch && driverBranch !== leaderBranch) {
+      return NextResponse.json(
+        { error: 'ไม่มีสิทธิ์อนุมัติคำขอลาของสาขาอื่น' },
+        { status: 403 }
       );
     }
 

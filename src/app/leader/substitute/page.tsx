@@ -19,7 +19,7 @@ interface User {
   status: string;
 }
 
-const BRANCHES = ['BKK', 'CNX', 'HKP', 'LCH', 'NRT', 'PKT', 'STW'];
+const BRANCHES = ['AYA', 'CBI', 'RA2', 'KSN', 'BBT'];
 
 export default function SubstitutePage() {
   const router = useRouter();

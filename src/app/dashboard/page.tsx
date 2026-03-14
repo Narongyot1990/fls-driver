@@ -13,6 +13,7 @@ import { getHolidayMap, getHolidaysForMonth } from '@/lib/thai-holidays';
 import { getLeaveTypeMeta, LEAVE_TYPE_LIST } from '@/lib/leave-types';
 import { formatDateThai as formatDateThaiUtil, getLeaveDays as getLeaveDaysUtil } from '@/lib/date-utils';
 import { usePusher } from '@/hooks/usePusher';
+import { useBranches } from '@/hooks/useBranches';
 
 interface LeaveRequest {
   _id: string;
@@ -47,10 +48,9 @@ const THAI_MONTHS = [
 
 const THAI_DAYS = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
 
-const BRANCHES = ['BKK', 'CNX', 'HKP', 'LCH', 'NRT', 'PKT', 'STW'];
-
 function DashboardContent() {
   const router = useRouter();
+  const { branches, loading: branchesLoading } = useBranches();
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<'driver' | 'leader' | 'admin'>('driver');
   const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
@@ -242,13 +242,13 @@ function DashboardContent() {
               >
                 ทุกสาขา
               </button>
-              {BRANCHES.map(b => (
+              {(branchesLoading ? [] : branches).map(b => (
                 <button
-                  key={b}
-                  onClick={() => setSelectedBranch(b)}
-                  className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${selectedBranch === b ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'bg-surface text-muted border border-border'}`}
+                  key={b.code}
+                  onClick={() => setSelectedBranch(b.code)}
+                  className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${selectedBranch === b.code ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'bg-surface text-muted border border-border'}`}
                 >
-                  สาขา {b}
+                  สาขา {b.code}
                 </button>
               ))}
             </motion.div>

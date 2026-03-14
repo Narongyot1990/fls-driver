@@ -26,7 +26,7 @@ const menuItems = [
   { icon: Settings, label: 'ตั้งค่า', sub: 'ตั้งค่าสาขาที่ดูแล', href: '/leader/settings', color: 'var(--text-muted)' },
 ];
 
-const BRANCHES = ['BKK', 'CNX', 'HKP', 'LCH', 'NRT', 'PKT', 'STW'];
+const BRANCHES = ['AYA', 'CBI', 'RA2', 'KSN', 'BBT'];
 
 export default function LeaderHomePage() {
   const router = useRouter();

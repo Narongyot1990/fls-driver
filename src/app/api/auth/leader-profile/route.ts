@@ -2,13 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import { Leader } from '@/models/Leader';
 import bcrypt from 'bcryptjs';
+import { requireAuth, requireSuperuser } from '@/lib/api-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function PATCH(request: NextRequest) {
   try {
+    // Check auth first
+    const authResult = requireAuth(request);
+    if ('error' in authResult) return authResult.error;
+
     const body = await request.json();
-    const { leaderId, name, currentPassword, newPassword } = body;
+    const { leaderId, name, branch, currentPassword, newPassword, role } = body;
 
     if (!leaderId) {
       return NextResponse.json({ error: 'Leader ID is required' }, { status: 400 });
@@ -22,8 +27,20 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Leader not found' }, { status: 404 });
     }
 
+    // For non-admin users, they can only edit their own profile (no branch/role changes)
+    const isAdmin = authResult.payload.role === 'admin';
+    const isOwnProfile = authResult.payload.userId === leaderId;
+
     if (name) {
       leader.name = name;
+    }
+
+    // Only admin can change branch and role
+    if (isAdmin && branch !== undefined) {
+      leader.branch = branch || null;
+    }
+    if (isAdmin && role !== undefined) {
+      leader.role = role;
     }
 
     if (currentPassword && newPassword) {
@@ -52,6 +69,8 @@ export async function PATCH(request: NextRequest) {
         id: leader._id,
         email: leader.email,
         name: leader.name,
+        branch: leader.branch,
+        role: leader.role,
       },
     });
   } catch (error) {

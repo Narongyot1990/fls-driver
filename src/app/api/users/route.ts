@@ -24,13 +24,16 @@ export async function GET(request: NextRequest) {
     const query: Record<string, unknown> = {};
     const { role, branch: userBranch, userId } = authResult.payload;
 
+    // Admin (superuser) can see all users - no branch filter
     if (role === 'leader' && userBranch) {
       query.branch = userBranch;
     } else if (role === 'driver') {
       query._id = userId;
-    } else if (branch) {
-      query.branch = branch;
+    } else if (role === 'admin' && userBranch) {
+      // Admin with specific branch filter (optional)
+      query.branch = userBranch;
     }
+    // Admin without branch = see all (no filter)
 
     if (status) {
       query.status = status;

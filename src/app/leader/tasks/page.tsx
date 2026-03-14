@@ -10,7 +10,7 @@ import Sidebar from '@/components/Sidebar';
 import UserAvatar from '@/components/UserAvatar';
 import { usePusher } from '@/hooks/usePusher';
 
-const ALL_BRANCHES = ['BKK', 'CNX', 'HKP', 'LCH', 'NRT', 'PKT', 'STW'];
+const ALL_BRANCHES = ['AYA', 'CBI', 'RA2', 'KSN', 'BBT'];
 const BRANCHES = ALL_BRANCHES;
 
 const CATEGORIES = [
