@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { ClipboardCheck, CheckCircle2, Clock, ChevronRight, Award, AlertCircle, X } from 'lucide-react';
+import { ClipboardCheck, CheckCircle2, Clock, ChevronRight, Award, AlertCircle, X, Lightbulb, ChevronDown, ChevronUp } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
@@ -14,6 +14,7 @@ interface TaskQuestion {
   question: string;
   options: string[];
   correctIndex: number;
+  hint?: string;
 }
 
 interface Task {
@@ -49,6 +50,8 @@ function getCategoryMeta(cat: string) {
 export default function TasksPage() {
   const router = useRouter();
   const [user, setUser] = useState<{ id: string; branch?: string } | null>(null);
+  const userRef = useRef(user);
+  userRef.current = user;
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCompleted, setShowCompleted] = useState(false);
@@ -88,30 +91,31 @@ export default function TasksPage() {
 
   const { showToast } = useToast();
 
-  // Pusher realtime — task changes
-  const handleTaskChanged = useCallback(async () => {
-    if (!user) return;
+  // Pusher realtime — task changes (use ref to avoid stale closure)
+  const refetchTasks = useCallback(async () => {
+    const u = userRef.current;
+    if (!u) return;
     try {
       const params = new URLSearchParams();
-      if (user.branch) params.set('branch', user.branch);
-      params.set('userId', user.id);
+      if (u.branch) params.set('branch', u.branch);
+      params.set('userId', u.id);
       const res = await fetch(`/api/tasks?${params.toString()}`);
       const data = await res.json();
       if (data.success) setTasks(data.tasks || []);
     } catch { /* ignore */ }
-  }, [user]);
+  }, []);
 
   const handleNewTask = useCallback(async (data: { title?: string }) => {
-    await handleTaskChanged();
-    showToast('notification', `มี Task ใหม่: ${data?.title || 'แบบทดสอบ'}`);
-  }, [handleTaskChanged, showToast]);
+    await refetchTasks();
+    showToast('notification', `มีแบบทดสอบใหม่: ${data?.title || 'แบบทดสอบ'}`);
+  }, [refetchTasks, showToast]);
 
   usePusher('tasks', [
     { event: 'new-task', callback: handleNewTask },
-    { event: 'task-updated', callback: handleTaskChanged },
-    { event: 'task-deleted', callback: handleTaskChanged },
-    { event: 'task-submitted', callback: handleTaskChanged },
-  ], !!user);
+    { event: 'task-updated', callback: refetchTasks },
+    { event: 'task-deleted', callback: refetchTasks },
+    { event: 'task-submitted', callback: refetchTasks },
+  ], !!user, 0);  // debounce=0 for immediate task updates
 
   const pendingTasks = tasks.filter(t => !t.completed && t.status === 'active');
   const completedTasks = tasks.filter(t => t.completed);
@@ -345,6 +349,19 @@ export default function TasksPage() {
                       <p className="text-fluid-sm font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>
                         {activeTask.questions[currentQ].question}
                       </p>
+
+                      {/* Hint - shown after user selects an answer */}
+                      {activeTask.questions[currentQ].hint && answers[currentQ] !== -1 && (
+                        <div
+                          className="flex items-start gap-2 p-3 rounded-[var(--radius-md)] mb-3"
+                          style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}
+                        >
+                          <Lightbulb className="w-4 h-4 shrink-0 mt-0.5" style={{ color: 'var(--warning)' }} />
+                          <p className="text-fluid-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                            {activeTask.questions[currentQ].hint}
+                          </p>
+                        </div>
+                      )}
                       <div className="space-y-2">
                         {activeTask.questions[currentQ].options.map((opt, i) => (
                           <button

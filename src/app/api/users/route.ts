@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const activeOnly = searchParams.get('activeOnly');
+    const branch = searchParams.get('branch');
 
     await dbConnect();
 
@@ -26,6 +27,9 @@ export async function GET(request: NextRequest) {
     }
     if (activeOnly === 'true') {
       query.status = 'active';
+    }
+    if (branch) {
+      query.branch = branch;
     }
 
     const users = await User.find(query)

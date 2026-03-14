@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
         id: leader._id,
         email: leader.email,
         name: leader.name,
+        branch: leader.branch,
       },
     });
 

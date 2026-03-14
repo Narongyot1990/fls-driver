@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { Plus, ClipboardCheck, Trash2, X, Users, CheckCircle2, Award, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, ClipboardCheck, Trash2, X, Users, CheckCircle2, Award, ChevronDown, ChevronUp, Lightbulb, Phone, UserCircle } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
@@ -24,6 +24,7 @@ interface TaskQuestion {
   question: string;
   options: string[];
   correctIndex: number;
+  hint?: string;
 }
 
 interface Submission {
@@ -38,6 +39,17 @@ interface Submission {
   score: number;
   total: number;
   submittedAt: string;
+}
+
+interface ActiveDriver {
+  _id: string;
+  lineDisplayName: string;
+  lineProfileImage?: string;
+  performanceTier?: string;
+  name?: string;
+  surname?: string;
+  phone?: string;
+  branch?: string;
 }
 
 interface Task {
@@ -64,12 +76,17 @@ export default function LeaderTasksPage() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('safety');
   const [branches, setBranches] = useState<string[]>([]);
-  const [questions, setQuestions] = useState<TaskQuestion[]>([{ question: '', options: ['', ''], correctIndex: 0 }]);
+  const [questions, setQuestions] = useState<TaskQuestion[]>([{ question: '', options: ['', ''], correctIndex: 0, hint: '' }]);
+  const [expandedHint, setExpandedHint] = useState<number | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
 
   // Expanded task (to see submissions)
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
+
+  // Active drivers for un-submitted tracking
+  const [activeDrivers, setActiveDrivers] = useState<ActiveDriver[]>([]);
+  const [showPending, setShowPending] = useState<string | null>(null);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('leaderUser');
@@ -87,7 +104,15 @@ export default function LeaderTasksPage() {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { if (user) fetchTasks(); }, [user]);
+  useEffect(() => {
+    if (!user) return;
+    fetchTasks();
+    // Fetch active drivers for un-submitted tracking
+    fetch('/api/users?status=active')
+      .then(r => r.json())
+      .then(data => { if (data.success) setActiveDrivers(data.users || []); })
+      .catch(() => {});
+  }, [user]);
 
   // Pusher realtime — task changes
   const handleTaskChanged = useCallback(() => {
@@ -102,7 +127,7 @@ export default function LeaderTasksPage() {
   ], !!user);
 
   const addQuestion = () => {
-    setQuestions([...questions, { question: '', options: ['', ''], correctIndex: 0 }]);
+    setQuestions([...questions, { question: '', options: ['', ''], correctIndex: 0, hint: '' }]);
   };
 
   const removeQuestion = (idx: number) => {
@@ -155,7 +180,7 @@ export default function LeaderTasksPage() {
       const data = await res.json();
       if (data.success) {
         setShowCreate(false);
-        setTitle(''); setDescription(''); setCategory('safety'); setBranches([]); setQuestions([{ question: '', options: ['', ''], correctIndex: 0 }]);
+        setTitle(''); setDescription(''); setCategory('safety'); setBranches([]); setQuestions([{ question: '', options: ['', ''], correctIndex: 0, hint: '' }]);
         fetchTasks();
       } else {
         setError(data.error || 'เกิดข้อผิดพลาด');
@@ -260,17 +285,37 @@ export default function LeaderTasksPage() {
                       </div>
                     </div>
 
-                    {/* Submissions toggle */}
-                    {task.submissions.length > 0 && (
-                      <button
-                        onClick={() => setExpandedTask(expandedTask === task._id ? null : task._id)}
-                        className="flex items-center gap-1 mt-3 text-fluid-xs font-medium"
-                        style={{ color: 'var(--accent)' }}
-                      >
-                        {expandedTask === task._id ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                        ดูผลคะแนน ({task.submissions.length})
-                      </button>
-                    )}
+                    {/* Submissions toggle + Un-submitted toggle */}
+                    <div className="flex items-center gap-3 mt-3">
+                      {task.submissions.length > 0 && (
+                        <button
+                          onClick={() => setExpandedTask(expandedTask === task._id ? null : task._id)}
+                          className="flex items-center gap-1 text-fluid-xs font-medium"
+                          style={{ color: 'var(--accent)' }}
+                        >
+                          {expandedTask === task._id ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                          ดูผลคะแนน ({task.submissions.length})
+                        </button>
+                      )}
+                      {task.status === 'active' && (() => {
+                        const submittedIds = new Set(task.submissions.map(s => s.userId?._id));
+                        const targetDrivers = task.branches.length > 0
+                          ? activeDrivers.filter(d => d.branch && task.branches.includes(d.branch))
+                          : activeDrivers;
+                        const pendingCount = targetDrivers.filter(d => !submittedIds.has(d._id)).length;
+                        if (pendingCount === 0) return null;
+                        return (
+                          <button
+                            onClick={() => setShowPending(showPending === task._id ? null : task._id)}
+                            className="flex items-center gap-1 text-fluid-xs font-medium"
+                            style={{ color: 'var(--danger)' }}
+                          >
+                            <UserCircle className="w-3.5 h-3.5" />
+                            ยังไม่ส่ง ({pendingCount})
+                          </button>
+                        );
+                      })()}
+                    </div>
                   </div>
 
                   {/* Submissions list */}
@@ -303,6 +348,57 @@ export default function LeaderTasksPage() {
                         </div>
                       </motion.div>
                     )}
+                  </AnimatePresence>
+
+                  {/* Un-submitted drivers list */}
+                  <AnimatePresence>
+                    {showPending === task._id && (() => {
+                      const submittedIds = new Set(task.submissions.map(s => s.userId?._id));
+                      const targetDrivers = task.branches.length > 0
+                        ? activeDrivers.filter(d => d.branch && task.branches.includes(d.branch))
+                        : activeDrivers;
+                      const pending = targetDrivers.filter(d => !submittedIds.has(d._id));
+                      if (pending.length === 0) return null;
+                      return (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden"
+                          style={{ borderTop: '1px solid var(--border)' }}
+                        >
+                          <div className="p-3" style={{ background: 'rgba(239,68,68,0.03)' }}>
+                            <p className="text-[10px] font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--danger)' }}>
+                              ยังไม่ส่ง ({pending.length} คน)
+                            </p>
+                            <div className="space-y-2">
+                              {pending.map((driver) => (
+                                <div key={driver._id} className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius-md)]" style={{ background: 'var(--bg-surface)' }}>
+                                  <UserAvatar imageUrl={driver.lineProfileImage} displayName={driver.name || driver.lineDisplayName} tier={driver.performanceTier} size="xs" />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-fluid-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+                                      {driver.name && driver.surname ? `${driver.name} ${driver.surname}` : driver.lineDisplayName}
+                                    </p>
+                                    {driver.branch && (
+                                      <span className="text-[9px]" style={{ color: 'var(--text-muted)' }}>{driver.branch}</span>
+                                    )}
+                                  </div>
+                                  {driver.phone && (
+                                    <a
+                                      href={`tel:${driver.phone}`}
+                                      className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+                                      style={{ background: 'var(--success-light)' }}
+                                    >
+                                      <Phone className="w-3.5 h-3.5" style={{ color: 'var(--success)' }} />
+                                    </a>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })()}
                   </AnimatePresence>
                 </motion.div>
               ))
@@ -431,6 +527,29 @@ export default function LeaderTasksPage() {
                         <button onClick={() => addOption(qIdx)} className="text-[10px] font-medium mt-1.5" style={{ color: 'var(--accent)' }}>
                           + เพิ่มตัวเลือก
                         </button>
+
+                        {/* Collapsible hint section */}
+                        <div className="mt-2 pt-2" style={{ borderTop: '1px dashed var(--border)' }}>
+                          <button
+                            type="button"
+                            onClick={() => setExpandedHint(expandedHint === qIdx ? null : qIdx)}
+                            className="flex items-center gap-1 text-[10px] font-medium"
+                            style={{ color: 'var(--warning)' }}
+                          >
+                            <Lightbulb className="w-3 h-3" />
+                            {expandedHint === qIdx ? 'ซ่อนคำแนะนำ' : 'เพิ่มคำแนะนำ (ไม่บังคับ)'}
+                            {expandedHint === qIdx ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                          </button>
+                          {expandedHint === qIdx && (
+                            <textarea
+                              value={q.hint || ''}
+                              onChange={(e) => updateQuestion(qIdx, 'hint', e.target.value)}
+                              className="input mt-1.5 resize-none text-fluid-xs"
+                              rows={2}
+                              placeholder="คำแนะนำ/ความรู้เพิ่มเติมสำหรับข้อนี้... เช่น กฎหมายกำหนดให้สวมหมวกนิรภัยทุกครั้งก่อนออกรถ"
+                            />
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>

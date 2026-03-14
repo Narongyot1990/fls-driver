@@ -4,6 +4,7 @@ export interface ITaskQuestion {
   question: string;
   options: string[];
   correctIndex: number;
+  hint?: string;
 }
 
 export interface ITaskSubmission {
@@ -33,6 +34,7 @@ const TaskQuestionSchema = new Schema<ITaskQuestion>(
     question: { type: String, required: true },
     options: [{ type: String, required: true }],
     correctIndex: { type: Number, required: true },
+    hint: { type: String },
   },
   { _id: false }
 );

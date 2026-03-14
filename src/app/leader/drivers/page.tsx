@@ -64,7 +64,9 @@ function DriverManagementContent() {
 
   const fetchDrivers = async () => {
     try {
-      const response = await fetch('/api/users');
+      const params = new URLSearchParams();
+      if (user?.branch) params.set('branch', user.branch);
+      const response = await fetch(`/api/users?${params.toString()}`);
       const data = await response.json();
       if (data.success) {
         setAllDrivers(data.users);

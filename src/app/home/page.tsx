@@ -18,6 +18,7 @@ interface DriverUser {
   name?: string;
   surname?: string;
   phone?: string;
+  branch?: string;
   status?: string;
   vacationDays?: number;
   sickDays?: number;
@@ -27,7 +28,7 @@ interface DriverUser {
 const menuItems = [
   { icon: FilePlus, label: 'ขอลา', sub: 'ยื่นคำขอลาใหม่', href: '/leave', color: 'var(--accent)' },
   { icon: Clock, label: 'ประวัติการลา', sub: 'ดูสถานะคำขอทั้งหมด', href: '/leave/history', color: 'var(--success)' },
-  { icon: ClipboardCheck, label: 'Tasks', sub: 'แบบทดสอบ/งานที่ได้รับ', href: '/tasks', color: 'var(--warning)' },
+  { icon: ClipboardCheck, label: 'แบบทดสอบ', sub: 'ทำแบบทดสอบ/งานที่ได้รับ', href: '/tasks', color: 'var(--warning)' },
 ];
 
 export default function DriverHomePage() {
@@ -150,7 +151,14 @@ export default function DriverHomePage() {
                 <h1 className="text-fluid-lg font-bold truncate" style={{ color: 'var(--text-primary)' }}>
                   {user.name ? `${user.name} ${user.surname || ''}` : user.lineDisplayName}
                 </h1>
-                <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>พนักงานขับรถ</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>พนักงานขับรถ</p>
+                  {user.branch && (
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: 'var(--accent-light)', color: 'var(--accent)' }}>
+                      {user.branch}
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <ThemeToggle />
@@ -241,19 +249,22 @@ export default function DriverHomePage() {
               })}
             </div>
 
-            {/* Logout — only visible on mobile (desktop has sidebar) */}
-            <motion.button
+            {/* Logout — small text link at bottom, with confirmation */}
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.6 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleLogout}
-              className="btn btn-ghost w-full lg:hidden mt-2"
-              style={{ color: 'var(--danger)' }}
+              className="flex justify-center lg:hidden mt-6 mb-2"
             >
-              <LogOut className="w-4 h-4" />
-              ออกจากระบบ
-            </motion.button>
+              <button
+                onClick={() => { if (confirm('ต้องการออกจากระบบหรือไม่?')) handleLogout(); }}
+                className="flex items-center gap-1.5 text-fluid-xs py-2 px-4 rounded-full transition-colors"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                ออกจากระบบ
+              </button>
+            </motion.div>
           </div>
         </div>
       </div>

@@ -8,6 +8,7 @@ import Sidebar from '@/components/Sidebar';
 import BottomNav from '@/components/BottomNav';
 import UserAvatar from '@/components/UserAvatar';
 import { formatRelativeTime, isUserOnline } from '@/lib/date-utils';
+import { PERFORMANCE_TIER_CONFIG, normalizePerformanceTier } from '@/lib/profile-tier';
 
 interface DriverUser {
   id: string;
@@ -158,13 +159,23 @@ export default function ProfilePage() {
       <div className="lg:pl-[240px] pb-20 lg:pb-6">
         {/* Cover & Profile Section - Social Media Style */}
         <div className="relative">
-          {/* Cover Background */}
-          <div 
-            className="h-32 sm:h-40 w-full"
-            style={{ 
-              background: 'linear-gradient(135deg, var(--accent) 0%, #6366f1 100%)'
-            }}
-          />
+          {/* Cover Background — dynamic based on tier */}
+          {(() => {
+            const tier = normalizePerformanceTier(user.performanceTier);
+            const coverColors: Record<string, string> = {
+              standard: 'linear-gradient(135deg, #94a3b8 0%, #64748b 100%)',
+              bronze: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+              silver: 'linear-gradient(135deg, #94a3b8 0%, #e2e8f0 50%, #cbd5e1 100%)',
+              gold: 'linear-gradient(135deg, #f59e0b 0%, #ca8a04 50%, #facc15 100%)',
+              platinum: 'linear-gradient(135deg, #a78bfa 0%, #67e8f9 50%, #f0abfc 100%)',
+            };
+            return (
+              <div 
+                className="h-32 sm:h-40 w-full"
+                style={{ background: coverColors[tier] || coverColors.standard }}
+              />
+            );
+          })()}
           
           {/* Profile Info Overlay */}
           <div className="px-4 sm:px-8 pb-6">
@@ -260,20 +271,126 @@ export default function ProfilePage() {
                 </div>
               )}
 
-              {/* Approved Stats */}
-              {approvedCount > 0 && (
+              {/* Medals & Achievements Section */}
+              {(approvedCount > 0 || (knowledgeData && knowledgeData.completedTasks > 0)) && (
                 <motion.div
                   initial={{ y: 20, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
-                  className="card p-4 flex items-center gap-4 mb-4"
-                  style={{ background: 'linear-gradient(135deg, var(--success-light) 0%, var(--bg-surface) 100%)' }}
+                  className="card p-0 overflow-hidden mb-4"
                 >
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'var(--success)', boxShadow: '0 4px 14px rgba(5,150,105,0.3)' }}>
-                    <Flag className="w-6 h-6 text-white" />
+                  <div className="p-4 pb-3" style={{ borderBottom: '1px solid var(--border)' }}>
+                    <div className="flex items-center gap-2">
+                      <Trophy className="w-5 h-5" style={{ color: '#f59e0b' }} />
+                      <h3 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>เหรียญรางวัล</h3>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-2xl font-extrabold" style={{ color: 'var(--success)' }}>{approvedCount}</p>
-                    <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>กิจกรรมที่ได้รับ Approved</p>
+                  <div className="p-4 grid grid-cols-3 gap-3">
+                    {/* Medal: Approved Activities */}
+                    {(() => {
+                      const medals = [
+                        { min: 1, icon: '🥉', label: 'เริ่มต้น', color: '#b45309' },
+                        { min: 5, icon: '🥈', label: 'มุ่งมั่น', color: '#94a3b8' },
+                        { min: 15, icon: '🥇', label: 'ยอดเยี่ยม', color: '#f59e0b' },
+                        { min: 30, icon: '🏆', label: 'แชมป์', color: '#a78bfa' },
+                      ];
+                      const earned = medals.filter(m => approvedCount >= m.min);
+                      const current = earned[earned.length - 1];
+                      if (!current) return null;
+                      return (
+                        <div className="text-center">
+                          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-1.5 text-2xl" style={{ background: `${current.color}15`, boxShadow: `0 4px 12px ${current.color}20` }}>
+                            {current.icon}
+                          </div>
+                          <p className="text-[10px] font-bold" style={{ color: current.color }}>{current.label}</p>
+                          <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>Approved ×{approvedCount}</p>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Medal: Task Completion */}
+                    {knowledgeData && knowledgeData.completedTasks > 0 && (() => {
+                      const ct = knowledgeData.completedTasks;
+                      const medals = [
+                        { min: 1, icon: '📝', label: 'นักเรียน', color: '#3b82f6' },
+                        { min: 3, icon: '📚', label: 'ใฝ่เรียนรู้', color: '#8b5cf6' },
+                        { min: 8, icon: '🎓', label: 'ปราชญ์', color: '#059669' },
+                        { min: 15, icon: '🧠', label: 'ผู้เชี่ยวชาญ', color: '#dc2626' },
+                      ];
+                      const earned = medals.filter(m => ct >= m.min);
+                      const current = earned[earned.length - 1];
+                      if (!current) return null;
+                      return (
+                        <div className="text-center">
+                          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-1.5 text-2xl" style={{ background: `${current.color}15`, boxShadow: `0 4px 12px ${current.color}20` }}>
+                            {current.icon}
+                          </div>
+                          <p className="text-[10px] font-bold" style={{ color: current.color }}>{current.label}</p>
+                          <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>ทำแบบทดสอบ ×{ct}</p>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Medal: Knowledge Score */}
+                    {knowledgeData && knowledgeData.overallPercentage > 0 && (() => {
+                      const pct = knowledgeData.overallPercentage;
+                      const medals = [
+                        { min: 0, icon: '⭐', label: 'พื้นฐาน', color: '#94a3b8' },
+                        { min: 50, icon: '🌟', label: 'ก้าวหน้า', color: '#f59e0b' },
+                        { min: 75, icon: '💫', label: 'โดดเด่น', color: '#8b5cf6' },
+                        { min: 90, icon: '🌠', label: 'ระดับสุดยอด', color: '#dc2626' },
+                      ];
+                      const earned = medals.filter(m => pct >= m.min);
+                      const current = earned[earned.length - 1];
+                      if (!current) return null;
+                      return (
+                        <div className="text-center">
+                          <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-1.5 text-2xl" style={{ background: `${current.color}15`, boxShadow: `0 4px 12px ${current.color}20` }}>
+                            {current.icon}
+                          </div>
+                          <p className="text-[10px] font-bold" style={{ color: current.color }}>{current.label}</p>
+                          <p className="text-[9px]" style={{ color: 'var(--text-muted)' }}>คะแนนรวม {pct}%</p>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Progress to next medals */}
+                  <div className="px-4 pb-4 space-y-2">
+                    {approvedCount > 0 && approvedCount < 30 && (() => {
+                      const nextTargets = [5, 15, 30];
+                      const next = nextTargets.find(t => approvedCount < t);
+                      if (!next) return null;
+                      const pct = Math.round((approvedCount / next) * 100);
+                      return (
+                        <div>
+                          <div className="flex justify-between mb-0.5">
+                            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Approved ถัดไป: {next}</span>
+                            <span className="text-[10px] font-semibold" style={{ color: 'var(--accent)' }}>{approvedCount}/{next}</span>
+                          </div>
+                          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--bg-inset)' }}>
+                            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: 'var(--accent)' }} />
+                          </div>
+                        </div>
+                      );
+                    })()}
+                    {knowledgeData && knowledgeData.completedTasks > 0 && knowledgeData.completedTasks < 15 && (() => {
+                      const ct = knowledgeData.completedTasks;
+                      const nextTargets = [3, 8, 15];
+                      const next = nextTargets.find(t => ct < t);
+                      if (!next) return null;
+                      const pct = Math.round((ct / next) * 100);
+                      return (
+                        <div>
+                          <div className="flex justify-between mb-0.5">
+                            <span className="text-[10px]" style={{ color: 'var(--text-muted)' }}>แบบทดสอบถัดไป: {next}</span>
+                            <span className="text-[10px] font-semibold" style={{ color: 'var(--success)' }}>{ct}/{next}</span>
+                          </div>
+                          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--bg-inset)' }}>
+                            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: 'var(--success)' }} />
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </motion.div>
               )}
