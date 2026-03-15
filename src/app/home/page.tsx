@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { FilePlus, Clock, CalendarDays, ChevronRight, LogOut, AlertCircle, Umbrella, Thermometer, Briefcase, ClipboardCheck } from 'lucide-react';
+import { FileText, History, ClipboardCheck, Umbrella, Thermometer, Briefcase, LogOut, AlertCircle } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -14,10 +14,10 @@ import { useForceLogout } from '@/hooks/useForceLogout';
 import { performLogout } from '@/lib/logout';
 import type { DriverUser } from '@/lib/types';
 
-const menuItems = [
-  { icon: FilePlus, label: 'ขอลา', sub: 'ยื่นคำขอลาใหม่', href: '/leave', color: 'var(--accent)' },
-  { icon: Clock, label: 'ประวัติการลา', sub: 'ดูสถานะคำขอทั้งหมด', href: '/leave/history', color: 'var(--success)' },
-  { icon: ClipboardCheck, label: 'แบบทดสอบ', sub: 'ทำแบบทดสอบ/งานที่ได้รับ', href: '/tasks', color: 'var(--warning)' },
+const actions = [
+  { icon: FileText, label: 'ขอลา', href: '/leave', color: 'var(--accent)' },
+  { icon: History, label: 'ประวัติลา', href: '/leave/history', color: 'var(--success)' },
+  { icon: ClipboardCheck, label: 'งานที่ได้รับ', href: '/tasks', color: 'var(--warning)' },
 ];
 
 export default function DriverHomePage() {
@@ -30,50 +30,32 @@ export default function DriverHomePage() {
       try {
         const response = await fetch('/api/auth/me');
         const data = await response.json();
-        
+
         if (!data.success || data.user?.role !== 'driver') {
           const storedUser = localStorage.getItem('driverUser');
-          if (!storedUser) {
-            router.push('/login');
-            return;
-          }
+          if (!storedUser) { router.push('/login'); return; }
           const userData = JSON.parse(storedUser);
-          
-          if (!userData.name || !userData.surname) {
-            router.push('/profile-setup');
-            return;
-          }
+          if (!userData.name || !userData.surname) { router.push('/profile-setup'); return; }
           setUser(userData);
           setLoading(false);
           return;
         }
-        
+
         const userData = data.user;
         localStorage.setItem('driverUser', JSON.stringify(userData));
-        
-        if (!userData.name || !userData.surname) {
-          router.push('/profile-setup');
-          return;
-        }
-        
+        if (!userData.name || !userData.surname) { router.push('/profile-setup'); return; }
         setUser(userData);
-      } catch (err) {
-        console.error(err);
+      } catch {
         const storedUser = localStorage.getItem('driverUser');
-        if (!storedUser) {
-          router.push('/login');
-          return;
-        }
+        if (!storedUser) { router.push('/login'); return; }
         setUser(JSON.parse(storedUser));
       } finally {
         setLoading(false);
       }
     };
-
     fetchUser();
   }, [router]);
 
-  // Pusher realtime — refresh user data on leave/task changes
   const handleRefresh = useCallback(async () => {
     try {
       const response = await fetch('/api/auth/me');
@@ -85,22 +67,14 @@ export default function DriverHomePage() {
     } catch { /* ignore */ }
   }, []);
 
-  // Force logout when admin changes role
   useForceLogout(user?.id, 'driver');
 
   usePusherMulti([
-    { channel: 'leave-requests', bindings: [
-      { event: 'leave-status-changed', callback: handleRefresh },
-    ]},
-    { channel: 'tasks', bindings: [
-      { event: 'new-task', callback: handleRefresh },
-    ]},
+    { channel: 'leave-requests', bindings: [{ event: 'leave-status-changed', callback: handleRefresh }] },
+    { channel: 'tasks', bindings: [{ event: 'new-task', callback: handleRefresh }] },
   ], !!user);
 
-  if (loading) {
-    return <LoadingSpinner />;
-  }
-
+  if (loading) return <LoadingSpinner />;
   if (!user) return null;
 
   const handleLogout = async () => {
@@ -108,10 +82,10 @@ export default function DriverHomePage() {
     router.push(loginPath);
   };
 
-  const quotaItems = [
-    { icon: Umbrella, label: 'พักร้อน', value: user.vacationDays ?? 0, color: 'var(--accent)' },
-    { icon: Thermometer, label: 'ลาป่วย', value: user.sickDays ?? 0, color: 'var(--danger)' },
-    { icon: Briefcase, label: 'ลากิจ', value: user.personalDays ?? 0, color: 'var(--success)' },
+  const quota = [
+    { icon: Umbrella, label: 'พักร้อน', val: user.vacationDays ?? 0, color: 'var(--accent)' },
+    { icon: Thermometer, label: 'ลาป่วย', val: user.sickDays ?? 0, color: 'var(--danger)' },
+    { icon: Briefcase, label: 'ลากิจ', val: user.personalDays ?? 0, color: 'var(--success)' },
   ];
 
   return (
@@ -120,137 +94,82 @@ export default function DriverHomePage() {
 
       <div className="lg:pl-[240px] pb-[72px] lg:pb-6">
         {/* Header */}
-        <header className="px-4 lg:px-8 pt-6 pb-2">
-          <div className="max-w-3xl mx-auto">
-            <motion.div
-              initial={{ y: -10, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              className="flex items-center gap-3"
-            >
-              <div className="relative">
-                <UserAvatar imageUrl={user.lineProfileImage} displayName={user.lineDisplayName} tier={user.performanceTier} size="md" />
-                {user.status === 'active' && (
-                  <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full" style={{ background: 'var(--success)', border: '2px solid var(--bg-base)' }} />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-fluid-lg font-bold truncate" style={{ color: 'var(--text-primary)' }}>
-                  {user.name ? `${user.name} ${user.surname || ''}` : user.lineDisplayName}
-                </h1>
-                <div className="flex items-center gap-1.5">
-                  <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>พนักงานขับรถ</p>
-                  {user.branch && (
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold" style={{ background: 'var(--accent-light)', color: 'var(--accent)' }}>
-                      {user.branch}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <ThemeToggle />
-              </div>
-            </motion.div>
+        <header className="px-4 lg:px-8 pt-5 pb-3">
+          <div className="max-w-2xl mx-auto flex items-center gap-3">
+            <UserAvatar imageUrl={user.lineProfileImage} displayName={user.lineDisplayName} tier={user.performanceTier} size="md" />
+            <div className="flex-1 min-w-0">
+              <h1 className="text-fluid-lg font-bold truncate" style={{ color: 'var(--text-primary)' }}>
+                {user.name ? `${user.name} ${user.surname || ''}`.trim() : user.lineDisplayName}
+              </h1>
+              <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>
+                {user.branch ? `สาขา ${user.branch}` : 'พนักงานขับรถ'}
+              </p>
+            </div>
+            <ThemeToggle />
           </div>
         </header>
 
-        <div className="px-4 lg:px-8 py-4">
-          <div className="max-w-3xl mx-auto space-y-4">
+        <div className="px-4 lg:px-8">
+          <div className="max-w-2xl mx-auto space-y-4">
 
-            {/* Leave Quota — Hero Section */}
-            {user.status === 'active' && (
-              <motion.div
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.1 }}
-                className="card-neo p-5"
-              >
-                <p className="text-fluid-xs font-semibold uppercase tracking-wider mb-4" style={{ color: 'var(--text-muted)' }}>
-                  วันลาคงเหลือ
-                </p>
-                <div className="grid grid-cols-3 gap-3">
-                  {quotaItems.map((q) => (
-                    <div
-                      key={q.label}
-                      className="text-center p-3 rounded-[var(--radius-md)]"
-                      style={{ background: 'var(--bg-inset)' }}
-                    >
-                      <q.icon className="w-5 h-5 mx-auto mb-1.5" style={{ color: q.color }} strokeWidth={1.8} />
-                      <p className="stat-number" style={{ color: q.color, fontSize: 'clamp(1.5rem, 1.2rem + 1.5vw, 2.25rem)' }}>
-                        {q.value}
-                      </p>
-                      <p className="text-fluid-xs mt-1" style={{ color: 'var(--text-muted)' }}>{q.label}</p>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-
-            {/* Pending Status */}
+            {/* Pending */}
             {user.status === 'pending' && (
-              <motion.div
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.1 }}
-                className="card p-5 text-center"
-                style={{ borderLeftWidth: '4px', borderLeftColor: 'var(--warning)' }}
-              >
-                <div className="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: 'var(--warning-light)' }}>
-                  <AlertCircle className="w-5 h-5" style={{ color: 'var(--warning)' }} />
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="card p-4 flex items-center gap-3" style={{ borderLeft: '3px solid var(--warning)' }}>
+                <AlertCircle className="w-5 h-5 shrink-0" style={{ color: 'var(--warning)' }} />
+                <div>
+                  <p className="text-fluid-sm font-semibold" style={{ color: 'var(--warning)' }}>รอเปิดใช้งาน</p>
+                  <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>กรุณารอหัวหน้างานอนุมัติ</p>
                 </div>
-                <p className="text-fluid-sm font-semibold" style={{ color: 'var(--warning)' }}>บัญชีอยู่ระหว่างตรวจสอบ</p>
-                <p className="text-fluid-xs mt-1" style={{ color: 'var(--text-muted)' }}>กรุณารอหัวหน้างานเปิดใช้งาน</p>
               </motion.div>
             )}
 
-            {/* Quick Actions */}
-            <div className="space-y-2">
-              <p className="text-fluid-xs font-semibold uppercase tracking-wider px-1" style={{ color: 'var(--text-muted)' }}>
-                เมนู
-              </p>
-              {menuItems.map((item, i) => {
-                const Icon = item.icon;
+            {/* Leave Quota */}
+            {user.status === 'active' && (
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="grid grid-cols-3 gap-3">
+                {quota.map((q) => (
+                  <div key={q.label} className="card p-3 text-center">
+                    <q.icon className="w-5 h-5 mx-auto mb-1" style={{ color: q.color }} strokeWidth={1.8} />
+                    <p className="text-2xl font-extrabold leading-none" style={{ color: q.color }}>{q.val}</p>
+                    <p className="text-[11px] mt-1" style={{ color: 'var(--text-muted)' }}>{q.label}</p>
+                  </div>
+                ))}
+              </motion.div>
+            )}
+
+            {/* Actions */}
+            <div className="grid grid-cols-3 gap-3">
+              {actions.map((a, i) => {
+                const Icon = a.icon;
                 return (
                   <motion.button
-                    key={i}
-                    initial={{ x: -20, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ delay: 0.2 + i * 0.07 }}
-                    onClick={() => router.push(item.href)}
-                    whileTap={{ scale: 0.98 }}
-                    className="card w-full p-4 flex items-center gap-3.5 group cursor-pointer"
+                    key={a.href}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 + i * 0.05 }}
+                    onClick={() => router.push(a.href)}
+                    whileTap={{ scale: 0.96 }}
+                    className="card p-4 flex flex-col items-center gap-2 cursor-pointer"
                   >
-                    <div
-                      className="w-10 h-10 rounded-[var(--radius-md)] flex items-center justify-center shrink-0"
-                      style={{ background: 'var(--bg-inset)' }}
-                    >
-                      <Icon className="w-[18px] h-[18px]" style={{ color: item.color }} strokeWidth={1.8} />
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--bg-inset)' }}>
+                      <Icon className="w-5 h-5" style={{ color: a.color }} strokeWidth={1.8} />
                     </div>
-                    <div className="flex-1 text-left min-w-0">
-                      <span className="text-fluid-sm font-semibold block" style={{ color: 'var(--text-primary)' }}>{item.label}</span>
-                      <span className="text-fluid-xs block" style={{ color: 'var(--text-muted)' }}>{item.sub}</span>
-                    </div>
-                    <ChevronRight className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5" style={{ color: 'var(--text-muted)' }} />
+                    <span className="text-[11px] font-semibold" style={{ color: 'var(--text-primary)' }}>{a.label}</span>
                   </motion.button>
                 );
               })}
             </div>
 
-            {/* Logout — small text link at bottom, with confirmation */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6 }}
-              className="flex justify-center lg:hidden mt-6 mb-2"
-            >
+            {/* Logout */}
+            <div className="flex justify-center lg:hidden pt-4">
               <button
-                onClick={() => { if (confirm('ต้องการออกจากระบบหรือไม่?')) handleLogout(); }}
-                className="flex items-center gap-1.5 text-fluid-xs py-2 px-4 rounded-full transition-colors"
+                onClick={() => { if (confirm('ต้องการออกจากระบบ?')) handleLogout(); }}
+                className="flex items-center gap-1.5 text-[11px] py-2 px-4 rounded-full"
                 style={{ color: 'var(--text-muted)' }}
               >
                 <LogOut className="w-3.5 h-3.5" />
                 ออกจากระบบ
               </button>
-            </motion.div>
+            </div>
           </div>
         </div>
       </div>
@@ -259,6 +178,3 @@ export default function DriverHomePage() {
     </div>
   );
 }
-
-
-

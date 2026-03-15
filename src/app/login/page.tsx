@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Truck, ChevronRight } from 'lucide-react';
+import { Rocket } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 import ParticleEmitter from '@/components/ParticleEmitter';
 
@@ -27,13 +27,13 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] flex flex-col items-center justify-center p-6 relative overflow-hidden" style={{ background: 'var(--bg-base)' }}>
-      {/* Particle VFX Background */}
-      <ParticleEmitter count={50} speed={0.3} maxSize={2.5} lineDistance={100} />
+    <div className="min-h-[100dvh] flex flex-col items-center justify-center p-6 relative overflow-hidden bg-[#0a0e1a]">
+      {/* Starfield */}
+      <ParticleEmitter count={100} />
 
-      {/* Gradient Orbs */}
-      <div className="absolute top-[-20%] left-[-10%] w-[60vw] h-[60vw] rounded-full opacity-20 blur-3xl animate-float" style={{ background: 'radial-gradient(circle, var(--accent) 0%, transparent 70%)' }} />
-      <div className="absolute bottom-[-15%] right-[-10%] w-[50vw] h-[50vw] rounded-full opacity-15 blur-3xl" style={{ background: 'radial-gradient(circle, var(--info) 0%, transparent 70%)', animation: 'float 4s ease-in-out infinite reverse' }} />
+      {/* Subtle nebula glow */}
+      <div className="absolute top-[-30%] left-[-15%] w-[70vw] h-[70vw] rounded-full opacity-[0.08] blur-[100px]" style={{ background: 'radial-gradient(circle, #6366f1, transparent 70%)' }} />
+      <div className="absolute bottom-[-25%] right-[-15%] w-[60vw] h-[60vw] rounded-full opacity-[0.06] blur-[100px]" style={{ background: 'radial-gradient(circle, #06b6d4, transparent 70%)' }} />
 
       <div className="absolute top-4 right-4 z-10">
         <ThemeToggle />
@@ -42,23 +42,20 @@ export default function LoginPage() {
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-        className="w-full max-w-[340px] relative z-10"
+        transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+        className="w-full max-w-[320px] relative z-10"
       >
-        {/* Logo with glow */}
+        {/* Logo */}
         <motion.div
           initial={{ scale: 0.5, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.15, type: 'spring', stiffness: 200, damping: 15 }}
-          className="flex justify-center mb-5"
+          transition={{ delay: 0.2, type: 'spring', stiffness: 180, damping: 14 }}
+          className="flex justify-center mb-6"
         >
           <div className="relative">
-            <div className="absolute inset-0 rounded-2xl blur-xl opacity-40" style={{ background: 'var(--accent)' }} />
-            <div
-              className="relative w-[72px] h-[72px] rounded-2xl flex items-center justify-center text-white animate-pulse-glow"
-              style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent-hover))', boxShadow: '0 8px 32px var(--accent-glow)' }}
-            >
-              <Truck className="w-9 h-9" strokeWidth={1.5} />
+            <div className="absolute inset-0 rounded-2xl blur-2xl opacity-50" style={{ background: '#6366f1' }} />
+            <div className="relative w-[68px] h-[68px] rounded-2xl flex items-center justify-center text-white" style={{ background: 'linear-gradient(135deg, #6366f1, #4f46e5)', boxShadow: '0 0 40px rgba(99,102,241,0.3)' }}>
+              <Rocket className="w-8 h-8" strokeWidth={1.5} />
             </div>
           </div>
         </motion.div>
@@ -67,38 +64,32 @@ export default function LoginPage() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25, duration: 0.5 }}
-          className="text-center mb-7"
+          transition={{ delay: 0.3 }}
+          className="text-center mb-8"
         >
-          <h1 className="text-fluid-3xl font-extrabold tracking-tight gradient-text">ITL Drivers</h1>
-          <p className="text-fluid-xs mt-1 font-medium" style={{ color: 'var(--text-muted)' }}>ระบบจัดการลาพนักงานขับรถ</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-white">ITL Fleet</h1>
+          <p className="text-sm mt-1.5 text-white/40 font-medium">ระบบจัดการพนักงานขนส่ง</p>
         </motion.div>
 
-        {/* Login Card — Glass */}
+        {/* Login Card */}
         <motion.div
-          initial={{ opacity: 0, y: 25, scale: 0.97 }}
+          initial={{ opacity: 0, y: 20, scale: 0.97 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ delay: 0.35, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ delay: 0.4, duration: 0.5 }}
           className="rounded-2xl p-6 backdrop-blur-md"
-          style={{
-            background: 'color-mix(in srgb, var(--bg-surface) 80%, transparent)',
-            border: '1px solid var(--border)',
-            boxShadow: '0 8px 40px rgba(0,0,0,0.08), 0 0 0 1px var(--border)',
-          }}
+          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 8px 40px rgba(0,0,0,0.3)' }}
         >
-          <p className="text-fluid-xs font-semibold text-center mb-4" style={{ color: 'var(--text-secondary)' }}>
-            เข้าสู่ระบบเพื่อเริ่มใช้งาน
+          <p className="text-xs text-center mb-5 text-white/50 font-medium">
+            ลงชื่อเข้าใช้ด้วยบัญชี LINE ของคุณ
           </p>
+
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
             onClick={handleLineLogin}
             disabled={loading}
             className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl text-white font-bold text-[15px] transition-all disabled:opacity-50 cursor-pointer"
-            style={{
-              background: 'linear-gradient(135deg, #06C755 0%, #04B44C 100%)',
-              boxShadow: '0 4px 20px rgba(6,199,85,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
-            }}
+            style={{ background: 'linear-gradient(135deg, #06C755 0%, #04B44C 100%)', boxShadow: '0 4px 24px rgba(6,199,85,0.3)' }}
           >
             {loading ? (
               <>
@@ -107,30 +98,11 @@ export default function LoginPage() {
               </>
             ) : (
               <>
-                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                  <path d={LINE_ICON_PATH} />
-                </svg>
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d={LINE_ICON_PATH} /></svg>
                 <span>เข้าสู่ระบบด้วย LINE</span>
               </>
             )}
           </motion.button>
-        </motion.div>
-
-        {/* Leader link */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          className="mt-5 text-center"
-        >
-          <a
-            href="/leader/login"
-            className="inline-flex items-center gap-1 text-fluid-xs font-medium transition-colors hover:opacity-80"
-            style={{ color: 'var(--text-muted)' }}
-          >
-            สำหรับหัวหน้างาน
-            <ChevronRight className="w-3.5 h-3.5" />
-          </a>
         </motion.div>
       </motion.div>
 
@@ -138,11 +110,10 @@ export default function LoginPage() {
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.8 }}
-        className="absolute bottom-6 text-[10px] font-medium tracking-wider uppercase z-10"
-        style={{ color: 'var(--text-muted)', opacity: 0.5 }}
+        transition={{ delay: 1 }}
+        className="absolute bottom-6 text-[10px] font-medium tracking-widest uppercase z-10 text-white/20"
       >
-        ITL Fleet Management System
+        ITL Fleet Management
       </motion.p>
     </div>
   );

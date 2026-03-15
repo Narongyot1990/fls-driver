@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { CheckSquare, Users, PenSquare, CalendarDays, Clock, User, ChevronRight, LogOut, ClipboardCheck, Settings } from 'lucide-react';
+import { CheckSquare, Users, Clock, CalendarDays, ClipboardCheck, PenSquare, Settings, User, LogOut, ChevronRight } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -11,82 +11,23 @@ import { usePusherMulti } from '@/hooks/usePusher';
 import { useForceLogout } from '@/hooks/useForceLogout';
 import { performLogout } from '@/lib/logout';
 
-interface LeaderUser {
-  id: string;
-  _id?: string;
-  name: string;
-  email: string;
-}
-
-const menuItems = [
-  // Primary Actions
-  { icon: Clock, label: 'ลงเวลาทำงาน', sub: 'บันทึกเวลาเข้า-ออกงานปัจจุบัน', href: '/leader/attendance', color: 'var(--accent)' },
-  { icon: CheckSquare, label: 'อนุมัติการลา', sub: 'จัดการคำขอลาพักผ่อนของพนักงาน', href: '/leader/approve', color: 'var(--success)' },
-  { icon: ClipboardCheck, label: 'งานมอบหมาย (Tasks)', sub: 'ส่งงานหรือข้อสอบให้พนักงาน', href: '/leader/tasks', color: 'var(--info)' },
-  
-  // Team Management
-  { icon: Users, label: 'รายชื่อพนักงาน', sub: 'จัดการพนักงานในความดูแล', href: '/leader/drivers', color: 'var(--accent)' },
-  { icon: Clock, label: 'ประวัติการลงเวลา', sub: 'ดูบันทึกย้อนหลังของสาขา', href: '/leader/history', color: 'var(--text-muted)' },
-  { icon: PenSquare, label: 'บันทึกการแทนงาน', sub: 'จัดเก็บข้อมูลการทำงานแทนกัน', href: '/leader/substitute', color: 'var(--info)' },
-  
-  // System & Overview
-  { icon: CalendarDays, label: 'ภาพรวม Dashboard', sub: 'ตารางวันลาและสถานะสาขา', href: '/dashboard', color: 'var(--warning)' },
-  { icon: User, label: 'แก้ไขข้อมูลส่วนตัว', sub: 'อัปเดตโปรไฟล์และรูปภาพ', href: '/leader/profile-edit', color: 'var(--danger)' },
-  { icon: Settings, label: 'ตั้งค่าระบบ', sub: 'ข้อมูลสาขาและการตั้งค่าทั่วไป', href: '/leader/settings', color: 'var(--text-muted)' },
+const menu = [
+  { icon: Clock, label: 'ลงเวลา', href: '/leader/attendance', color: 'var(--accent)' },
+  { icon: CheckSquare, label: 'อนุมัติลา', href: '/leader/approve', color: 'var(--success)', badge: 'leave' },
+  { icon: ClipboardCheck, label: 'มอบหมายงาน', href: '/leader/tasks', color: 'var(--info)' },
+  { icon: Users, label: 'พนักงาน', href: '/leader/drivers', color: 'var(--accent)', badge: 'driver' },
+  { icon: CalendarDays, label: 'Dashboard', href: '/dashboard', color: 'var(--warning)' },
+  { icon: PenSquare, label: 'แทนงาน', href: '/leader/substitute', color: 'var(--info)' },
+  { icon: Clock, label: 'ประวัติ', href: '/leader/history', color: 'var(--text-muted)' },
+  { icon: Settings, label: 'ตั้งค่า', href: '/leader/settings', color: 'var(--text-muted)' },
 ];
-
-const MenuCard = ({ item, i, compact = false, pendingLeaveCount = 0, pendingDriverCount = 0 }: any) => {
-  const router = useRouter();
-  const Icon = item.icon;
-  const isApprove = item.href === '/leader/approve';
-  const isDrivers = item.href === '/leader/drivers';
-  const badgeCount = isApprove ? pendingLeaveCount : isDrivers ? pendingDriverCount : 0;
-
-  return (
-    <motion.button
-      initial={{ y: 15, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ delay: 0.1 + i * 0.05 }}
-      onClick={() => router.push(item.href)}
-      whileTap={{ scale: 0.98 }}
-      className={`card w-full flex items-center gap-3.5 group cursor-pointer relative overflow-hidden ${compact ? 'p-3' : 'p-4'}`}
-    >
-      <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-transparent to-black/5 dark:to-white/5 opacity-30 -mr-8 -mt-8 rotate-45" />
-      
-      {badgeCount > 0 && (
-        <span className="absolute top-3 right-3 min-w-[18px] h-[18px] px-1.5 rounded-full bg-[var(--danger)] text-white text-[10px] font-black flex items-center justify-center shadow-lg border-2 border-[var(--bg-surface)]"
-          style={{ zIndex: 10 }}>
-          {badgeCount > 99 ? '99+' : badgeCount}
-        </span>
-      )}
-
-      <div
-        className={`${compact ? 'w-8 h-8' : 'w-10 h-10'} rounded-xl flex items-center justify-center shrink-0 border border-[var(--border)] transition-colors group-hover:border-[var(--accent)]`}
-        style={{ background: 'var(--bg-inset)' }}
-      >
-        <Icon className={`${compact ? 'w-4 h-4' : 'w-[18px] h-[18px]'}`} style={{ color: item.color }} strokeWidth={2} />
-      </div>
-
-      <div className="flex-1 text-left min-w-0">
-        <span className={`${compact ? 'text-[11px]' : 'text-fluid-sm'} font-black block leading-tight truncate`} style={{ color: 'var(--text-primary)' }}>
-          {item.label}
-        </span>
-        {!compact && <span className="text-[10px] font-medium block truncate mt-0.5" style={{ color: 'var(--text-muted)' }}>{item.sub}</span>}
-      </div>
-      {!compact && <ChevronRight className="w-4 h-4 shrink-0 transition-transform group-hover:translate-x-0.5 opacity-30" />}
-    </motion.button>
-  );
-};
-
-const BRANCHES = ['AYA', 'CBI', 'RA2', 'KSN', 'BBT'];
 
 export default function LeaderHomePage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<'leader' | 'admin'>('leader');
-  const [pendingLeaveCount, setPendingLeaveCount] = useState(0);
-  const [pendingDriverCount, setPendingDriverCount] = useState(0);
-  const [selectedBranch, setSelectedBranch] = useState<string>('all');
+  const [pendingLeave, setPendingLeave] = useState(0);
+  const [pendingDriver, setPendingDriver] = useState(0);
 
   useEffect(() => {
     const fetchMe = async () => {
@@ -96,69 +37,49 @@ export default function LeaderHomePage() {
         if (data.success) {
           setUser(data.user);
           setRole(data.user.role || 'leader');
-          if (data.user.role === 'admin') {
-            setSelectedBranch('all');
-          } else {
-            setSelectedBranch(data.user.branch || 'all');
-          }
         } else {
-          router.push('/leader/login');
+          router.push('/login');
         }
       } catch {
-        router.push('/leader/login');
+        router.push('/login');
       }
     };
     fetchMe();
   }, [router]);
 
-  const fetchCounts = async () => {
+  const fetchCounts = useCallback(async () => {
     try {
       let url = '/api/counts?type=all';
-      if (role === 'admin' && selectedBranch !== 'all') {
-        url += `&branch=${selectedBranch}`;
-      } else if (role === 'leader' && user?.branch) {
-        url += `&branch=${user.branch}`;
-      }
+      if (role === 'leader' && user?.branch) url += `&branch=${user.branch}`;
       const res = await fetch(url);
       const data = await res.json();
       if (data.success) {
-        setPendingLeaveCount(data.counts.pendingLeaves);
-        setPendingDriverCount(data.counts.pendingDrivers);
+        setPendingLeave(data.counts.pendingLeaves);
+        setPendingDriver(data.counts.pendingDrivers);
       }
-    } catch (err) {
-      console.error('Failed to fetch counts:', err);
-    }
-  };
+    } catch { /* ignore */ }
+  }, [role, user]);
 
-  useEffect(() => {
-    if (!user) return;
-    fetchCounts();
-  }, [user, role, selectedBranch]);
+  useEffect(() => { if (user) fetchCounts(); }, [user, fetchCounts]);
 
-  // Pusher realtime — update badge counts
-  const refetchCounts = useCallback(async () => {
-    fetchCounts();
-  }, [role, selectedBranch, user]);
-
-  // Force logout when admin changes role
   useForceLogout(user?.id || user?._id, 'leader');
 
   usePusherMulti([
     { channel: 'leave-requests', bindings: [
-      { event: 'new-leave-request', callback: refetchCounts },
-      { event: 'leave-status-changed', callback: refetchCounts },
-      { event: 'leave-cancelled', callback: refetchCounts },
+      { event: 'new-leave-request', callback: fetchCounts },
+      { event: 'leave-status-changed', callback: fetchCounts },
+      { event: 'leave-cancelled', callback: fetchCounts },
     ]},
     { channel: 'users', bindings: [
-      { event: 'new-driver', callback: refetchCounts },
-      { event: 'driver-activated', callback: refetchCounts },
-      { event: 'driver-deleted', callback: refetchCounts },
+      { event: 'new-driver', callback: fetchCounts },
+      { event: 'driver-activated', callback: fetchCounts },
+      { event: 'driver-deleted', callback: fetchCounts },
     ]},
   ], !!user);
 
   const handleLogout = async () => {
-    const loginPath = await performLogout('leader');
-    router.push(loginPath);
+    const path = await performLogout('leader');
+    router.push(path);
   };
 
   if (!user) return null;
@@ -169,130 +90,77 @@ export default function LeaderHomePage() {
 
       <div className="lg:pl-[240px] pb-[72px] lg:pb-6">
         {/* Header */}
-        <header className="px-4 lg:px-8 pt-6 pb-2">
-          <div className="max-w-3xl mx-auto">
-            <motion.div
-              initial={{ y: -10, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              className="flex items-center gap-3"
-            >
-                <div className="relative">
-                  <div
-                    className="w-12 h-12 rounded-[var(--radius-md)] flex items-center justify-center text-white font-bold"
-                    style={{ background: 'var(--accent)', boxShadow: 'var(--shadow-sm)' }}
-                  >
-                    {user.name.charAt(0)}
-                  </div>
-                  {user.status === 'active' && (
-                    <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full" style={{ background: 'var(--success)', border: '2px solid var(--bg-base)' }} />
-                  )}
-                </div>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-fluid-lg font-bold truncate" style={{ color: 'var(--text-primary)' }}>{user.name}</h1>
-                <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>
-                  {role === 'admin' ? 'ผู้ดูแลระบบ (ทุกสาขา)' : `หัวหน้างาน (สาขา ${user.branch || '-'})`}
-                </p>
-              </div>
-              <ThemeToggle />
-            </motion.div>
+        <header className="px-4 lg:px-8 pt-5 pb-3">
+          <div className="max-w-2xl mx-auto flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-lg" style={{ background: 'var(--accent)' }}>
+              {user.name?.charAt(0) || 'L'}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-fluid-lg font-bold truncate" style={{ color: 'var(--text-primary)' }}>{user.name}</h1>
+              <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>
+                {role === 'admin' ? 'ผู้ดูแลระบบ' : `หัวหน้า ${user.branch || ''}`}
+              </p>
+            </div>
+            <ThemeToggle />
           </div>
         </header>
 
-        <div className="px-4 lg:px-8 py-4">
-          <div className="max-w-3xl mx-auto space-y-4">
-            
-            {/* Pending Status */}
-            {user.status === 'pending' && (
-              <motion.div
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.1 }}
-                className="card p-5 text-center"
-                style={{ borderLeftWidth: '4px', borderLeftColor: 'var(--warning)' }}
-              >
-                <div className="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: 'var(--warning-light)' }}>
-                  <CheckSquare className="w-5 h-5" style={{ color: 'var(--warning)' }} />
-                </div>
-                <p className="text-fluid-sm font-semibold" style={{ color: 'var(--warning)' }}>บัญชีอยู่ระหว่างตรวจสอบ</p>
-                <p className="text-fluid-xs mt-1" style={{ color: 'var(--text-muted)' }}>กรุณารอผู้ดูแลระบบอนุมัติการใช้งาน Leader</p>
-              </motion.div>
-            )}
+        <div className="px-4 lg:px-8">
+          <div className="max-w-2xl mx-auto space-y-4">
 
-            {/* Branch Filter for Admin */}
-            {role === 'admin' && (
-              <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex overflow-x-auto pb-2 gap-2 scrollbar-hide">
-                <button
-                  onClick={() => setSelectedBranch('all')}
-                  className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${selectedBranch === 'all' ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'bg-surface text-muted border border-border'}`}
-                >
-                  ทุกสาขา
-                </button>
-                {BRANCHES.map(b => (
-                  <button
-                    key={b}
-                    onClick={() => setSelectedBranch(b)}
-                    className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${selectedBranch === b ? 'bg-accent text-white shadow-lg shadow-accent/20' : 'bg-surface text-muted border border-border'}`}
-                  >
-                    สาขา {b}
+            {/* Stat badges */}
+            {(pendingLeave > 0 || pendingDriver > 0) && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 gap-3">
+                {pendingLeave > 0 && (
+                  <button onClick={() => router.push('/leader/approve')} className="card p-3 text-center cursor-pointer">
+                    <p className="text-2xl font-extrabold" style={{ color: 'var(--warning)' }}>{pendingLeave}</p>
+                    <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>รออนุมัติลา</p>
                   </button>
-                ))}
+                )}
+                {pendingDriver > 0 && (
+                  <button onClick={() => router.push('/leader/drivers')} className="card p-3 text-center cursor-pointer">
+                    <p className="text-2xl font-extrabold" style={{ color: 'var(--accent)' }}>{pendingDriver}</p>
+                    <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>พนักงานใหม่</p>
+                  </button>
+                )}
               </motion.div>
             )}
 
-            {/* Dashboard Sections */}
-            <div className="space-y-8">
-              {/* Operations Group */}
-              <section>
-                <div className="flex items-center justify-between mb-3 px-1">
-                  <h2 className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>งานบริหาร (Operations)</h2>
-                  <div className="h-[1px] flex-1 ml-4 bg-gradient-to-r from-[var(--border)] to-transparent opacity-50" />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {menuItems.slice(0, 3).map((item, i) => (
-                    <MenuCard key={item.label} item={item} i={i} pendingLeaveCount={pendingLeaveCount} pendingDriverCount={pendingDriverCount} />
-                  ))}
-                </div>
-              </section>
-
-              {/* Monitoring & Tracking */}
-              <section>
-                <div className="flex items-center justify-between mb-3 px-1">
-                  <h2 className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>การติดตาม (Monitoring)</h2>
-                  <div className="h-[1px] flex-1 ml-4 bg-gradient-to-r from-[var(--border)] to-transparent opacity-50" />
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {menuItems.slice(3, 6).map((item, i) => (
-                    <MenuCard key={item.label} item={item} i={i} compact />
-                  ))}
-                </div>
-              </section>
-
-              {/* Account & Settings */}
-              <section>
-                <div className="flex items-center justify-between mb-3 px-1">
-                  <h2 className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>บัญชีและตั้งค่า (Account)</h2>
-                  <div className="h-[1px] flex-1 ml-4 bg-gradient-to-r from-[var(--border)] to-transparent opacity-50" />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {menuItems.slice(6).map((item, i) => (
-                    <MenuCard key={item.label} item={item} i={i} />
-                  ))}
-                </div>
-              </section>
+            {/* Menu grid */}
+            <div className="grid grid-cols-4 gap-3">
+              {menu.map((m, i) => {
+                const Icon = m.icon;
+                const badge = m.badge === 'leave' ? pendingLeave : m.badge === 'driver' ? pendingDriver : 0;
+                return (
+                  <motion.button
+                    key={m.href}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.05 + i * 0.03 }}
+                    onClick={() => router.push(m.href)}
+                    whileTap={{ scale: 0.95 }}
+                    className="card p-3 flex flex-col items-center gap-1.5 cursor-pointer relative"
+                  >
+                    {badge > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-[var(--danger)] text-white text-[9px] font-bold flex items-center justify-center">{badge > 99 ? '99+' : badge}</span>
+                    )}
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'var(--bg-inset)' }}>
+                      <Icon className="w-[18px] h-[18px]" style={{ color: m.color }} strokeWidth={1.8} />
+                    </div>
+                    <span className="text-[10px] font-semibold leading-tight text-center" style={{ color: 'var(--text-primary)' }}>{m.label}</span>
+                  </motion.button>
+                );
+              })}
             </div>
 
-            <motion.button
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleLogout}
-              className="btn btn-ghost w-full lg:hidden mt-4"
-              style={{ color: 'var(--danger)' }}
-            >
-              <LogOut className="w-4 h-4" />
-              ออกจากระบบ
-            </motion.button>
+            {/* Logout */}
+            <div className="flex justify-center lg:hidden pt-2">
+              <button onClick={() => { if (confirm('ออกจากระบบ?')) handleLogout(); }} className="flex items-center gap-1.5 text-[11px] py-2 px-4 rounded-full" style={{ color: 'var(--text-muted)' }}>
+                <LogOut className="w-3.5 h-3.5" />
+                ออกจากระบบ
+              </button>
+            </div>
+
           </div>
         </div>
       </div>
