@@ -152,7 +152,7 @@ export default function AdminHomePage() {
                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                   <h3 className="text-[10px] font-black uppercase tracking-widest opacity-30">Operations</h3>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-4 gap-2">
                   <MenuCard label="อนุมัติลา" icon={CheckSquare} href="/leader/approve" color="var(--success)" desc="Leaves" />
                   <MenuCard label="ประวัติ" icon={Clock} href="/leader/history" color="var(--text-muted)" desc="History" />
                   <MenuCard label="พนักงาน" icon={Users} href="/leader/drivers" color="var(--accent)" desc="Drivers" />
@@ -166,12 +166,10 @@ export default function AdminHomePage() {
                   <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
                   <h3 className="text-[10px] font-black uppercase tracking-widest opacity-30">Infrastructure</h3>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <MenuCard label="Dashboard" icon={CalendarDays} href="/dashboard" color="var(--warning)" desc="Analytics" />
+                <div className="grid grid-cols-3 gap-2">
+                  <MenuCard label="วิเคราะห์" icon={CalendarDays} href="/dashboard" color="var(--warning)" desc="Analytics" />
                   <MenuCard label="สาขา" icon={MapPin} href="/admin/branches" color="var(--info)" desc="Branches" />
-                  <div className="col-span-2">
-                    <MenuCard label="ตั้งค่าระบบ" icon={User} href="/leader/settings" color="var(--text-muted)" desc="User & System Settings" horizontal />
-                  </div>
+                  <MenuCard label="ตั้งค่า" icon={User} href="/leader/settings" color="var(--text-muted)" desc="Settings" />
                 </div>
               </div>
             </div>
@@ -193,14 +191,14 @@ function MenuCard({ label, icon: Icon, href, color, desc, horizontal }: any) {
     <motion.button
       whileTap={{ scale: 0.96 }}
       onClick={() => router.push(href)}
-      className={`card p-4 flex ${horizontal ? 'items-center gap-4' : 'flex-col items-center gap-2'} cursor-pointer group transition-all`}
+      className={`card p-2 flex ${horizontal ? 'items-center gap-3' : 'flex-col items-center gap-1.5'} cursor-pointer group transition-all min-h-[70px] justify-center`}
     >
-      <div className="w-10 h-10 rounded-xl bg-[var(--bg-inset)] flex items-center justify-center group-hover:bg-[var(--bg-surface)] transition-colors">
-        <Icon className="w-5 h-5" style={{ color }} strokeWidth={2.2} />
+      <div className="w-8 h-8 rounded-lg bg-[var(--bg-inset)] flex items-center justify-center group-hover:bg-[var(--bg-surface)] transition-colors shrink-0">
+        <Icon className="w-4 h-4" style={{ color }} strokeWidth={2.5} />
       </div>
       <div className={horizontal ? 'text-left' : 'text-center'}>
-        <p className="text-[12px] font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>{label}</p>
-        <p className="text-[8px] font-bold opacity-30 uppercase tracking-widest">{desc}</p>
+        <p className="text-[10px] font-black tracking-tight leading-none" style={{ color: 'var(--text-primary)' }}>{label}</p>
+        <p className="text-[7px] font-bold opacity-30 uppercase tracking-tighter mt-1">{desc}</p>
       </div>
     </motion.button>
   );

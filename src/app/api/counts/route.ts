@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
     if (!type || type === 'all') {
       const [pendingLeaves, pendingDrivers, totalLeaders, activeDrivers] = await Promise.all([
         LeaveRequest.countDocuments(leaveFilter),
-        User.countDocuments(userFilter),
+        User.countDocuments({ role: 'driver', status: 'pending' }),
         User.countDocuments({ role: 'leader' }),
         User.countDocuments({ role: 'driver', status: 'active' })
       ]);
