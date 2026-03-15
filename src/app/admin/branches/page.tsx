@@ -87,6 +87,20 @@ export default function AdminBranchesPage() {
       return;
     }
 
+    // Validate coordinates
+    if (form.lat && form.lon) {
+      const lat = parseFloat(form.lat);
+      const lon = parseFloat(form.lon);
+      if (isNaN(lat) || isNaN(lon)) {
+        showToast('error', 'พิกัด Latitude/Longitude ไม่ถูกต้อง');
+        return;
+      }
+      if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+        showToast('error', 'พิกัดอยู่นอกช่วงที่ถูกต้อง');
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const payload = {

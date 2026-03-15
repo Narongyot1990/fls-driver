@@ -3,6 +3,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 export interface IAttendance extends Document {
   userId: mongoose.Types.ObjectId;
   userName: string;
+  userImage?: string;
   type: 'in' | 'out';
   branch: string;
   location: {
@@ -18,6 +19,7 @@ const AttendanceSchema = new Schema<IAttendance>(
   {
     userId: { type: Schema.Types.ObjectId, ref: 'Leader', required: true },
     userName: { type: String, required: true },
+    userImage: { type: String },
     type: { type: String, enum: ['in', 'out'], required: true },
     branch: { type: String, required: true },
     location: {

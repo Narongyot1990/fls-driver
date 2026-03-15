@@ -4,7 +4,7 @@ import { requireSuperuser } from '@/lib/api-auth';
 import { triggerPusher, CHANNELS, EVENTS } from '@/lib/pusher';
 
 const DEFAULT_BRANCHES = [
-  { code: 'AYA', name: 'AYA', description: '', location: { lat: 12.709902, lon: 101.307697 }, radius: 50, active: true },
+  { code: 'AYA', name: 'AYA', description: '', location: { lat: 14.234071, lon: 100.693918 }, radius: 450, active: true },
   { code: 'CBI', name: 'CBI', description: '', location: null, radius: 50, active: true },
   { code: 'RA2', name: 'RA2', description: '', location: null, radius: 50, active: true },
   { code: 'KSN', name: 'KSN', description: '', location: null, radius: 50, active: true },

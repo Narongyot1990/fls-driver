@@ -89,12 +89,14 @@ export async function POST(request: NextRequest) {
     
     await dbConnect();
 
-    // Fetch user name from Leader model if not in payload
+    // Fetch user name and image from Leader model if not in payload
     const { Leader } = await import('@/models/Leader');
     let userName = 'Unknown';
+    let userImage: string | undefined;
     if (mongoose.Types.ObjectId.isValid(userId)) {
       const userDoc = await Leader.findById(userId);
       userName = userDoc?.name || 'Unknown';
+      userImage = userDoc?.lineProfileImage;
     } else if (userId === 'admin_root') {
       userName = 'ITL Administrator';
     }
@@ -102,6 +104,7 @@ export async function POST(request: NextRequest) {
     const record = await Attendance.create({
       userId,
       userName,
+      userImage,
       type,
       branch: branchCode,
       location,
