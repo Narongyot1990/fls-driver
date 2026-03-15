@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, CalendarDays, Users, Rss, User, CheckSquare, ClipboardList, Contact2 } from 'lucide-react';
+import { Home, CalendarDays, Users, Rss, User, CheckSquare, ClipboardCheck, Settings } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface NavItem {
@@ -15,24 +15,16 @@ const driverNav: NavItem[] = [
   { icon: Home, label: 'หน้าหลัก', href: '/home' },
   { icon: CalendarDays, label: 'ปฏิทิน', href: '/dashboard' },
   { icon: Rss, label: 'Moments', href: '/car-wash/feed' },
-  { icon: Contact2, label: 'ผู้ติดต่อ', href: '/contacts' },
+  { icon: ClipboardCheck, label: 'งานของฉัน', href: '/tasks' },
   { icon: User, label: 'โปรไฟล์', href: '/profile' },
 ];
 
-const leaderNav: NavItem[] = [
+const managementNav: NavItem[] = [
   { icon: Home, label: 'หน้าหลัก', href: '/leader/home' },
   { icon: CalendarDays, label: 'ปฏิทิน', href: '/dashboard' },
-  { icon: Rss, label: 'Moments', href: '/leader/car-wash' },
-  { icon: ClipboardList, label: 'ประวัติ', href: '/leader/history' },
+  { icon: CheckSquare, label: 'อนุมัติลา', href: '/leader/approve' },
   { icon: Users, label: 'พนักงาน', href: '/leader/drivers' },
-];
-
-const adminNav: NavItem[] = [
-  { icon: Home, label: 'หน้าหลัก', href: '/admin/home' },
-  { icon: CalendarDays, label: 'ปฏิทิน', href: '/dashboard' },
-  { icon: CheckSquare, label: 'อนุมัติ', href: '/leader/approve' },
-  { icon: Users, label: 'พนักงาน', href: '/leader/drivers' },
-  { icon: User, label: 'โปรไฟล์', href: '/leader/profile-edit' },
+  { icon: Settings, label: 'ตั้งค่า', href: '/leader/settings' },
 ];
 
 export default function BottomNav({ role }: { role: 'driver' | 'leader' | 'admin' }) {
@@ -40,10 +32,8 @@ export default function BottomNav({ role }: { role: 'driver' | 'leader' | 'admin
   const router = useRouter();
 
   let items = driverNav;
-  if (role === 'admin') {
-    items = adminNav;
-  } else if (role === 'leader') {
-    items = leaderNav;
+  if (role === 'admin' || role === 'leader') {
+    items = managementNav;
   }
 
   return (
