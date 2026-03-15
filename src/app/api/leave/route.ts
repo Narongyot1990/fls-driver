@@ -32,15 +32,25 @@ export async function GET(request: NextRequest) {
           branch: { $regex: new RegExp(`^${userBranch}$`, 'i') } 
         }).select('_id');
         const branchUserIds = branchUsers.map(u => u._id);
-        query.userId = { $in: [...branchUserIds, authUserId] };
-      } else {
+        
+        const targetIds = [...branchUserIds];
+        if (mongoose.Types.ObjectId.isValid(authUserId)) {
+          targetIds.push(new mongoose.Types.ObjectId(authUserId) as any);
+        }
+        query.userId = { $in: targetIds };
+      } else if (mongoose.Types.ObjectId.isValid(authUserId)) {
         query.userId = authUserId;
       }
     } else if (role === 'leader' && userBranch) {
       // Leader: sees all leaves in their branch (case-insensitive)
       const branchUsers = await User.find({ branch: { $regex: new RegExp(`^${userBranch}$`, 'i') } }).select('_id');
       const branchUserIds = branchUsers.map(u => u._id);
-      query.userId = { $in: [...branchUserIds, authUserId] };
+      
+      const targetIds = [...branchUserIds];
+      if (mongoose.Types.ObjectId.isValid(authUserId)) {
+        targetIds.push(new mongoose.Types.ObjectId(authUserId) as any);
+      }
+      query.userId = { $in: targetIds };
     } else if (role === 'admin') {
       // Admin: sees all unless explicit branch param provided
       if (branch && branch !== 'all') {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
+import mongoose from 'mongoose';
 import { requireAuth } from '@/lib/api-auth';
 import { Attendance } from '@/models/Attendance';
 import { triggerPusher, CHANNELS, EVENTS } from '@/lib/pusher';
@@ -38,9 +39,13 @@ export async function GET(request: NextRequest) {
     const { role, userId: currentUserId, branch: userBranch } = authResult.payload;
 
     if (role === 'leader') {
-      query.userId = currentUserId;
+      if (mongoose.Types.ObjectId.isValid(currentUserId)) {
+        query.userId = currentUserId;
+      }
     } else if (role === 'admin') {
-      if (userId) query.userId = userId;
+      if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+        query.userId = userId;
+      }
       if (branch) query.branch = branch;
     }
 
@@ -86,8 +91,13 @@ export async function POST(request: NextRequest) {
 
     // Fetch user name from Leader model if not in payload
     const { Leader } = await import('@/models/Leader');
-    const userDoc = await Leader.findById(userId);
-    const userName = userDoc?.name || 'Unknown';
+    let userName = 'Unknown';
+    if (mongoose.Types.ObjectId.isValid(userId)) {
+      const userDoc = await Leader.findById(userId);
+      userName = userDoc?.name || 'Unknown';
+    } else if (userId === 'admin_root') {
+      userName = 'ITL Administrator';
+    }
 
     const record = await Attendance.create({
       userId,

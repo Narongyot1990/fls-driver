@@ -23,7 +23,19 @@ export async function GET() {
     const userRole = tokenPayload.role;
     const userId = tokenPayload.userId;
 
-    // Check in User model first (for both drivers and newer LINE-based leaders/admins)
+    // Special case for root administrator
+    if (userId === 'admin_root') {
+      return NextResponse.json({
+        success: true,
+        user: {
+          id: 'admin_root',
+          email: 'administrator@fls.com',
+          name: 'ITL Administrator',
+          role: 'admin',
+          status: 'active',
+        },
+      });
+    }
     const user = await User.findById(userId);
     
     if (user) {

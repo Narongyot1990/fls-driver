@@ -17,8 +17,11 @@ export async function GET(request: NextRequest) {
     await dbConnect();
 
     const query: Record<string, unknown> = {};
-    if (userId) {
+    if (userId && mongoose.Types.ObjectId.isValid(userId)) {
       query.userId = userId;
+    } else if (userId) {
+      // Return empty if invalid ID (like admin_root)
+      return NextResponse.json({ success: true, records: [] });
     }
 
     const records = await SubstituteRecord.find(query)
