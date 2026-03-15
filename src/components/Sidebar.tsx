@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, CalendarDays, Clock, User, FileText, Users, CheckSquare, ClipboardList, Settings, PenSquare, LogOut, Car, Rss, Contact2, MapPin } from 'lucide-react';
+import { Home, Clock, User, FileText, Users, CheckSquare, Settings, PenSquare, LogOut, Car, Rss, Contact2, MapPin, Navigation, History as HistoryIcon, CalendarDays, ClipboardList } from 'lucide-react';
 import { motion } from 'framer-motion';
 import ThemeToggle from './ThemeToggle';
 
@@ -70,7 +70,7 @@ export default function Sidebar({ role }: { role: 'driver' | 'leader' | 'admin' 
     
     // Management
     { icon: Users, label: 'จัดการพนักงาน', href: '/leader/drivers' },
-    { icon: History, label: 'ตรวจสอบประวัติ', href: '/leader/history' },
+    { icon: HistoryIcon, label: 'ตรวจสอบประวัติ', href: '/leader/history' },
     { icon: FileText, label: 'บันทึกการแทน', href: '/leader/substitute' },
     
     // System

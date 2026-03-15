@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Plus, Trash2, Edit2, Check, X, Save, Search, Settings, ShieldAlert, Navigation, Target } from 'lucide-react';
+import { MapPin, Plus, Trash2, Edit2, X, Save, Search, Navigation, Target } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import PageHeader from '@/components/PageHeader';
 import Sidebar from '@/components/Sidebar';
-import { useBranches } from '@/hooks/useBranches';
+import { useBranches, Branch } from '@/hooks/useBranches';
 import { useToast } from '@/components/Toast';
 
 // Dynamically import map to avoid SSR issues
@@ -44,7 +44,7 @@ export default function AdminBranchesPage() {
 
   const [saving, setSaving] = useState(false);
 
-  const startEdit = (branch: any) => {
+  const startEdit = (branch: Branch) => {
     setEditingBranch(branch.code);
     setForm({
       code: branch.code,

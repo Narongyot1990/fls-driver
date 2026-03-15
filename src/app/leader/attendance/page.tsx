@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { MapPin, Clock, CheckCircle2, AlertCircle, ChevronRight, History, Navigation, LocateFixed, LogOut, Trash2 } from 'lucide-react';
+import { MapPin, Clock, CheckCircle2, AlertCircle, ChevronRight, History as HistoryIcon, Navigation as NavIcon, LocateFixed, LogOut, Trash2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import PageHeader from '@/components/PageHeader';
 import BottomNav from '@/components/BottomNav';
@@ -49,7 +49,7 @@ export default function AttendancePage() {
     fetchMe();
   }, []);
 
-  const fetchRecords = async () => {
+  const fetchRecords = useCallback(async () => {
     try {
       const today = new Date().toISOString().split('T')[0];
       const res = await fetch(`/api/attendance?date=${today}`);
@@ -60,7 +60,7 @@ export default function AttendancePage() {
     } catch (err) {
       console.error(err);
     }
-  };
+  }, [showToast]);
 
   useEffect(() => {
     if (user) {
@@ -296,7 +296,7 @@ export default function AttendancePage() {
               <div className="space-y-2">
                 {records.length === 0 ? (
                   <div className="p-8 text-center bg-[var(--bg-inset)] rounded-2xl border border-dashed border-[var(--border)]">
-                    <History className="w-6 h-6 mx-auto mb-2 opacity-20" />
+                    <HistoryIcon className="w-6 h-6 mx-auto mb-2 opacity-20" />
                     <p className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>ยังไม่มีบันทึกเวลาของวันนี้</p>
                   </div>
                 ) : (
