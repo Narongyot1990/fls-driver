@@ -134,7 +134,7 @@ export default function LeaderSettingsPage() {
                      </div>
                      <div>
                         <h2 className="text-sm font-black uppercase tracking-tight" style={{ color: 'var(--text-primary)' }}>ข้อมูลส่วนตัว</h2>
-                        <p className="text-[10px] font-bold text-muted uppercase tracking-widest">{user.email}</p>
+                        <p className="text-[10px] font-bold text-muted uppercase tracking-widest">{user?.email || 'Loading...'}</p>
                      </div>
                   </div>
                   <div className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.1em] ${role === 'admin' ? 'bg-indigo-500/10 text-indigo-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
@@ -183,7 +183,7 @@ export default function LeaderSettingsPage() {
 
                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5">
                   {branches.map((branch) => {
-                    const isAssigned = user.branch === branch.code || role === 'admin';
+                    const isAssigned = user?.branch === branch.code || role === 'admin';
                     return (
                       <div
                         key={branch.code}

@@ -69,7 +69,7 @@ interface BranchMapProps {
 function MapUpdater({ center }: { center: [number, number] }) {
   const map = useMap();
   useEffect(() => {
-    map.setView(center, map.getBounds ? undefined : map.getZoom());
+    map.setView(center, map.getZoom());
   }, [center, map]);
   return null;
 }
