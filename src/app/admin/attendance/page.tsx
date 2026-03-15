@@ -492,11 +492,23 @@ export default function AttendanceMonitorPage() {
           {/* Column Headers */}
           <div className="flex shrink-0 border-b border-[var(--border)] bg-[var(--bg-surface)]">
             {/* Staff column header - hidden on mobile */}
-            <div className="hidden md:block w-[140px] md:w-[180px] shrink-0 border-r border-[var(--border)] bg-slate-50 dark:bg-slate-900/50 flex items-center px-3 py-2 sticky left-0 z-20">
+            <div className="hidden md:flex w-[140px] md:w-[180px] shrink-0 border-r border-[var(--border)] bg-slate-50 dark:bg-slate-900/50 items-center px-3 py-2 sticky left-0 z-20">
               <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Staff ({filteredTimelineData.length})</span>
             </div>
             {/* Timeline column headers */}
-            <div className="flex-1 overflow-x-auto custom-scrollbar" ref={scrollContainerRef}>
+            <div
+              className="flex-1 overflow-x-auto custom-scrollbar"
+              ref={scrollContainerRef}
+              onScroll={(e) => {
+                if (isSyncingRef.current) return;
+                isSyncingRef.current = true;
+                const scrollLeft = e.currentTarget.scrollLeft;
+                rowScrollRefs.current.forEach((el) => {
+                  el.scrollLeft = scrollLeft;
+                });
+                isSyncingRef.current = false;
+              }}
+            >
               <div className="flex min-w-max">
                 {columnHeaders.map(col => (
                   <div key={col.key}
@@ -549,7 +561,7 @@ export default function AttendanceMonitorPage() {
                     onClick={() => setSelectedUser(isSelected ? null : user.id)}>
 
                     {/* Staff Info (sticky left) - hidden on mobile */}
-                    <div className="hidden md:block w-[140px] md:w-[180px] shrink-0 px-2 py-1.5 border-r border-[var(--border)] bg-[var(--bg-surface)] sticky left-0 z-10 flex items-center gap-2 shadow-[2px_0_6px_-2px_rgba(0,0,0,0.06)]">
+                    <div className="hidden md:flex w-[140px] md:w-[180px] shrink-0 px-2 py-1.5 border-r border-[var(--border)] bg-[var(--bg-surface)] sticky left-0 z-10 items-center gap-2 shadow-[2px_0_6px_-2px_rgba(0,0,0,0.06)]">
                       <div className="relative shrink-0">
                         <div className={`w-8 h-8 rounded-lg overflow-hidden ${isActive ? 'ring-2 ring-emerald-500/40' : ''}`}>
                           {user.image ? (
@@ -593,7 +605,7 @@ export default function AttendanceMonitorPage() {
                           if (scrollContainerRef.current) scrollContainerRef.current.scrollLeft = e.currentTarget.scrollLeft;
                         }
                       }}>
-                      <div className="relative h-full" style={{ minWidth: columnHeaders.length * colMinWidth }}>
+                      <div className="relative h-full min-h-[52px]" style={{ minWidth: columnHeaders.length * colMinWidth }}>
                         {/* Assigned shift backgrounds from workSchedules */}
                         {(() => {
                           const userSched = workSchedules[user.id] || [];
