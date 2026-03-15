@@ -32,32 +32,68 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get('userId');
     const branch = searchParams.get('branch');
     const date = searchParams.get('date'); // YYYY-MM-DD
+    const range = searchParams.get('range'); // 'day' | 'week' | 'month'
 
     await dbConnect();
 
     const query: any = {};
     const { role, userId: currentUserId, branch: userBranch } = authResult.payload;
 
-    if (role === 'leader') {
+    if (role === 'driver') {
+      // Drivers can only see their own records
       if (mongoose.Types.ObjectId.isValid(currentUserId)) {
         query.userId = currentUserId;
       }
+    } else if (role === 'leader') {
+      // Leaders: if specific userId requested, filter; otherwise show all (branch-scoped below)
+      if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+        query.userId = userId;
+      }
+      // Leaders see their own branch's records
+      if (userBranch) {
+        query.branch = { $regex: new RegExp(`^${userBranch}$`, 'i') };
+      }
     } else if (role === 'admin') {
+      // Admin: optional filters
       if (userId && mongoose.Types.ObjectId.isValid(userId)) {
         query.userId = userId;
       }
       if (branch) query.branch = branch;
     }
 
+    // Date range handling
     if (date) {
-      const start = new Date(date);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(date);
-      end.setHours(23, 59, 59, 999);
+      const baseDate = new Date(date);
+      let start: Date;
+      let end: Date;
+
+      if (range === 'month') {
+        start = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
+        start.setHours(0, 0, 0, 0);
+        end = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0);
+        end.setHours(23, 59, 59, 999);
+      } else if (range === 'week') {
+        const dayOfWeek = baseDate.getDay();
+        start = new Date(baseDate);
+        start.setDate(baseDate.getDate() - dayOfWeek);
+        start.setHours(0, 0, 0, 0);
+        end = new Date(start);
+        end.setDate(start.getDate() + 6);
+        end.setHours(23, 59, 59, 999);
+      } else {
+        // Default: single day
+        start = new Date(baseDate);
+        start.setHours(0, 0, 0, 0);
+        end = new Date(baseDate);
+        end.setHours(23, 59, 59, 999);
+      }
+
       query.timestamp = { $gte: start, $lte: end };
     }
 
-    const records = await Attendance.find(query).sort({ timestamp: -1 }).limit(100);
+    // Higher limit for admin month views
+    const limit = (role === 'admin' && range === 'month') ? 2000 : 500;
+    const records = await Attendance.find(query).sort({ timestamp: -1 }).limit(limit);
 
     return NextResponse.json({ success: true, records });
   } catch (error) {

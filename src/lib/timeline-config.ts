@@ -8,16 +8,16 @@ export const TIMELINE_CONFIG = {
   ZOOM: {
     MIN: 0,
     MAX: 2,
-    DEFAULT: 0,
-    LEVELS: ['month', 'day', 'time'] as const,
-    LABELS: ['Month', 'Day', 'Time'],
+    DEFAULT: 1,
+    LEVELS: ['month', 'day', 'hour'] as const,
+    LABELS: ['Month', 'Day', 'Hour'],
   },
 
   /** Column count for each zoom level */
   COLUMNS: {
     MONTH: 31,
     DAY: 24,
-    TIME: 60,
+    HOUR: 60,
   },
 
   /** Styling constants */
@@ -34,7 +34,7 @@ export const TIMELINE_CONFIG = {
     COLUMN_WIDTH: {
       MONTH: { MIN: 28, DESKTOP_MIN: 36 },
       DAY: { MIN: 35, DESKTOP_MIN: 50 },
-      TIME: { MIN: 10, DESKTOP_MIN: 12 },
+      HOUR: { MIN: 10, DESKTOP_MIN: 12 },
     },
   },
 
@@ -56,7 +56,7 @@ export const TIMELINE_CONFIG = {
 
   /** API endpoints */
   API: {
-    USERS: '/api/users?role=leader',
+    USERS: '/api/users?activeOnly=true',
     ATTENDANCE: '/api/attendance',
   },
 
@@ -65,6 +65,13 @@ export const TIMELINE_CONFIG = {
     USERS_CHANNEL: 'users',
     ATTENDANCE_EVENT: 'leader-attendance',
     DRIVER_UPDATED_EVENT: 'driver-updated',
+  },
+
+  /** Expected work schedule (for monitoring compliance) */
+  SCHEDULE: {
+    EXPECTED_START: 8,  // 08:00
+    EXPECTED_END: 17,   // 17:00
+    LATE_THRESHOLD_MINUTES: 15, // late if > 15 min after expected start
   },
 
   /** Display settings */
