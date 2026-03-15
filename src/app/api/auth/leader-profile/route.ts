@@ -31,6 +31,10 @@ export async function PATCH(request: NextRequest) {
     const isAdmin = authResult.payload.role === 'admin';
     const isOwnProfile = authResult.payload.userId === leaderId;
 
+    if (!isAdmin && !isOwnProfile) {
+      return NextResponse.json({ error: 'ไม่มีสิทธิ์แก้ไขโปรไฟล์ผู้อื่น' }, { status: 403 });
+    }
+
     if (name) {
       leader.name = name;
     }

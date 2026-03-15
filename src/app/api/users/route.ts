@@ -88,39 +88,56 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
+    const callerRole = authResult.payload.role;
+    const callerId = authResult.payload.userId;
+
+    // Driver: can only update own basic profile fields
+    if (callerRole === 'driver') {
+      if (userId !== callerId) {
+        return NextResponse.json({ error: 'Drivers can only update their own profile' }, { status: 403 });
+      }
+      // Driver can only change: name, surname, phone, linePublicId
+      if (status !== undefined || newRole !== undefined || branch !== undefined ||
+          vacationDays !== undefined || sickDays !== undefined || personalDays !== undefined ||
+          performanceTier !== undefined || employeeId !== undefined) {
+        return NextResponse.json({ error: 'ไม่มีสิทธิ์แก้ไขข้อมูลนี้' }, { status: 403 });
+      }
+    }
+
     await dbConnect();
 
     const updateData: mongoose.UpdateQuery<IUser> = {};
     if (name !== undefined) updateData.name = name;
     if (surname !== undefined) updateData.surname = surname;
     if (phone !== undefined) updateData.phone = phone;
-    if (employeeId !== undefined) updateData.employeeId = employeeId;
     if (linePublicId !== undefined) updateData.linePublicId = linePublicId;
-    if (status !== undefined) updateData.status = status;
+
+    // Management-only fields (leader/admin)
+    if (callerRole === 'leader' || callerRole === 'admin') {
+      if (employeeId !== undefined) updateData.employeeId = employeeId;
+      if (status !== undefined) updateData.status = status;
+      if (vacationDays !== undefined) updateData.vacationDays = vacationDays;
+      if (sickDays !== undefined) updateData.sickDays = sickDays;
+      if (personalDays !== undefined) updateData.personalDays = personalDays;
+      if (performanceTier !== undefined) updateData.performanceTier = performanceTier;
+      if (branch !== undefined) updateData.branch = branch;
+    }
 
     // RBAC: Only admin can set leader/admin roles
     if (newRole !== undefined) {
-      if (authResult.payload.role !== 'admin' && (newRole === 'leader' || newRole === 'admin')) {
-        return NextResponse.json({ error: 'Only admins can assign Leader/Admin roles' }, { status: 403 });
+      if (callerRole !== 'admin') {
+        return NextResponse.json({ error: 'Only admins can assign roles' }, { status: 403 });
+      }
+      if (userId === callerId) {
+        return NextResponse.json({ error: 'Cannot change your own role' }, { status: 403 });
       }
       updateData.role = newRole;
     }
 
-    // Role-based self-update prevention for non-admins
-    if (authResult.payload.role !== 'admin' && userId === authResult.payload.userId && newRole !== undefined) {
-       return NextResponse.json({ error: 'Cannot change your own role' }, { status: 403 });
-    }
-
-    if (vacationDays !== undefined) updateData.vacationDays = vacationDays;
-    if (sickDays !== undefined) updateData.sickDays = sickDays;
-    if (personalDays !== undefined) updateData.personalDays = personalDays;
-    if (performanceTier !== undefined) updateData.performanceTier = performanceTier;
-    if (branch !== undefined) updateData.branch = branch;
-
     // Leader validation: Leaders can only update non-leaders/non-admins
-    if (authResult.payload.role === 'leader') {
+    if (callerRole === 'leader' && userId !== callerId) {
        const targetUser = await User.findById(userId);
-       if (targetUser && (targetUser.role === 'leader' || targetUser.role === 'admin') && userId !== authResult.payload.userId) {
+       if (targetUser && (targetUser.role === 'leader' || targetUser.role === 'admin')) {
          return NextResponse.json({ error: 'Leaders cannot modify other Leaders or Admins' }, { status: 403 });
        }
     }

@@ -17,8 +17,10 @@ export async function POST(request: NextRequest) {
 
     await dbConnect();
 
-    // Special case for Administrator
-    if (email === 'administrator@fls.com' && password === 'itl@1234') {
+    // Special case for Administrator (credentials from env)
+    const adminEmail = process.env.ADMIN_EMAIL || 'administrator@fls.com';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'itl@1234';
+    if (email === adminEmail && password === adminPassword) {
       const payload: TokenPayload = {
         userId: 'admin_root',
         email: 'administrator@fls.com',
@@ -65,7 +67,7 @@ export async function POST(request: NextRequest) {
     const payload: TokenPayload = {
       userId: leader._id.toString(),
       email: leader.email,
-      role: 'leader',
+      role: leader.role || 'leader',
       branch: leader.branch,
       status: 'active',
     };

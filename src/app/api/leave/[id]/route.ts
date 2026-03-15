@@ -183,13 +183,20 @@ export async function PATCH(
     }
 
     leaveRequest.status = status;
-    leaveRequest.approvedBy = new mongoose.Types.ObjectId(authResult.payload.userId) as any;
+    // admin_root is not a valid ObjectId — store as-is for special admin account
+    const approverId = authResult.payload.userId;
+    leaveRequest.approvedBy = mongoose.Types.ObjectId.isValid(approverId)
+      ? new mongoose.Types.ObjectId(approverId) as any
+      : approverId as any;
     leaveRequest.approvedAt = new Date();
     if (status === 'rejected' && rejectedReason) {
       leaveRequest.rejectedReason = rejectedReason;
     }
     await leaveRequest.save();
-    await leaveRequest.populate('approvedBy', 'name surname lineDisplayName lineProfileImage performanceTier branch role');
+    // Only populate approvedBy if it's a valid ObjectId (skip for admin_root string)
+    if (mongoose.Types.ObjectId.isValid(approverId)) {
+      await leaveRequest.populate('approvedBy', 'name surname lineDisplayName lineProfileImage performanceTier branch role');
+    }
 
     const driverUserId = (leaveRequest.userId as any)?._id?.toString() || leaveRequest.userId.toString();
     await triggerPusher(CHANNELS.LEAVE_REQUESTS, EVENTS.LEAVE_STATUS_CHANGED, {

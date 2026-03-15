@@ -17,7 +17,7 @@ export interface IAttendance extends Document {
 
 const AttendanceSchema = new Schema<IAttendance>(
   {
-    userId: { type: Schema.Types.ObjectId, ref: 'Leader', required: true },
+    userId: { type: Schema.Types.Mixed, required: true },
     userName: { type: String, required: true },
     userImage: { type: String },
     type: { type: String, enum: ['in', 'out'], required: true },

@@ -9,8 +9,13 @@ export async function POST() {
   try {
     const tokenPayload = await getCurrentUser();
     
-    if (!tokenPayload || tokenPayload.role !== 'driver') {
+    if (!tokenPayload) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Skip for admin_root (no User record)
+    if (tokenPayload.userId === 'admin_root') {
+      return NextResponse.json({ success: true });
     }
     
     await dbConnect();
@@ -31,7 +36,7 @@ export async function DELETE() {
   try {
     const tokenPayload = await getCurrentUser();
     
-    if (tokenPayload && tokenPayload.role === 'driver') {
+    if (tokenPayload && tokenPayload.userId !== 'admin_root') {
       await dbConnect();
       await User.findByIdAndUpdate(tokenPayload.userId, {
         isOnline: false,
