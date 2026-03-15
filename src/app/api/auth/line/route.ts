@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import { User } from '@/models/User';
-import { generateAccessToken, generateRefreshToken } from '@/lib/jwt-auth';
+import { generateAccessToken, generateRefreshToken, TokenPayload } from '@/lib/jwt-auth';
 import { triggerPusher, CHANNELS, EVENTS } from '@/lib/pusher';
 
 export const dynamic = 'force-dynamic';
@@ -85,11 +85,11 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const payload: any = {
+    const payload: TokenPayload = {
       userId: user._id.toString(),
-      role: user.role || 'driver',
+      role: (user.role as any) || 'driver',
       branch: user.branch || undefined,
-      status: user.status || 'pending',
+      status: (user.status as any) || 'pending',
     };
 
     const accessToken = generateAccessToken(payload);

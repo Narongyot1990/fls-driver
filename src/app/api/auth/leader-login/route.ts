@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
         userId: 'admin_root',
         email: 'administrator@fls.com',
         role: 'admin',
+        status: 'active',
       };
       const accessToken = generateAccessToken(payload);
       const refreshToken = generateRefreshToken(payload);
@@ -66,6 +67,7 @@ export async function POST(request: NextRequest) {
       email: leader.email,
       role: 'leader',
       branch: leader.branch,
+      status: 'active',
     };
 
     const accessToken = generateAccessToken(payload);
