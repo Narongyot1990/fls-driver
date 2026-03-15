@@ -18,11 +18,16 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const activeOnly = searchParams.get('activeOnly');
     const branch = searchParams.get('branch');
+    const targetRole = searchParams.get('role');
 
     await dbConnect();
 
     const query: Record<string, unknown> = {};
     const { role, branch: userBranch, userId } = authResult.payload;
+
+    if (targetRole) {
+      query.role = targetRole;
+    }
 
     // Build query based on role
     if (role === 'driver') {
