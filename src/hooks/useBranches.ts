@@ -12,6 +12,7 @@ export interface Branch {
     lat: number;
     lon: number;
   } | null;
+  radius?: number;
   active: boolean;
 }
 

@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, CalendarDays, Clock, User, FileText, Users, CheckSquare, ClipboardList, Settings, PenSquare, LogOut, Car, Rss, Contact2 } from 'lucide-react';
+import { Home, CalendarDays, Clock, User, FileText, Users, CheckSquare, ClipboardList, Settings, PenSquare, LogOut, Car, Rss, Contact2, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
 import ThemeToggle from './ThemeToggle';
 
@@ -62,12 +62,15 @@ export default function Sidebar({ role }: { role: 'driver' | 'leader' | 'admin' 
   ];
 
   const leaderNavItems: NavItem[] = [
+    { icon: Clock, label: 'ลงเวลาทำงาน', href: '/leader/attendance' },
     { icon: CheckSquare, label: 'อนุมัติคำขอลา', href: '/leader/approve' },
     { icon: FileText, label: 'บันทึกการแทน', href: '/leader/substitute' },
     { icon: User, label: 'แก้ไขข้อมูลโปรไฟล์', href: '/leader/profile-edit' },
   ];
 
   const adminNavItems: NavItem[] = [
+    { icon: Clock, label: 'ตรวจสอบเวลาทำงาน', href: '/admin/attendance' },
+    { icon: MapPin, label: 'จัดการสาขา', href: '/admin/branches' },
     { icon: ClipboardList, label: 'ตรวจสอบประวัติทั้งหมด', href: '/leader/history' },
     { icon: Rss, label: 'Moments กิจกรรม', href: '/leader/car-wash' },
     { icon: User, label: 'จัดการโปรไฟล์ส่วนตัว', href: '/leader/profile-edit' },

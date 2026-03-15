@@ -4,11 +4,11 @@ import { requireSuperuser } from '@/lib/api-auth';
 import { triggerPusher, CHANNELS, EVENTS } from '@/lib/pusher';
 
 const DEFAULT_BRANCHES = [
-  { code: 'AYA', name: 'AYA', description: '', location: null, active: true },
-  { code: 'CBI', name: 'CBI', description: '', location: null, active: true },
-  { code: 'RA2', name: 'RA2', description: '', location: null, active: true },
-  { code: 'KSN', name: 'KSN', description: '', location: null, active: true },
-  { code: 'BBT', name: 'BBT', description: '', location: null, active: true },
+  { code: 'AYA', name: 'AYA', description: '', location: { lat: 12.709902, lon: 101.307697 }, radius: 50, active: true },
+  { code: 'CBI', name: 'CBI', description: '', location: null, radius: 50, active: true },
+  { code: 'RA2', name: 'RA2', description: '', location: null, radius: 50, active: true },
+  { code: 'KSN', name: 'KSN', description: '', location: null, radius: 50, active: true },
+  { code: 'BBT', name: 'BBT', description: '', location: null, radius: 50, active: true },
 ];
 
 let branchesCache: Array<{ code: string; name: string; description?: string; location?: { lat: number; lon: number } | null; active: boolean }> | null = null;
@@ -39,6 +39,7 @@ export async function GET(request: NextRequest) {
                 lat: Number,
                 lon: Number,
               },
+              radius: Number,
               active: Boolean,
             }],
           }, { collection: 'settings' }));
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
     if ('error' in authResult) return authResult.error;
 
     const body = await request.json();
-    const { code, name, description, location, active } = body;
+    const { code, name, description, location, radius, active } = body;
 
     if (!code || !name) {
       return NextResponse.json({ error: 'Code and name are required' }, { status: 400 });
@@ -90,6 +91,7 @@ export async function POST(request: NextRequest) {
           lon: Number,
         },
         active: Boolean,
+        radius: Number,
       }],
     }, { collection: 'settings' }));
 
@@ -110,6 +112,7 @@ export async function POST(request: NextRequest) {
       name,
       description: description || '',
       location: location || null,
+      radius: radius || 50,
       active: active !== false,
     });
 
@@ -133,7 +136,7 @@ export async function PATCH(request: NextRequest) {
     if ('error' in authResult) return authResult.error;
 
     const body = await request.json();
-    const { code, name, description, location, active } = body;
+    const { code, name, description, location, radius, active } = body;
 
     if (!code) {
       return NextResponse.json({ error: 'Code is required' }, { status: 400 });
@@ -156,6 +159,7 @@ export async function PATCH(request: NextRequest) {
           lon: Number,
         },
         active: Boolean,
+        radius: Number,
       }],
     }, { collection: 'settings' }));
 
@@ -173,6 +177,7 @@ export async function PATCH(request: NextRequest) {
     if (name !== undefined) branch.name = name;
     if (description !== undefined) branch.description = description;
     if (location !== undefined) branch.location = location;
+    if (radius !== undefined) branch.radius = radius;
     if (active !== undefined) branch.active = active;
 
     await settings.save();
@@ -218,6 +223,7 @@ export async function DELETE(request: NextRequest) {
           lon: Number,
         },
         active: Boolean,
+        radius: Number,
       }],
     }, { collection: 'settings' }));
 

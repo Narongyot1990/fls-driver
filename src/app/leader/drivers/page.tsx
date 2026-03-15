@@ -139,7 +139,8 @@ function DriverManagementContent() {
       const data = await response.json();
       if (data.success) {
         setAllDrivers(prev => prev.map(d => d._id === driverId ? { ...d, status: 'active' } : d));
-        setSelectedDriver(null);
+        // Instead of closing, update selectedDriver to transition to Step 2
+        setSelectedDriver(prev => prev ? { ...prev, status: 'active' } : null);
       }
     } catch (err) {
       console.error(err);
@@ -194,7 +195,10 @@ function DriverManagementContent() {
       const data = await response.json();
       if (data.success) {
         setAllDrivers(prev => prev.map(d => d._id === selectedDriver._id ? { ...d, ...data.user } : d));
-        setSelectedDriver(null);
+        // If it was Step 2 (null branch), update selectedDriver to transition to Step 3
+        // If it was Step 3, we can keep it open for further edits or close it. 
+        // Let's update it so the UI reflects the saved state.
+        setSelectedDriver({ ...selectedDriver, ...data.user });
       }
     } catch (err) {
       console.error(err);

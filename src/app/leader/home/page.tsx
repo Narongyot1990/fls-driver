@@ -16,6 +16,7 @@ interface LeaderUser {
 }
 
 const menuItems = [
+  { icon: Clock, label: 'ลงเวลาทำงาน', sub: 'บันทึกเวลาเข้า-ออกงาน', href: '/leader/attendance', color: 'var(--accent)' },
   { icon: CheckSquare, label: 'อนุมัติลา', sub: 'ตรวจสอบคำขอลาใหม่', href: '/leader/approve', color: 'var(--success)' },
   { icon: Users, label: 'จัดการพนักงาน', sub: 'เพิ่ม/แก้ไข/เปิดใช้งาน', href: '/leader/drivers', color: 'var(--accent)' },
   { icon: PenSquare, label: 'บันทึกแทน', sub: 'บันทึกข้อมูลการแทน', href: '/leader/substitute', color: 'var(--info)' },

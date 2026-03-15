@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { CheckSquare, Users, CalendarDays, Clock, User, ChevronRight, LogOut, ClipboardCheck, Settings, Shield } from 'lucide-react';
+import { Home, CalendarDays, Users, Rss, User, CheckSquare, ClipboardCheck, Settings, Shield, Clock, MapPin, ChevronRight, LogOut } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -13,6 +13,7 @@ import { useBranches } from '@/hooks/useBranches';
 const menuItems = [
   { icon: CheckSquare, label: 'อนุมัติลา', sub: 'ตรวจสอบคำขอลาทุกสาขา', href: '/leader/approve', color: 'var(--success)' },
   { icon: Users, label: 'จัดการพนักงาน', sub: 'ดู/เพิ่ม/แก้ไขพนักงานทุกสาขา', href: '/leader/drivers', color: 'var(--accent)' },
+  { icon: MapPin, label: 'จัดการสาขา', sub: 'กำหนดพิกัดและข้อมูลสาขา', href: '/admin/branches', color: 'var(--info)' },
   { icon: CalendarDays, label: 'Dashboard', sub: 'ภาพรวมตารางวันลาทุกสาขา', href: '/dashboard', color: 'var(--warning)' },
   { icon: Clock, label: 'ประวัติทั้งหมด', sub: 'ดูประวัติการลาทุกสาขา', href: '/leader/history', color: 'var(--text-muted)' },
   { icon: ClipboardCheck, label: 'จัดการ Tasks', sub: 'สร้างแบบทดสอบ/งานให้พนักงาน', href: '/leader/tasks', color: 'var(--info)' },
