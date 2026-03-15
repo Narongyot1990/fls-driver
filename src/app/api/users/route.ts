@@ -39,8 +39,7 @@ export async function GET(request: NextRequest) {
       if (userBranch) {
         query.branch = userBranch;
       }
-      // Always filter active for leader contacts view
-      query.status = 'active';
+      // query.status = 'active';
     } else if (role === 'admin') {
       // Admin: sees all unless branch specified
       if (userBranch) {
