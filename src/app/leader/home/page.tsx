@@ -3,25 +3,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { CheckSquare, Users, Clock, CalendarDays, ClipboardCheck, PenSquare, Settings, Rss, LogOut } from 'lucide-react';
+import { CheckSquare, Users, Clock, CalendarDays, Settings, LogOut, LayoutGrid, ClipboardList, Info } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
 import ThemeToggle from '@/components/ThemeToggle';
 import { usePusherMulti } from '@/hooks/usePusher';
 import { useForceLogout } from '@/hooks/useForceLogout';
 import { performLogout } from '@/lib/logout';
-
-const menu = [
-  { icon: Clock, label: 'ลงเวลา', href: '/leader/attendance', color: 'var(--accent)' },
-  { icon: CheckSquare, label: 'อนุมัติลา', href: '/leader/approve', color: 'var(--success)', badge: 'leave' },
-  { icon: ClipboardCheck, label: 'มอบหมาย', href: '/leader/tasks', color: 'var(--info)' },
-  { icon: Users, label: 'พนักงาน', href: '/leader/drivers', color: 'var(--accent)', badge: 'driver' },
-  { icon: Rss, label: 'Moments', href: '/leader/car-wash', color: 'var(--info)' },
-  { icon: CalendarDays, label: 'Dashboard', href: '/dashboard', color: 'var(--warning)' },
-  { icon: PenSquare, label: 'แทนงาน', href: '/leader/substitute', color: 'var(--info)' },
-  { icon: Clock, label: 'ประวัติ', href: '/leader/history', color: 'var(--text-muted)' },
-  { icon: Settings, label: 'ตั้งค่า', href: '/leader/settings', color: 'var(--text-muted)' },
-];
 
 export default function LeaderHomePage() {
   const router = useRouter();
@@ -79,7 +67,8 @@ export default function LeaderHomePage() {
   ], !!user);
 
   const handleLogout = async () => {
-    const path = await performLogout('leader');
+    if (!confirm('ต้องการออกจากระบบ?')) return;
+    const path = await performLogout(role);
     router.push(path);
   };
 
@@ -108,70 +97,113 @@ export default function LeaderHomePage() {
             <div className="flex-1 min-w-0">
               <h1 className="text-xl font-black tracking-tight truncate leading-tight" style={{ color: 'var(--text-primary)' }}>{user.name}</h1>
               <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
-                {role === 'admin' ? 'SYSTEM ADMINISTRATOR' : `BRANCH LEADER • ${user.branch || 'PENDING'}`}
+                {role === 'admin' ? 'SYSTEM ADMINISTRATOR' : `Site Leader • ${user.branch || 'PENDING'}`}
               </p>
             </div>
-            <ThemeToggle />
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <button 
+                onClick={handleLogout}
+                className="w-10 h-10 rounded-xl flex items-center justify-center border border-[var(--border)] bg-[var(--bg-surface)] text-rose-500 hover:bg-rose-500/5 transition-colors"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </header>
 
         <div className="px-4 lg:px-8">
-          <div className="max-w-2xl mx-auto space-y-4">
+          <div className="max-w-2xl mx-auto space-y-8 pt-4">
 
-            {/* Stat badges */}
-            {pendingDriver > 0 && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-center">
-                <button onClick={() => router.push('/leader/drivers')} className="card p-3 text-center cursor-pointer min-w-[140px]">
-                  <p className="text-2xl font-extrabold" style={{ color: 'var(--accent)' }}>{pendingDriver}</p>
-                  <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>พนักงานใหม่</p>
-                </button>
-              </motion.div>
-            )}
-
-            {/* Menu grid */}
-            <div className="grid grid-cols-4 gap-3">
-              {menu.map((m, i) => {
-                const Icon = m.icon;
-                const badge = m.badge === 'leave' ? pendingLeave : m.badge === 'driver' ? pendingDriver : 0;
-                return (
-                  <motion.button
-                    key={m.href}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.05 + i * 0.03 }}
-                    onClick={() => router.push(m.href)}
-                    whileTap={{ scale: 0.95 }}
-                    className="card p-3 flex flex-col items-center gap-1.5 cursor-pointer relative"
-                  >
-                    {badge > 0 && (
-                      <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-[var(--danger)] text-white text-[9px] font-bold flex items-center justify-center">{badge > 99 ? '99+' : badge}</span>
-                    )}
-                    <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'var(--bg-inset)' }}>
-                      <Icon className="w-[18px] h-[18px]" style={{ color: m.color }} strokeWidth={1.8} />
-                    </div>
-                    <span className="text-[10px] font-semibold leading-tight text-center" style={{ color: 'var(--text-primary)' }}>{m.label}</span>
-                  </motion.button>
-                );
-              })}
+            {/* Section 1: Attendance */}
+            <div className="space-y-3">
+               <h3 className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40 px-1">Presence</h3>
+               <motion.button
+                 onClick={() => router.push('/leader/attendance')}
+                 whileTap={{ scale: 0.98 }}
+                 className="w-full card p-5 flex items-center gap-4 cursor-pointer group hover:border-[var(--accent)]/30 transition-all shadow-sm"
+               >
+                 <div className="w-12 h-12 rounded-2xl bg-[var(--accent)]/10 flex items-center justify-center text-[var(--accent)] group-hover:scale-110 transition-transform">
+                   <Clock className="w-6 h-6" />
+                 </div>
+                 <div className="text-left">
+                   <p className="text-lg font-black leading-tight">ลงเวลา</p>
+                   <p className="text-[10px] font-bold opacity-40 uppercase tracking-widest">Attendance Clocking</p>
+                 </div>
+               </motion.button>
             </div>
 
-            {/* Logout — bottom of page, subtle */}
-            <div className="flex justify-center pb-2">
-              <button
-                onClick={() => { if (confirm('ต้องการออกจากระบบ?')) handleLogout(); }}
-                className="flex items-center gap-1.5 text-[11px] py-2 px-5 rounded-full border transition-colors hover:bg-red-500/10"
-                style={{ color: 'var(--danger)', borderColor: 'var(--danger)', opacity: 0.7 }}
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                ออกจากระบบ
-              </button>
+            {/* Section 2: Management */}
+            <div className="space-y-3">
+               <h3 className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40 px-1">Management</h3>
+               <div className="grid grid-cols-3 gap-3">
+                  <MenuButton 
+                    label="อนุมัติลา" 
+                    icon={CheckSquare} 
+                    href="/leader/approve" 
+                    color="var(--success)" 
+                    badge={pendingLeave}
+                  />
+                  <MenuButton 
+                    label="ประวัติ" 
+                    icon={ClipboardList} 
+                    href="/leader/history" 
+                    color="var(--info)" 
+                  />
+                  <MenuButton 
+                    label="พนักงาน" 
+                    icon={Users} 
+                    href="/leader/drivers" 
+                    color="var(--accent)" 
+                    badge={pendingDriver}
+                  />
+               </div>
+            </div>
+
+            {/* Section 3: Configuration */}
+            <div className="space-y-3">
+               <h3 className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40 px-1">System</h3>
+               <motion.button
+                 onClick={() => router.push('/leader/settings')}
+                 whileTap={{ scale: 0.98 }}
+                 className="w-full card p-4 flex items-center gap-4 cursor-pointer group hover:border-[var(--text-muted)]/30 transition-all border-dashed"
+               >
+                 <div className="w-10 h-10 rounded-xl bg-[var(--bg-inset)] flex items-center justify-center text-[var(--text-muted)]">
+                   <Settings className="w-5 h-5" />
+                 </div>
+                 <div className="text-left">
+                   <p className="text-sm font-black">ตั้งค่า</p>
+                   <p className="text-[9px] font-bold opacity-40 uppercase tracking-widest">Profile & System Settings</p>
+                 </div>
+               </motion.button>
             </div>
 
           </div>
         </div>
       </div>
 
-      <BottomNav role="leader" />
+      <BottomNav role={role} />
     </div>
+  );
+}
+
+function MenuButton({ label, icon: Icon, href, color, badge }: any) {
+  const router = useRouter();
+  return (
+    <motion.button
+      onClick={() => router.push(href)}
+      whileTap={{ scale: 0.95 }}
+      className="card p-4 flex flex-col items-center gap-2 cursor-pointer relative group transition-all"
+    >
+      {badge > 0 && (
+        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center shadow-lg ring-2 ring-[var(--bg-base)]">
+          {badge > 99 ? '99+' : badge}
+        </span>
+      )}
+      <div className="w-10 h-10 rounded-xl bg-[var(--bg-inset)] flex items-center justify-center group-hover:bg-[var(--bg-surface)] transition-colors shadow-inner">
+        <Icon className="w-5 h-5" style={{ color }} strokeWidth={2.5} />
+      </div>
+      <span className="text-[11px] font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>{label}</span>
+    </motion.button>
   );
 }

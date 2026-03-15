@@ -9,7 +9,7 @@ import {
 
 const publicPaths = [
   '/login',
-  '/leader/login',
+  '/admin/login',
   '/login/callback',
   '/api/auth/line',
   '/api/auth/leader-login',
@@ -83,8 +83,8 @@ export async function middleware(request: NextRequest) {
 }
 
 function redirectToLogin(pathname: string, baseUrl: string): NextResponse {
-  if (pathname.startsWith('/leader')) {
-    return NextResponse.redirect(new URL('/leader/login', baseUrl));
+  if (pathname.startsWith('/admin')) {
+    return NextResponse.redirect(new URL('/admin/login', baseUrl));
   }
   return NextResponse.redirect(new URL('/login', baseUrl));
 }
@@ -96,7 +96,7 @@ function checkRoleAccess(payload: any, pathname: string, request: NextRequest): 
   if (role === 'admin') {
     // Admins should strictly stay in /admin or /dashboard
     // If they accidentally hit a /leader path that is NOT a management tool, send them home
-    const leaderOnlyPaths = ['/leader/home', '/leader/settings']; 
+    const leaderOnlyPaths = ['/leader/home', '/leader/settings', '/leader/attendance']; 
     if (leaderOnlyPaths.includes(pathname)) {
       return NextResponse.redirect(new URL('/admin/home', request.url));
     }
@@ -105,7 +105,7 @@ function checkRoleAccess(payload: any, pathname: string, request: NextRequest): 
 
   // Pending users (except on home or logout) are restricted
   if (status === 'pending') {
-    const isPublicAllowed = pathname === '/home' || pathname === '/leader/home' || pathname === '/login' || pathname === '/leader/login' || pathname.startsWith('/api/auth/logout') || pathname === '/api/auth/me';
+    const isPublicAllowed = pathname === '/home' || pathname === '/leader/home' || pathname === '/login' || pathname === '/admin/login' || pathname.startsWith('/api/auth/logout') || pathname === '/api/auth/me';
     if (!isPublicAllowed) {
       if (role === 'leader' || pathname.startsWith('/leader')) {
         return NextResponse.redirect(new URL('/leader/home', request.url));
@@ -131,7 +131,7 @@ function checkRoleAccess(payload: any, pathname: string, request: NextRequest): 
   // Driver access control
   if (role === 'driver') {
     // Drivers cannot access /leader or /admin paths
-    if ((pathname.startsWith('/leader/') && pathname !== '/leader/login') || pathname.startsWith('/admin/')) {
+    if (pathname.startsWith('/leader/') || pathname.startsWith('/admin/')) {
       return NextResponse.redirect(new URL('/home', request.url));
     }
     return NextResponse.next();

@@ -3,7 +3,7 @@
 import { MapContainer, TileLayer, Marker, useMap, useMapEvents, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { useEffect, useState } from 'react';
+import { useEffect, useImperativeHandle, forwardRef } from 'react';
 
 // Fix Leaflet marker icons in Next.js
 const FIX_LEAFLET_ICON = () => {
@@ -17,7 +17,6 @@ const FIX_LEAFLET_ICON = () => {
   });
 };
 
-// Custom Person Icon (Fallback)
 const PERSON_ICON = typeof window !== 'undefined' ? new L.Icon({
   iconUrl: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
   iconSize: [32, 32],
@@ -25,14 +24,13 @@ const PERSON_ICON = typeof window !== 'undefined' ? new L.Icon({
   popupAnchor: [0, -16],
 }) : null;
 
-// Custom Branch/Office Icon
 const BRANCH_ICON = typeof window !== 'undefined' ? new L.DivIcon({
   html: `
     <div style="
       background-color: var(--accent);
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -40,21 +38,15 @@ const BRANCH_ICON = typeof window !== 'undefined' ? new L.DivIcon({
       border: 3px solid white;
       box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     ">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
         <path d="M3 21h18"></path>
-        <path d="M9 8h1"></path>
-        <path d="M14 8h1"></path>
-        <path d="M9 13h1"></path>
-        <path d="M14 13h1"></path>
-        <path d="M9 18h1"></path>
-        <path d="M14 18h1"></path>
         <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"></path>
       </svg>
     </div>
   `,
   className: 'custom-branch-marker',
-  iconSize: [40, 40],
-  iconAnchor: [20, 20],
+  iconSize: [36, 36],
+  iconAnchor: [18, 18],
 }) : null;
 
 interface BranchMapProps {
@@ -66,13 +58,23 @@ interface BranchMapProps {
   readOnly?: boolean;
 }
 
-function MapUpdater({ center }: { center: [number, number] }) {
-  const map = useMap();
-  useEffect(() => {
-    map.setView(center, map.getZoom());
-  }, [center, map]);
-  return null;
+export interface MapHandle {
+  flyTo: (lat: number, lon: number, zoom?: number) => void;
 }
+
+const MapController = forwardRef((props: any, ref) => {
+  const map = useMap();
+  
+  useImperativeHandle(ref, () => ({
+    flyTo: (lat: number, lon: number, zoom: number = 17) => {
+      map.flyTo([lat, lon], zoom, { duration: 1.5 });
+    }
+  }));
+
+  return null;
+});
+
+MapController.displayName = 'MapController';
 
 function DraggableMarker({ position, onMove, radius, readOnly }: { position: [number, number], onMove?: (lat: number, lon: number) => void, radius: number, readOnly?: boolean }) {
   useMapEvents({
@@ -100,13 +102,13 @@ function DraggableMarker({ position, onMove, radius, readOnly }: { position: [nu
       <Circle 
         center={position} 
         radius={radius} 
-        pathOptions={{ color: 'var(--accent)', fillColor: 'var(--accent)', fillOpacity: 0.15 }} 
+        pathOptions={{ color: 'var(--accent)', fillColor: 'var(--accent)', fillOpacity: 0.1 }} 
       />
     </>
   );
 }
 
-export default function BranchMap({ center, radius, userLocation, userProfileImage, onLocationChange, readOnly = false }: BranchMapProps) {
+const BranchMap = forwardRef<MapHandle, BranchMapProps>(({ center, radius, userLocation, userProfileImage, onLocationChange, readOnly = false }, ref) => {
   useEffect(() => {
     FIX_LEAFLET_ICON();
   }, []);
@@ -114,30 +116,20 @@ export default function BranchMap({ center, radius, userLocation, userProfileIma
   const branchPos: [number, number] = [center.lat, center.lon];
   const userPos: [number, number] | null = userLocation ? [userLocation.lat, userLocation.lon] : null;
 
-  // Build user icon: LINE profile image or fallback person icon
   const userIcon = typeof window !== 'undefined'
     ? (userProfileImage
         ? new L.DivIcon({
             html: `
               <div class="user-marker-container" style="position: relative; width: 44px; height: 44px;">
                 <div style="
-                  position: absolute;
-                  width: 100%;
-                  height: 100%;
-                  background-color: var(--accent);
-                  border-radius: 50%;
-                  opacity: 0.3;
-                  animation: pulse 2s infinite;
+                  position: absolute; width: 100%; height: 100%;
+                  background-color: var(--accent); border-radius: 50%;
+                  opacity: 0.3; animation: pulse 2s infinite;
                 "></div>
                 <img src="${userProfileImage}" style="
-                  position: absolute;
-                  top: 4px;
-                  left: 4px;
-                  width: 36px;
-                  height: 36px;
-                  border-radius: 50%;
-                  border: 3px solid white;
-                  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                  position: absolute; top: 4px; left: 4px;
+                  width: 36px; height: 36px; border-radius: 50%;
+                  border: 3px solid white; box-shadow: 0 4px 8px rgba(0,0,0,0.3);
                   object-fit: cover;
                 " />
               </div>
@@ -156,20 +148,21 @@ export default function BranchMap({ center, radius, userLocation, userProfileIma
     : null;
 
   return (
-    <div className="h-[300px] w-full rounded-2xl overflow-hidden border border-border relative z-0">
+    <div className="h-full w-full relative z-0">
       <MapContainer 
         center={branchPos} 
-        zoom={16} 
+        zoom={17} 
         scrollWheelZoom={false} 
         style={{ height: '100%', width: '100%' }}
+        zoomControl={false}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <MapUpdater center={branchPos} />
         
-        {/* Branch Marker & Geofence */}
+        <MapController ref={ref} />
+        
         <DraggableMarker 
           position={branchPos} 
           onMove={onLocationChange} 
@@ -177,7 +170,6 @@ export default function BranchMap({ center, radius, userLocation, userProfileIma
           readOnly={readOnly} 
         />
 
-        {/* User Marker — Avatar with Pulse Effect */}
         {userPos && userIcon && (
           <Marker position={userPos} icon={userIcon} />
         )}
@@ -185,9 +177,13 @@ export default function BranchMap({ center, radius, userLocation, userProfileIma
       
       {!readOnly && (
         <div className="absolute bottom-2 left-2 z-[1000] bg-white/90 dark:bg-black/90 px-2 py-1 rounded text-[10px] font-black shadow-sm backdrop-blur-sm border border-border uppercase tracking-tight">
-           คลิกหรือลาก "ตึก" เพื่อเปลี่ยนตำแหน่ง
+           DRAG OFFICE TO MOVE
         </div>
       )}
     </div>
   );
-}
+});
+
+BranchMap.displayName = 'BranchMap';
+
+export default BranchMap;

@@ -42,7 +42,7 @@ const adminNav: NavItem[] = [
   { icon: Users, label: 'จัดการพนักงาน', href: '/leader/drivers' },
   { icon: ClipboardList, label: 'ประวัติทั้งหมด', href: '/leader/history' },
   { icon: Rss, label: 'Moments กิจกรรม', href: '/leader/car-wash' },
-  { icon: User, label: 'แก้ไขโปรไฟล์', href: '/leader/profile-edit' },
+  { icon: User, label: 'แก้ไขโปรไฟล์', href: '/leader/settings' },
 ];
 
 export default function Sidebar({ role }: { role: 'driver' | 'leader' | 'admin' }) {
@@ -67,7 +67,6 @@ export default function Sidebar({ role }: { role: 'driver' | 'leader' | 'admin' 
     // Core Ops
     { icon: Clock, label: 'ลงเวลาทำงาน', href: '/leader/attendance' },
     { icon: CheckSquare, label: 'อนุมัติคำขอลา', href: '/leader/approve' },
-    { icon: ClipboardList, label: 'มอบหมายงาน (Tasks)', href: '/leader/tasks' },
     
     // Management
     { icon: Users, label: 'จัดการพนักงาน', href: '/leader/drivers' },
@@ -77,7 +76,7 @@ export default function Sidebar({ role }: { role: 'driver' | 'leader' | 'admin' 
     // System
     { icon: Rss, label: 'Moments กิจกรรม', href: '/leader/car-wash' },
     { icon: CalendarDays, label: 'ภาพรวมระบบ', href: '/dashboard' },
-    { icon: User, label: 'ตั้งค่าส่วนตัว', href: '/leader/profile-edit' },
+    { icon: User, label: 'ตั้งค่าส่วนตัว', href: '/leader/settings' },
   ];
 
   const adminNavItems: NavItem[] = [

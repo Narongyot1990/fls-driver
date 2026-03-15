@@ -12,6 +12,6 @@ export async function performLogout(role: 'driver' | 'leader' | 'admin' = 'drive
   localStorage.removeItem('pendingStatus');
 
   // Leaders and Drivers use LINE login (/login)
-  // Only Admin uses Email login (/leader/login)
-  return role === 'admin' ? '/leader/login' : '/login';
+  // Only Admin uses Email login (/admin/login)
+  return role === 'admin' ? '/admin/login' : '/login';
 }
