@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
@@ -149,7 +149,7 @@ export default function ContactsPage() {
   if (!user) return null;
 
   return (
-    <div className="min-h-screen pb-20 lg:pb-4 lg:pl-[240px]" style={{ background: 'var(--bg-base)' }}>
+    <div className="min-h-screen pb-[72px] lg:pb-4 lg:pl-[240px]" style={{ background: 'var(--bg-base)' }}>
       <Sidebar role="driver" />
 
       <div className="max-w-2xl mx-auto">

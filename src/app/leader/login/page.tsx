@@ -1,134 +1,4 @@
-<<<<<<< D:/projects/ITL/drivers/src/app/leader/login/page.tsx
-'use client';
-
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { useRouter } from 'next/navigation';
-import { ShieldCheck, AlertCircle } from 'lucide-react';
-import ThemeToggle from '@/components/ThemeToggle';
-
-export default function LeaderLoginPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    try {
-      const response = await fetch('/api/auth/leader-login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        localStorage.setItem('leaderUser', JSON.stringify(data.leader));
-        router.push('/leader/home');
-      } else {
-        setError(data.error || 'เข้าสู่ระบบไม่สำเร็จ');
-      }
-    } catch (err) {
-      setError('เกิดข้อผิดพลาด');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6" style={{ background: 'var(--bg-base)' }}>
-      <div className="absolute top-4 right-4">
-        <ThemeToggle />
-      </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-[360px]"
-      >
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ delay: 0.1, type: 'spring' }}
-          className="flex justify-center mb-6"
-        >
-          <div
-            className="w-16 h-16 rounded-[var(--radius-lg)] flex items-center justify-center text-white"
-            style={{ background: 'var(--accent)', boxShadow: 'var(--shadow-accent)' }}
-          >
-            <ShieldCheck className="w-8 h-8" strokeWidth={1.5} />
-          </div>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="text-center mb-6">
-          <h1 className="text-fluid-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Leader Portal</h1>
-          <p className="text-fluid-sm mt-1" style={{ color: 'var(--text-muted)' }}>เข้าสู่ระบบสำหรับหัวหน้างาน</p>
-        </motion.div>
-
-        <motion.form
-          onSubmit={handleSubmit}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="card-neo p-6 space-y-4"
-        >
-          {error && (
-            <div className="flex items-center gap-2 p-3 rounded-[var(--radius-md)] text-fluid-sm" style={{ background: 'var(--danger-light)', color: 'var(--danger)' }}>
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              {error}
-            </div>
-          )}
-
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="input"
-            placeholder="อีเมล"
-            required
-          />
-
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="input"
-            placeholder="รหัสผ่าน"
-            required
-          />
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="btn btn-primary w-full"
-          >
-            {loading ? (
-              <span className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                กำลังเข้าสู่ระบบ...
-              </span>
-            ) : 'เข้าสู่ระบบ'}
-          </button>
-        </motion.form>
-
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="mt-6 text-center">
-          <a href="/login" className="text-fluid-sm transition-colors" style={{ color: 'var(--text-muted)' }}>
-            สำหรับพนักงานขับรถ
-          </a>
-        </motion.div>
-      </motion.div>
-    </div>
-  );
-}
-=======
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -165,7 +35,7 @@ export default function LeaderLoginPage() {
       } else {
         setError(data.error || 'เข้าสู่ระบบไม่สำเร็จ');
       }
-    } catch (err) {
+    } catch {
       setError('เกิดข้อผิดพลาด');
     } finally {
       setLoading(false);
@@ -180,17 +50,12 @@ export default function LeaderLoginPage() {
         speed={0.25}
         maxSize={2}
         lineDistance={110}
-        colors={[
-          'rgba(79,70,229,0.5)',
-          'rgba(139,92,246,0.4)',
-          'rgba(168,85,247,0.35)',
-          'rgba(129,140,248,0.3)',
-        ]}
+        colors={['rgba(139,92,246,0.5)', 'rgba(99,102,241,0.4)', 'rgba(168,85,247,0.35)']}
       />
 
       {/* Gradient Orbs */}
-      <div className="absolute top-[-15%] right-[-15%] w-[55vw] h-[55vw] rounded-full opacity-15 blur-3xl animate-float" style={{ background: 'radial-gradient(circle, var(--accent) 0%, transparent 70%)' }} />
-      <div className="absolute bottom-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full opacity-10 blur-3xl" style={{ background: 'radial-gradient(circle, #8B5CF6 0%, transparent 70%)', animation: 'float 5s ease-in-out infinite reverse' }} />
+      <div className="absolute top-[-20%] right-[-10%] w-[55vw] h-[55vw] rounded-full opacity-20 blur-3xl animate-float" style={{ background: 'radial-gradient(circle, #8b5cf6 0%, transparent 70%)' }} />
+      <div className="absolute bottom-[-15%] left-[-10%] w-[50vw] h-[50vw] rounded-full opacity-15 blur-3xl" style={{ background: 'radial-gradient(circle, var(--accent) 0%, transparent 70%)', animation: 'float 4s ease-in-out infinite reverse' }} />
 
       <div className="absolute top-4 right-4 z-10">
         <ThemeToggle />
@@ -210,10 +75,10 @@ export default function LeaderLoginPage() {
           className="flex justify-center mb-5"
         >
           <div className="relative">
-            <div className="absolute inset-0 rounded-2xl blur-xl opacity-40" style={{ background: 'var(--accent)' }} />
+            <div className="absolute inset-0 rounded-2xl blur-xl opacity-40" style={{ background: '#8b5cf6' }} />
             <div
-              className="relative w-[72px] h-[72px] rounded-2xl flex items-center justify-center text-white animate-pulse-glow"
-              style={{ background: 'linear-gradient(135deg, var(--accent), #8B5CF6)', boxShadow: '0 8px 32px var(--accent-glow)' }}
+              className="relative w-[72px] h-[72px] rounded-2xl flex items-center justify-center text-white"
+              style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', boxShadow: '0 8px 32px rgba(124,58,237,0.35)' }}
             >
               <ShieldCheck className="w-9 h-9" strokeWidth={1.5} />
             </div>
@@ -225,13 +90,13 @@ export default function LeaderLoginPage() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.25, duration: 0.5 }}
-          className="text-center mb-6"
+          className="text-center mb-7"
         >
-          <h1 className="text-fluid-3xl font-extrabold tracking-tight gradient-text">Leader Portal</h1>
+          <h1 className="text-fluid-3xl font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>Leader Portal</h1>
           <p className="text-fluid-xs mt-1 font-medium" style={{ color: 'var(--text-muted)' }}>เข้าสู่ระบบสำหรับหัวหน้างาน</p>
         </motion.div>
 
-        {/* Login Card — Glass */}
+        {/* Login Form — Glass */}
         <motion.form
           onSubmit={handleSubmit}
           initial={{ opacity: 0, y: 25, scale: 0.97 }}
@@ -244,12 +109,13 @@ export default function LeaderLoginPage() {
             boxShadow: '0 8px 40px rgba(0,0,0,0.08), 0 0 0 1px var(--border)',
           }}
         >
+          {/* Error */}
           <AnimatePresence>
             {error && (
               <motion.div
-                initial={{ opacity: 0, y: -8, height: 0 }}
-                animate={{ opacity: 1, y: 0, height: 'auto' }}
-                exit={{ opacity: 0, y: -8, height: 0 }}
+                initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                animate={{ opacity: 1, height: 'auto', marginBottom: 4 }}
+                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
                 className="flex items-center gap-2 p-3 rounded-xl text-fluid-xs font-medium overflow-hidden"
                 style={{ background: 'var(--danger-light)', color: 'var(--danger)' }}
               >
@@ -259,6 +125,7 @@ export default function LeaderLoginPage() {
             )}
           </AnimatePresence>
 
+          {/* Email */}
           <div className="relative">
             <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
             <input
@@ -272,6 +139,7 @@ export default function LeaderLoginPage() {
             />
           </div>
 
+          {/* Password */}
           <div className="relative">
             <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
             <input
@@ -294,15 +162,16 @@ export default function LeaderLoginPage() {
             </button>
           </div>
 
+          {/* Submit */}
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl text-white font-bold text-[15px] transition-all disabled:opacity-50 cursor-pointer"
+            className="w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl text-white font-bold text-[15px] transition-all disabled:opacity-50 cursor-pointer"
             style={{
-              background: 'linear-gradient(135deg, var(--accent), #8B5CF6)',
-              boxShadow: '0 4px 20px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.15)',
+              background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
+              boxShadow: '0 4px 20px rgba(124,58,237,0.35), inset 0 1px 0 rgba(255,255,255,0.15)',
             }}
           >
             {loading ? (
@@ -310,9 +179,7 @@ export default function LeaderLoginPage() {
                 <div className="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
                 <span>กำลังเข้าสู่ระบบ...</span>
               </>
-            ) : (
-              <span>เข้าสู่ระบบ</span>
-            )}
+            ) : 'เข้าสู่ระบบ'}
           </motion.button>
         </motion.form>
 
@@ -347,4 +214,3 @@ export default function LeaderLoginPage() {
     </div>
   );
 }
->>>>>>> C:/Users/Narongyot.B/.windsurf/worktrees/drivers/drivers-244b8337/src/app/leader/login/page.tsx
