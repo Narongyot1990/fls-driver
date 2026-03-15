@@ -19,6 +19,14 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'Leader ID is required' }, { status: 400 });
     }
 
+    if (leaderId === 'admin_root') {
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Root administrator profile is managed via system configuration.',
+        leader: { id: 'admin_root', name: 'ITL Administrator', role: 'admin' }
+      });
+    }
+
     await dbConnect();
 
     const leader = await Leader.findById(leaderId);

@@ -79,6 +79,36 @@ export async function POST(request: NextRequest) {
     }
 
     const { userId } = authResult.payload;
+
+    await dbConnect();
+
+    // Enforce strict sequence: 1 In, 1 Out per day
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+
+    const todayRecords = await Attendance.find({
+      userId,
+      timestamp: { $gte: startOfToday, $lte: endOfToday }
+    }).sort({ timestamp: 1 });
+
+    if (type === 'in') {
+      if (todayRecords.length > 0) {
+        return NextResponse.json({ error: 'วันนี้คุณได้ลงเวลาเข้างานไปแล้ว' }, { status: 400 });
+      }
+    } else if (type === 'out') {
+      const hasIn = todayRecords.some(r => r.type === 'in');
+      const hasOut = todayRecords.some(r => r.type === 'out');
+      
+      if (!hasIn) {
+        return NextResponse.json({ error: 'กรุณาลงเวลาเข้างานก่อน' }, { status: 400 });
+      }
+      if (hasOut) {
+        return NextResponse.json({ error: 'คุณได้ลงเวลาออกงานไปแล้วสำหรับวันนี้' }, { status: 400 });
+      }
+    }
+
     const distance = branchLocation 
       ? getDistance(location.lat, location.lon, branchLocation.lat, branchLocation.lon)
       : 999999;
@@ -87,16 +117,20 @@ export async function POST(request: NextRequest) {
     const limit = (radius || 50) + 5;
     const isInside = distance <= limit;
     
-    await dbConnect();
-
-    // Fetch user name and image from User model if not in payload
+    // Fetch user name and image from User/Leader model
     const { User } = await import('@/models/User');
+    const { Leader } = await import('@/models/Leader');
+    
     let userName = 'Unknown';
     let userImage: string | undefined;
+
     if (mongoose.Types.ObjectId.isValid(userId)) {
-      const userDoc = await User.findById(userId);
-      userName = userDoc?.name || userDoc?.lineDisplayName || 'Unknown';
-      userImage = userDoc?.lineProfileImage;
+      // Try User first (Driver), then Leader
+      let person = await User.findById(userId);
+      if (!person) person = await Leader.findById(userId);
+      
+      userName = person?.name || person?.lineDisplayName || 'Unknown';
+      userImage = (person as any)?.lineProfileImage;
     } else if (userId === 'admin_root') {
       userName = 'ITL Administrator';
     }
