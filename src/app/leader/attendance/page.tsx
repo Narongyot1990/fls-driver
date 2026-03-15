@@ -219,32 +219,10 @@ export default function AttendancePage() {
             </div>
           </div>
 
-          {/* Action Area: Slide to Clock */}
-          <div className="py-2">
-             <AnimatePresence mode="wait">
-                {canClockIn || canClockOut ? (
-                  <div className="space-y-4">
-                     <SlideButton 
-                       type={canClockIn ? 'in' : 'out'} 
-                       disabled={!isInRange || actionLoading}
-                       onSuccess={() => handleClockAction(canClockIn ? 'in' : 'out')}
-                       errorMsg={!isInRange ? `ห่างจากสาขาช้อ ${Math.round(distance || 0)} ม. (เกิน ${branchRadius} ม.)` : ''}
-                     />
-                  </div>
-                ) : isClockedOut ? (
-                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="card p-5 text-center bg-emerald-500/5 border-dashed border-emerald-500/20">
-                     <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-500 opacity-60" />
-                     <p className="text-xs font-black uppercase text-emerald-500 tracking-widest">Shift Completed</p>
-                     <p className="text-[10px] font-bold opacity-40 mt-1 uppercase">บันทึกเวลาเรียบร้อยสำหรับวันนี้</p>
-                  </motion.div>
-                ) : null}
-             </AnimatePresence>
-          </div>
-
           {/* New History List - Compact (Scrollable) */}
           <div className="card p-1">
              <div className="flex items-center justify-between p-3 border-b border-[var(--border)] bg-[var(--bg-inset)] rounded-t-2xl">
-                <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Today's Logs (20ล่าสุด)</span>
+                <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Today's Logs (Recent)</span>
                 <HistoryIcon className="w-3 h-3 opacity-30" />
              </div>
              <div className="max-h-[148px] overflow-y-auto overflow-x-hidden p-2 space-y-2 custom-scrollbar">
@@ -278,6 +256,28 @@ export default function AttendancePage() {
              </div>
           </div>
 
+          {/* Action Area: Slide to Clock */}
+          <div className="py-2">
+             <AnimatePresence mode="wait">
+                {canClockIn || canClockOut ? (
+                  <div className="space-y-4">
+                     <SlideButton 
+                       type={canClockIn ? 'in' : 'out'} 
+                       disabled={!isInRange || actionLoading}
+                       onSuccess={() => handleClockAction(canClockIn ? 'in' : 'out')}
+                       errorMsg={!isInRange ? `นอกรัศมี ${Math.round(distance || 0)} ม.` : ''}
+                     />
+                  </div>
+                ) : isClockedOut ? (
+                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="card p-5 text-center bg-emerald-500/5 border-dashed border-emerald-500/20">
+                     <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-500 opacity-60" />
+                     <p className="text-xs font-black uppercase text-emerald-500 tracking-widest">Shift Completed</p>
+                     <p className="text-[10px] font-bold opacity-40 mt-1 uppercase">บันทึกเวลาเรียบร้อยสำหรับวันนี้</p>
+                  </motion.div>
+                ) : null}
+             </AnimatePresence>
+          </div>
+
         </main>
       </div>
       <BottomNav role="leader" />
@@ -309,18 +309,14 @@ function SlideButton({ type, disabled, onSuccess, errorMsg }: any) {
 
   return (
     <div className="space-y-3">
-      {errorMsg && (
-        <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="p-3 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3">
-           <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />
-           <p className="text-[10px] font-black text-red-500 uppercase tracking-tight">{errorMsg}</p>
-        </motion.div>
-      )}
       <div 
-        className={`relative w-full h-16 rounded-[28px] p-2 flex items-center overflow-hidden transition-all shadow-xl ${disabled ? 'opacity-40 grayscale pointer-events-none' : ''}`}
+        className={`relative w-full h-16 rounded-[28px] p-2 flex items-center overflow-hidden transition-all shadow-xl`}
         style={{ background: 'var(--bg-inset)', border: '1px solid var(--border)' }}
       >
         <motion.div style={{ opacity }} className="absolute inset-0 flex items-center justify-center font-black text-xs uppercase tracking-[0.2em] pointer-events-none">
-           {label}
+           {errorMsg ? (
+             <span className="text-red-500/60">{errorMsg}</span>
+           ) : label}
         </motion.div>
         
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">

@@ -52,15 +52,19 @@ export async function GET(request: NextRequest) {
     }
 
     if (!type || type === 'all') {
-      const [pendingLeaves, pendingDrivers] = await Promise.all([
+      const [pendingLeaves, pendingDrivers, totalLeaders, activeDrivers] = await Promise.all([
         LeaveRequest.countDocuments(leaveFilter),
         User.countDocuments(userFilter),
+        User.countDocuments({ role: 'leader' }),
+        User.countDocuments({ role: 'driver', status: 'active' })
       ]);
       return NextResponse.json({
         success: true,
         counts: {
           pendingLeaves,
           pendingDrivers,
+          totalLeaders,
+          activeDrivers,
         }
       });
     }

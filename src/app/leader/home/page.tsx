@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { CheckSquare, Users, Clock, CalendarDays, Settings, LogOut, LayoutGrid, ClipboardList, Info } from 'lucide-react';
+import { CheckSquare, Users, Clock, CalendarDays, Settings, LogOut, LayoutGrid, ClipboardList, Info, ClipboardCheck } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -136,7 +136,7 @@ export default function LeaderHomePage() {
             {/* Section 2: Management */}
             <div className="space-y-3">
                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] opacity-40 px-1">Management</h3>
-               <div className="grid grid-cols-3 gap-3">
+               <div className="grid grid-cols-2 gap-3">
                   <MenuButton 
                     label="อนุมัติลา" 
                     icon={CheckSquare} 
@@ -156,6 +156,12 @@ export default function LeaderHomePage() {
                     href="/leader/drivers" 
                     color="var(--accent)" 
                     badge={pendingDriver}
+                  />
+                  <MenuButton 
+                    label="มอบหมายงาน" 
+                    icon={ClipboardCheck} 
+                    href="/leader/tasks" 
+                    color="var(--info)" 
                   />
                </div>
             </div>
