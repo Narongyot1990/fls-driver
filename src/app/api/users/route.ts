@@ -39,7 +39,6 @@ export async function GET(request: NextRequest) {
       if (userBranch) {
         query.branch = userBranch;
       }
-      // query.status = 'active';
     } else if (role === 'admin') {
       // Admin: sees all unless branch specified
       if (userBranch) {
