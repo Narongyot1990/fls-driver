@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter } from 'next/navigation';
-import { FileText, X, AlertCircle } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { FileText, X, AlertCircle, CalendarDays } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
+import ProfileModal, { type ProfileUser } from '@/components/ProfileModal';
+import UserAvatar from '@/components/UserAvatar';
 import { getLeaveTypeMeta, getStatusBadge, LEAVE_TYPE_LIST } from '@/lib/leave-types';
 import { formatDateThai } from '@/lib/date-utils';
 import { usePusher } from '@/hooks/usePusher';
@@ -20,6 +22,17 @@ interface LeaveRequest {
   reason: string;
   status: string;
   rejectedReason?: string;
+  approvedBy?: {
+    _id: string;
+    name: string;
+    surname: string;
+    lineDisplayName: string;
+    lineProfileImage?: string;
+    performanceTier?: string;
+    branch?: string;
+    role?: string;
+  };
+  approvedAt?: string;
   createdAt: string;
 }
 
@@ -38,6 +51,8 @@ export default function LeaveHistoryPage() {
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
+  const [showProfile, setShowProfile] = useState(false);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('driverUser');
@@ -195,22 +210,39 @@ export default function LeaveHistoryPage() {
                         transition={{ delay: index * 0.03 }}
                         className="card p-4"
                       >
-                        <div className="flex items-start justify-between mb-2.5">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0" style={{ background: 'var(--bg-inset)' }}>
-                              <Icon className="w-4 h-4" style={{ color: iconColor }} strokeWidth={1.8} />
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0" style={{ background: 'var(--bg-inset)' }}>
+                                <Icon className="w-4 h-4" style={{ color: iconColor }} strokeWidth={1.8} />
+                              </div>
+                              <div>
+                                <h3 className="text-fluid-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                                  {meta.label}
+                                </h3>
+                                <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>
+                                  {formatDateThai(request.startDate)} - {formatDateThai(request.endDate)}
+                                </p>
+                              </div>
                             </div>
-                            <div>
-                              <h3 className="text-fluid-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                                {meta.label}
-                              </h3>
-                              <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>
-                                {formatDateThai(request.startDate)} - {formatDateThai(request.endDate)}
-                              </p>
-                            </div>
+                            
+                            {/* Approved By info */}
+                            {request.approvedBy && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
+                                  {request.status === 'approved' ? 'Approved By' : 'Rejected By'}
+                                </span>
+                                <UserAvatar
+                                  imageUrl={request.approvedBy.lineProfileImage}
+                                  displayName={request.approvedBy.name || request.approvedBy.lineDisplayName}
+                                  tier={request.approvedBy.performanceTier}
+                                  size="xs"
+                                  onClick={() => { setProfileUser(request.approvedBy as any); setShowProfile(true); }}
+                                />
+                              </div>
+                            )}
+                            
+                            {!request.approvedBy && <span className={`badge ${badge.cls}`}>{badge.label}</span>}
                           </div>
-                          <span className={`badge ${badge.cls}`}>{badge.label}</span>
-                        </div>
 
                         <p className="text-fluid-xs rounded-[var(--radius-sm)] p-2.5" style={{ background: 'var(--bg-inset)', color: 'var(--text-secondary)' }}>
                           {request.reason}
@@ -252,6 +284,7 @@ export default function LeaveHistoryPage() {
         </div>
       </div>
 
+      <ProfileModal user={profileUser} open={showProfile} onClose={() => setShowProfile(false)} />
       <BottomNav role="driver" />
     </div>
   );

@@ -65,6 +65,7 @@ export async function GET(request: NextRequest) {
 
     const requests = await LeaveRequest.find(query)
       .populate('userId', 'lineDisplayName employeeId phone name surname lineProfileImage performanceTier performancePoints performanceLevel branch')
+      .populate('approvedBy', 'name surname lineDisplayName lineProfileImage performanceTier branch role')
       .sort({ createdAt: -1 });
 
     const response = NextResponse.json({

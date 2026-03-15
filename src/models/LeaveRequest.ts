@@ -33,7 +33,7 @@ const LeaveRequestSchema = new Schema<ILeaveRequest>(
       enum: ['pending', 'approved', 'rejected', 'cancelled'],
       default: 'pending',
     },
-    approvedBy: { type: Schema.Types.ObjectId, ref: 'Leader' },
+    approvedBy: { type: Schema.Types.ObjectId, ref: 'User' },
     approvedAt: { type: Date },
     rejectedReason: { type: String },
   },

@@ -32,6 +32,17 @@ interface LeaveRequest {
   endDate: string;
   reason: string;
   status: string;
+  approvedBy?: {
+    _id: string;
+    name: string;
+    surname: string;
+    lineDisplayName: string;
+    lineProfileImage?: string;
+    performanceTier?: string;
+    branch?: string;
+    role?: string;
+  };
+  approvedAt?: string;
   createdAt: string;
 }
 
@@ -488,7 +499,23 @@ function DashboardContent() {
                           </a>
                         )}
                       </div>
-                      <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>@{leave.userId?.lineDisplayName}</p>
+                      <div className="flex items-center justify-between gap-1">
+                        <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>@{leave.userId?.lineDisplayName}</p>
+                        
+                        {/* Approved By info */}
+                        {leave.approvedBy && (
+                          <div className="flex items-center gap-1.5 opacity-80">
+                            <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">By</span>
+                            <UserAvatar
+                              imageUrl={leave.approvedBy.lineProfileImage}
+                              displayName={leave.approvedBy.name || leave.approvedBy.lineDisplayName}
+                              tier={leave.approvedBy.performanceTier}
+                              size="xs"
+                              onClick={() => { setProfileUser(leave.approvedBy as any); setShowProfile(true); }}
+                            />
+                          </div>
+                        )}
+                      </div>
                       <div className="flex items-center gap-1.5 mt-1">
                         <span className={`w-2 h-2 rounded-full shrink-0 ${getLeaveTypeMeta(leave.leaveType).bgClass}`} />
                         <p className="text-fluid-xs" style={{ color: getLeaveTypeMeta(leave.leaveType).color }}>

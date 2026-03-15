@@ -183,12 +183,13 @@ export async function PATCH(
     }
 
     leaveRequest.status = status;
-    leaveRequest.approvedBy = approvedBy;
+    leaveRequest.approvedBy = new mongoose.Types.ObjectId(authResult.payload.userId) as any;
     leaveRequest.approvedAt = new Date();
     if (status === 'rejected' && rejectedReason) {
       leaveRequest.rejectedReason = rejectedReason;
     }
     await leaveRequest.save();
+    await leaveRequest.populate('approvedBy', 'name surname lineDisplayName lineProfileImage performanceTier branch role');
 
     const driverUserId = (leaveRequest.userId as any)?._id?.toString() || leaveRequest.userId.toString();
     await triggerPusher(CHANNELS.LEAVE_REQUESTS, EVENTS.LEAVE_STATUS_CHANGED, {

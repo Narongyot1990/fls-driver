@@ -30,6 +30,18 @@ interface LeaveRequest {
   endDate: string;
   reason: string;
   status: string;
+  approvedBy?: {
+    _id: string;
+    name: string;
+    surname: string;
+    lineDisplayName: string;
+    lineProfileImage?: string;
+    performanceTier?: string;
+    branch?: string;
+    role?: string;
+  };
+  approvedAt?: string;
+  rejectedReason?: string;
   createdAt: string;
 }
 
@@ -266,15 +278,38 @@ function LeaderHistoryContent() {
                           </div>
                         </div>
                         <div className="p-4" style={{ background: 'var(--bg-inset)' }}>
-                          <div className="flex items-center gap-2 mb-2">
-                            <Icon className="w-4 h-4" style={{ color: meta.color }} strokeWidth={1.8} />
-                            <span className="text-fluid-sm font-medium" style={{ color: meta.color }}>{meta.label}</span>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Icon className="w-4 h-4" style={{ color: meta.color }} strokeWidth={1.8} />
+                              <span className="text-fluid-sm font-medium" style={{ color: meta.color }}>{meta.label}</span>
+                            </div>
+                            
+                            {/* Approved By info */}
+                            {request.approvedBy && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
+                                  {request.status === 'approved' ? 'Approved By' : 'Rejected By'}
+                                </span>
+                                <UserAvatar
+                                  imageUrl={request.approvedBy.lineProfileImage}
+                                  displayName={request.approvedBy.name || request.approvedBy.lineDisplayName}
+                                  tier={request.approvedBy.performanceTier}
+                                  size="xs"
+                                  onClick={() => { setProfileUser(request.approvedBy as any); setShowProfile(true); }}
+                                />
+                              </div>
+                            )}
                           </div>
                           <div className="flex items-center gap-2 text-fluid-xs" style={{ color: 'var(--text-secondary)' }}>
                             <CalendarDays className="w-3.5 h-3.5" strokeWidth={1.5} />
                             <span>{formatDateThai(request.startDate)} - {formatDateThai(request.endDate)} ({getLeaveDays(request.startDate, request.endDate)} วัน)</span>
                           </div>
                           <p className="text-fluid-xs mt-2" style={{ color: 'var(--text-secondary)' }}>{request.reason}</p>
+                          {request.status === 'rejected' && request.rejectedReason && (
+                            <div className="mt-2 p-2 bg-red-500/10 border border-red-500/20 rounded-lg">
+                              <p className="text-[10px] font-bold text-red-500">REASON: {request.rejectedReason}</p>
+                            </div>
+                          )}
                         </div>
                       </motion.div>
                     );
