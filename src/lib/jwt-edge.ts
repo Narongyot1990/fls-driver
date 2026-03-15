@@ -8,6 +8,7 @@ export interface TokenPayload {
   email?: string;
   role: 'driver' | 'leader' | 'admin';
   branch?: string;
+  status: 'pending' | 'active';
 }
 
 export async function verifyAccessTokenEdge(token: string): Promise<TokenPayload | null> {

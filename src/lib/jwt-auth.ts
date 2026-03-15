@@ -21,6 +21,7 @@ export interface TokenPayload {
   email?: string;
   role: 'driver' | 'leader' | 'admin';
   branch?: string;
+  status: 'pending' | 'active';
 }
 
 export function generateAccessToken(payload: TokenPayload): string {

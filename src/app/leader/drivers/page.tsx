@@ -15,7 +15,7 @@ import { usePusher } from '@/hooks/usePusher';
 import { useBranches } from '@/hooks/useBranches';
 import { useToast } from '@/components/Toast';
 
-interface Driver {
+interface Personnel {
   _id: string;
   lineUserId: string;
   linePublicId?: string;
@@ -29,6 +29,7 @@ interface Driver {
   phone?: string;
   employeeId?: string;
   branch?: string;
+  role: 'driver' | 'leader' | 'admin';
   status: 'pending' | 'active';
   vacationDays?: number;
   sickDays?: number;
@@ -42,10 +43,10 @@ function DriverManagementContent() {
   const { branches, loading: branchesLoading } = useBranches();
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<'leader' | 'admin'>('leader');
-  const [allDrivers, setAllDrivers] = useState<Driver[]>([]);
+  const [allPersonnel, setAllPersonnel] = useState<Personnel[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab ] = useState<'all' | 'pending' | 'active'>('all');
-  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
+  const [selectedPersonnel, setSelectedPersonnel] = useState<Personnel | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -53,9 +54,9 @@ function DriverManagementContent() {
   const [showProfile, setShowProfile] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState<string>('all');
 
-  const drivers = (activeTab === 'all' 
-    ? allDrivers 
-    : allDrivers.filter(d => d.status === activeTab));
+  const personnelList = (activeTab === 'all' 
+    ? allPersonnel 
+    : allPersonnel.filter(d => d.status === activeTab));
 
   useEffect(() => {
     const fetchMe = async () => {
@@ -91,7 +92,7 @@ function DriverManagementContent() {
       const response = await fetch(`/api/users?${params.toString()}`);
       const data = await response.json();
       if (data.success) {
-        setAllDrivers(data.users);
+        setAllPersonnel(data.users);
       }
     } catch (err) {
       console.error(err);
@@ -138,9 +139,9 @@ function DriverManagementContent() {
       });
       const data = await response.json();
       if (data.success) {
-        setAllDrivers(prev => prev.map(d => d._id === driverId ? { ...d, status: 'active' } : d));
-        // Instead of closing, update selectedDriver to transition to Step 2
-        setSelectedDriver(prev => prev ? { ...prev, status: 'active' } : null);
+        setAllPersonnel(prev => prev.map(d => d._id === driverId ? { ...d, status: 'active' } : d));
+        // Instead of closing, update selectedPersonnel to transition to Step 2
+        setSelectedPersonnel(prev => prev ? { ...prev, status: 'active' } : null);
       }
     } catch (err) {
       console.error(err);
@@ -159,8 +160,8 @@ function DriverManagementContent() {
       });
       const data = await response.json();
       if (data.success) {
-        setAllDrivers(prev => prev.map(d => d._id === driverId ? { ...d, status: 'pending' } : d));
-        setSelectedDriver(null);
+        setAllPersonnel(prev => prev.map(d => d._id === driverId ? { ...d, status: 'pending' } : d));
+        setSelectedPersonnel(null);
       }
     } catch (err) {
       console.error(err);
@@ -171,34 +172,35 @@ function DriverManagementContent() {
 
   const handleUpdateDriver = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedDriver) return;
+    if (!selectedPersonnel) return;
     
-    setActionLoading(selectedDriver._id);
+    setActionLoading(selectedPersonnel._id);
     try {
       const response = await fetch('/api/users', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: selectedDriver._id,
-          name: selectedDriver.name,
-          surname: selectedDriver.surname,
-          phone: selectedDriver.phone,
-          linePublicId: selectedDriver.linePublicId,
-          employeeId: selectedDriver.employeeId,
-          vacationDays: selectedDriver.vacationDays,
-          sickDays: selectedDriver.sickDays,
-          personalDays: selectedDriver.personalDays,
-          performanceTier: selectedDriver.performanceTier,
-          branch: selectedDriver.branch,
+          userId: selectedPersonnel._id,
+          name: selectedPersonnel.name,
+          surname: selectedPersonnel.surname,
+          phone: selectedPersonnel.phone,
+          linePublicId: selectedPersonnel.linePublicId,
+          employeeId: selectedPersonnel.employeeId,
+          vacationDays: selectedPersonnel.vacationDays,
+          sickDays: selectedPersonnel.sickDays,
+          personalDays: selectedPersonnel.personalDays,
+          performanceTier: selectedPersonnel.performanceTier,
+          branch: selectedPersonnel.branch,
+          role: selectedPersonnel.role,
         }),
       });
       const data = await response.json();
       if (data.success) {
-        setAllDrivers(prev => prev.map(d => d._id === selectedDriver._id ? { ...d, ...data.user } : d));
-        // If it was Step 2 (null branch), update selectedDriver to transition to Step 3
+        setAllPersonnel(prev => prev.map(d => d._id === selectedPersonnel._id ? { ...d, ...data.user } : d));
+        // If it was Step 2 (null branch), update selectedPersonnel to transition to Step 3
         // If it was Step 3, we can keep it open for further edits or close it. 
         // Let's update it so the UI reflects the saved state.
-        setSelectedDriver({ ...selectedDriver, ...data.user });
+        setSelectedPersonnel({ ...selectedPersonnel, ...data.user });
       }
     } catch (err) {
       console.error(err);
@@ -214,10 +216,10 @@ function DriverManagementContent() {
       const response = await fetch(`/api/users?id=${deletingId}`, { method: 'DELETE' });
       const data = await response.json();
       if (data.success) {
-        setAllDrivers(prev => prev.filter(d => d._id !== deletingId));
+        setAllPersonnel(prev => prev.filter(d => d._id !== deletingId));
         setShowDeleteModal(false);
         setDeletingId(null);
-        setSelectedDriver(null);
+        setSelectedPersonnel(null);
       }
     } catch (err) {
       console.error(err);
@@ -269,7 +271,7 @@ function DriverManagementContent() {
               boxShadow: activeTab === 'all' ? 'var(--shadow-accent)' : 'none'
             }}
           >
-            <p className="text-fluid-2xl font-extrabold" style={{ color: activeTab === 'all' ? 'white' : 'var(--accent)' }}>{allDrivers.length}</p>
+            <p className="text-fluid-2xl font-extrabold" style={{ color: activeTab === 'all' ? 'white' : 'var(--accent)' }}>{allPersonnel.length}</p>
             <p className="text-fluid-xs" style={{ color: activeTab === 'all' ? 'white' : 'var(--text-muted)' }}>ทั้งหมด</p>
           </button>
           <button
@@ -281,7 +283,7 @@ function DriverManagementContent() {
             }}
           >
             <p className="text-fluid-2xl font-extrabold" style={{ color: activeTab === 'pending' ? 'white' : 'var(--warning)' }}>
-              {drivers.filter(d => d.status === 'pending').length}
+              {personnelList.filter(d => d.status === 'pending').length}
             </p>
             <p className="text-fluid-xs" style={{ color: activeTab === 'pending' ? 'white' : 'var(--text-muted)' }}>รอยืนยัน</p>
           </button>
@@ -294,7 +296,7 @@ function DriverManagementContent() {
             }}
           >
             <p className="text-fluid-2xl font-extrabold" style={{ color: activeTab === 'active' ? 'white' : 'var(--success)' }}>
-              {drivers.filter(d => d.status === 'active').length}
+              {personnelList.filter(d => d.status === 'active').length}
             </p>
             <p className="text-fluid-xs" style={{ color: activeTab === 'active' ? 'white' : 'var(--text-muted)' }}>พร้อมใช้</p>
           </button>
@@ -305,19 +307,19 @@ function DriverManagementContent() {
             <div className="flex justify-center py-12">
               <div className="w-10 h-10 rounded-full border-[3px] animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--accent)' }} />
             </div>
-          ) : drivers.length === 0 ? (
+          ) : personnelList.length === 0 ? (
             <div className="card p-12 text-center">
               <Users className="w-8 h-8 mx-auto mb-3" style={{ color: 'var(--text-muted)' }} />
               <p className="text-fluid-sm" style={{ color: 'var(--text-muted)' }}>ไม่มีพนักงาน</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {drivers.map((driver) => (
+              {personnelList.map((driver) => (
                 <motion.div
                   key={driver._id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  onClick={() => setSelectedDriver(driver)}
+                  onClick={() => setSelectedPersonnel(driver)}
                   className="card p-4 flex items-center gap-4 cursor-pointer group shadow-sm hover:shadow-md transition-shadow"
                 >
                   <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -341,6 +343,9 @@ function DriverManagementContent() {
                     <div className="flex items-center gap-2 mb-0.5">
                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${driver.status === 'active' ? 'bg-[var(--success-light)] text-[var(--success)]' : 'bg-[var(--warning-light)] text-[var(--warning)]'}`}>
                         {driver.status === 'active' ? 'Active' : 'Pending'}
+                      </span>
+                      <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${driver.role === 'leader' ? 'bg-indigo-500/10 text-indigo-500' : 'bg-slate-500/10 text-slate-500'}`}>
+                        {driver.role || 'Driver'}
                       </span>
                       {driver.branch && (
                         <span className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest leading-none">
@@ -390,14 +395,14 @@ function DriverManagementContent() {
 
       {/* Edit Modal */}
       <AnimatePresence>
-        {selectedDriver && (
+        {selectedPersonnel && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
             style={{ background: 'rgba(0,0,0,0.5)' }}
-            onClick={() => setSelectedDriver(null)}
+            onClick={() => setSelectedPersonnel(null)}
           >
             <motion.div
               initial={{ y: '100%' }}
@@ -409,24 +414,24 @@ function DriverManagementContent() {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-lg ${
-                    selectedDriver.status === 'pending' ? 'bg-amber-500 text-white' : 
-                    !selectedDriver.branch ? 'bg-blue-500 text-white' : 'bg-[var(--accent)] text-white'
+                    selectedPersonnel.status === 'pending' ? 'bg-amber-500 text-white' : 
+                    !selectedPersonnel.branch ? 'bg-blue-500 text-white' : 'bg-[var(--accent)] text-white'
                   }`}>
-                    {selectedDriver.status === 'pending' ? <CheckCircle2 className="w-5 h-5" /> : 
-                     !selectedDriver.branch ? <MapPin className="w-5 h-5" /> : <User className="w-5 h-5" />}
+                    {selectedPersonnel.status === 'pending' ? <CheckCircle2 className="w-5 h-5" /> : 
+                     !selectedPersonnel.branch ? <MapPin className="w-5 h-5" /> : <User className="w-5 h-5" />}
                   </div>
                   <div>
                     <h2 className="text-fluid-lg font-black uppercase tracking-tight" style={{ color: 'var(--text-primary)' }}>
-                      {selectedDriver.status === 'pending' ? 'Step 1: อนุมัติพนักงาน' : 
-                       !selectedDriver.branch ? 'Step 2: ระบุสาขา' : 'Step 3: ข้อมูลพนักงาน'}
+                      {selectedPersonnel.status === 'pending' ? 'Step 1: อนุมัติพนักงาน' : 
+                       !selectedPersonnel.branch ? 'Step 2: ระบุสาขา' : 'Step 3: ข้อมูลพนักงาน'}
                     </h2>
                     <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
-                      {selectedDriver.status === 'pending' ? 'Activate New Employee' : 
-                       !selectedDriver.branch ? 'Assign Branch' : 'Manage Employee Details'}
+                      {selectedPersonnel.status === 'pending' ? 'Activate New Employee' : 
+                       !selectedPersonnel.branch ? 'Assign Branch' : 'Manage Employee Details'}
                     </p>
                   </div>
                 </div>
-                <button onClick={() => setSelectedDriver(null)} className="btn-ghost w-8 h-8 p-0 rounded-full flex items-center justify-center">
+                <button onClick={() => setSelectedPersonnel(null)} className="btn-ghost w-8 h-8 p-0 rounded-full flex items-center justify-center">
                   <X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
                 </button>
               </div>
@@ -435,17 +440,17 @@ function DriverManagementContent() {
                 {/* Avatar Preview Section */}
                 <div className="flex flex-col items-center justify-center p-4 bg-[var(--bg-inset)] rounded-2xl border border-[var(--border)] mb-2">
                   <UserAvatar
-                    imageUrl={selectedDriver.lineProfileImage}
-                    displayName={selectedDriver.name || selectedDriver.lineDisplayName}
-                    tier={selectedDriver.performanceTier}
+                    imageUrl={selectedPersonnel.lineProfileImage}
+                    displayName={selectedPersonnel.name || selectedPersonnel.lineDisplayName}
+                    tier={selectedPersonnel.performanceTier}
                     size="lg"
                     showTierBadge
                   />
-                  <p className="mt-2 text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">{selectedDriver.lineDisplayName || 'New Driver'}</p>
+                  <p className="mt-2 text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">{selectedPersonnel.lineDisplayName || 'New Driver'}</p>
                 </div>
 
                 {/* STEP 1: PENDING STATE */}
-                {selectedDriver.status === 'pending' ? (
+                {selectedPersonnel.status === 'pending' ? (
                   <div className="space-y-4">
                     <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 text-center">
                       <p className="text-xs font-bold text-amber-500 leading-relaxed">
@@ -455,17 +460,17 @@ function DriverManagementContent() {
                     <div className="flex gap-2">
                       <button
                         type="button"
-                        onClick={() => handleActivate(selectedDriver._id)}
-                        disabled={actionLoading === selectedDriver._id}
+                        onClick={() => handleActivate(selectedPersonnel._id)}
+                        disabled={actionLoading === selectedPersonnel._id}
                         className="btn flex-1 h-14 text-sm font-black uppercase tracking-widest disabled:opacity-50 shadow-xl shadow-emerald-500/10"
                         style={{ background: 'var(--success)', color: 'white' }}
                       >
-                        {actionLoading === selectedDriver._id ? 'กำลัง...' : '1. ยืนยันพนักงาน'}
+                        {actionLoading === selectedPersonnel._id ? 'กำลัง...' : '1. ยืนยันพนักงาน'}
                       </button>
                       <button
                         type="button"
-                        onClick={() => { setDeletingId(selectedDriver._id); setShowDeleteModal(true); }}
-                        disabled={actionLoading === selectedDriver._id}
+                        onClick={() => { setDeletingId(selectedPersonnel._id); setShowDeleteModal(true); }}
+                        disabled={actionLoading === selectedPersonnel._id}
                         className="btn px-4 h-14 text-sm font-bold disabled:opacity-50"
                         style={{ background: 'var(--danger)', color: 'white' }}
                       >
@@ -475,35 +480,54 @@ function DriverManagementContent() {
                   </div>
                 ) : (
                   <>
-                    {/* STEP 2: ASSIGN BRANCH */}
-                    {!selectedDriver.branch ? (
+                    {/* STEP 2: ASSIGN BRANCH & ROLE */}
+                    {!selectedPersonnel.branch ? (
                       <div className="space-y-4">
-                        <div className="p-4 rounded-xl border border-blue-500/20 bg-blue-500/5">
-                          <label className="block text-fluid-xs font-black uppercase tracking-widest mb-2 text-blue-500">2. เลือกสาขาที่สังกัด</label>
-                          <select
-                            value={selectedDriver.branch || ''}
-                            onChange={(e) => setSelectedDriver({ ...selectedDriver, branch: e.target.value || undefined })}
-                            className="input border-blue-500/30 bg-blue-500/5 focus:border-blue-500"
-                            required
-                          >
-                            <option value="">-- ระบุสาขา --</option>
-                            <option value="AYA">AYA</option>
-                            <option value="CBI">CBI</option>
-                            <option value="KSN">KSN</option>
-                            <option value="RA2">RA2</option>
-                            <option value="BBT">BBT</option>
-                          </select>
+                        <div className="p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 space-y-3">
+                          <div>
+                            <label className="block text-fluid-xs font-black uppercase tracking-widest mb-1 text-blue-500">2. เลือกตําแหน่งงาน (Role)</label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedPersonnel({ ...selectedPersonnel, role: 'driver' })}
+                                className={`py-2 rounded-lg text-xs font-black transition-all ${selectedPersonnel.role === 'driver' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/50 text-blue-500 border border-blue-500/20'}`}
+                              >
+                                DRIVER
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedPersonnel({ ...selectedPersonnel, role: 'leader' })}
+                                className={`py-2 rounded-lg text-xs font-black transition-all ${selectedPersonnel.role === 'leader' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/50 text-blue-500 border border-blue-500/20'}`}
+                              >
+                                LEADER
+                              </button>
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-fluid-xs font-black uppercase tracking-widest mb-1 text-blue-500">3. เลือกสาขาที่สังกัด</label>
+                            <select
+                              value={selectedPersonnel.branch || ''}
+                              onChange={(e) => setSelectedPersonnel({ ...selectedPersonnel, branch: e.target.value || undefined })}
+                              className="input border-blue-500/30 bg-blue-500/5 focus:border-blue-500"
+                              required
+                            >
+                              <option value="">-- ระบุสาขา --</option>
+                              {(branchesLoading ? [] : branches).map(b => (
+                                <option key={b.code} value={b.code}>{b.code} - {b.name}</option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
                         <button 
                           type="submit" 
-                          disabled={!selectedDriver.branch || actionLoading === selectedDriver._id} 
+                          disabled={!selectedPersonnel.branch || actionLoading === selectedPersonnel._id} 
                           className="btn btn-primary w-full h-14 text-sm font-black uppercase tracking-widest shadow-xl shadow-blue-500/10"
                         >
-                          {actionLoading === selectedDriver._id ? 'กำลัง...' : '2. บันทึกสาขา'}
+                          {actionLoading === selectedPersonnel._id ? 'กำลัง...' : 'บันทึกและเปิดใช้งาน'}
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDeactivate(selectedDriver._id)}
+                          onClick={() => handleDeactivate(selectedPersonnel._id)}
                           className="btn btn-ghost w-full text-[10px] uppercase font-black tracking-widest opacity-50"
                         >
                           ย้อนกลับไปรออนุมัติ (Deactivate)
@@ -512,6 +536,29 @@ function DriverManagementContent() {
                     ) : (
                       /* STEP 3: FULL EDIT MODE */
                       <div className="space-y-4">
+                        {/* Role selection for existing personnel */}
+                        <div className="pt-1">
+                          <label className="block text-fluid-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>
+                            ตําแหน่งงาน (Role)
+                          </label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedPersonnel({ ...selectedPersonnel, role: 'driver' })}
+                              className={`py-2 rounded-lg text-xs font-black transition-all ${selectedPersonnel.role === 'driver' ? 'bg-[var(--accent)] text-white' : 'bg-[var(--bg-inset)] text-[var(--text-muted)] border border-[var(--border)]'}`}
+                            >
+                              DRIVER
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedPersonnel({ ...selectedPersonnel, role: 'leader' })}
+                              className={`py-2 rounded-lg text-xs font-black transition-all ${selectedPersonnel.role === 'leader' ? 'bg-[var(--accent)] text-white' : 'bg-[var(--bg-inset)] text-[var(--text-muted)] border border-[var(--border)]'}`}
+                            >
+                              LEADER
+                            </button>
+                          </div>
+                        </div>
+
                         {/* Tier selector */}
                         <div className="pt-1">
                           <label className="flex items-center gap-1.5 text-fluid-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>
@@ -521,12 +568,12 @@ function DriverManagementContent() {
                           <div className="grid grid-cols-5 gap-2">
                             {PERFORMANCE_TIERS.map((tier) => {
                               const cfg = PERFORMANCE_TIER_CONFIG[tier];
-                              const isSelected = (selectedDriver.performanceTier ?? 'standard') === tier;
+                              const isSelected = (selectedPersonnel.performanceTier ?? 'standard') === tier;
                               return (
                                 <button
                                   key={tier}
                                   type="button"
-                                  onClick={() => setSelectedDriver({ ...selectedDriver, performanceTier: tier })}
+                                  onClick={() => setSelectedPersonnel({ ...selectedPersonnel, performanceTier: tier })}
                                   className="flex flex-col items-center gap-1 py-2 px-1 rounded-[var(--radius-md)] transition-all"
                                   style={{
                                     background: isSelected ? 'var(--bg-inset)' : 'transparent',
@@ -534,8 +581,8 @@ function DriverManagementContent() {
                                   }}
                                 >
                                   <UserAvatar
-                                    imageUrl={selectedDriver.lineProfileImage}
-                                    displayName={selectedDriver.name || selectedDriver.lineDisplayName}
+                                    imageUrl={selectedPersonnel.lineProfileImage}
+                                    displayName={selectedPersonnel.name || selectedPersonnel.lineDisplayName}
                                     tier={tier}
                                     size="xs"
                                   />
@@ -551,51 +598,49 @@ function DriverManagementContent() {
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="block text-fluid-xs mb-1" style={{ color: 'var(--text-muted)' }}>ชื่อ</label>
-                            <input type="text" value={selectedDriver.name || ''} onChange={(e) => setSelectedDriver({ ...selectedDriver, name: e.target.value })} className="input" placeholder="กรอกชื่อ" required />
+                            <input type="text" value={selectedPersonnel.name || ''} onChange={(e) => setSelectedPersonnel({ ...selectedPersonnel, name: e.target.value })} className="input" placeholder="กรอกชื่อ" required />
                           </div>
                           <div>
                             <label className="block text-fluid-xs mb-1" style={{ color: 'var(--text-muted)' }}>นามสกุล</label>
-                            <input type="text" value={selectedDriver.surname || ''} onChange={(e) => setSelectedDriver({ ...selectedDriver, surname: e.target.value })} className="input" placeholder="กรอกนามสกุล" required />
+                            <input type="text" value={selectedPersonnel.surname || ''} onChange={(e) => setSelectedPersonnel({ ...selectedPersonnel, surname: e.target.value })} className="input" placeholder="กรอกนามสกุล" required />
                           </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
                             <label className="block text-fluid-xs mb-1" style={{ color: 'var(--text-muted)' }}>รหัสพนักงาน</label>
-                            <input type="text" value={selectedDriver.employeeId || ''} onChange={(e) => setSelectedDriver({ ...selectedDriver, employeeId: e.target.value })} className="input" placeholder="กรอกรหัส" />
+                            <input type="text" value={selectedPersonnel.employeeId || ''} onChange={(e) => setSelectedPersonnel({ ...selectedPersonnel, employeeId: e.target.value })} className="input" placeholder="กรอกรหัส" />
                           </div>
                           <div>
                             <label className="block text-fluid-xs mb-1" style={{ color: 'var(--text-muted)' }}>เบอร์โทร</label>
-                            <input type="tel" value={selectedDriver.phone || ''} onChange={(e) => setSelectedDriver({ ...selectedDriver, phone: e.target.value })} className="input" placeholder="08x-xxxxxxx" />
+                            <input type="tel" value={selectedPersonnel.phone || ''} onChange={(e) => setSelectedPersonnel({ ...selectedPersonnel, phone: e.target.value })} className="input" placeholder="08x-xxxxxxx" />
                           </div>
                         </div>
                         
                         <div>
                           <label className="block text-fluid-xs mb-1" style={{ color: 'var(--text-muted)' }}>ปรับเปลี่ยนสาขา</label>
                           <select
-                            value={selectedDriver.branch || ''}
-                            onChange={(e) => setSelectedDriver({ ...selectedDriver, branch: e.target.value })}
+                            value={selectedPersonnel.branch || ''}
+                            onChange={(e) => setSelectedPersonnel({ ...selectedPersonnel, branch: e.target.value })}
                             className="input"
                             required
                           >
-                            <option value="AYA">AYA</option>
-                            <option value="CBI">CBI</option>
-                            <option value="KSN">KSN</option>
-                            <option value="RA2">RA2</option>
-                            <option value="BBT">BBT</option>
+                            {(branchesLoading ? [] : branches).map(b => (
+                              <option key={b.code} value={b.code}>{b.code}</option>
+                            ))}
                           </select>
                         </div>
 
                         <div className="flex gap-3 pt-2">
-                          <button type="button" onClick={() => setSelectedDriver(null)} className="btn btn-secondary flex-1">ยกเลิก</button>
-                          <button type="submit" disabled={actionLoading === selectedDriver._id} className="btn btn-primary flex-1 h-12 shadow-lg shadow-[var(--accent)]/10">
-                            {actionLoading === selectedDriver._id ? 'กำลัง...' : '3. บันทึกข้อมูล'}
+                          <button type="button" onClick={() => setSelectedPersonnel(null)} className="btn btn-secondary flex-1">ยกเลิก</button>
+                          <button type="submit" disabled={actionLoading === selectedPersonnel._id} className="btn btn-primary flex-1 h-12 shadow-lg shadow-[var(--accent)]/10">
+                            {actionLoading === selectedPersonnel._id ? 'กำลัง...' : '3. บันทึกข้อมูล'}
                           </button>
                         </div>
 
                         <button
                           type="button"
-                          onClick={() => handleDeactivate(selectedDriver._id)}
-                          disabled={actionLoading === selectedDriver._id}
+                          onClick={() => handleDeactivate(selectedPersonnel._id)}
+                          disabled={actionLoading === selectedPersonnel._id}
                           className="btn btn-ghost w-full text-[10px] uppercase font-black tracking-widest mt-2"
                           style={{ color: 'var(--warning)' }}
                         >

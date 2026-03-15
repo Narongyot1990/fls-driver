@@ -43,7 +43,7 @@ export async function middleware(request: NextRequest) {
   if (accessToken) {
     const payload = await verifyAccessTokenEdge(accessToken);
     if (payload) {
-      return checkRoleAccess(payload.role, pathname, request);
+      return checkRoleAccess(payload, pathname, request);
     }
   }
 
@@ -55,7 +55,7 @@ export async function middleware(request: NextRequest) {
       const newAccessToken = await generateAccessTokenEdge(tokenPayload);
       const newRefreshToken = await generateRefreshTokenEdge(tokenPayload);
 
-      const response = checkRoleAccess(payload.role, pathname, request);
+      const response = checkRoleAccess(payload, pathname, request);
 
       response.cookies.set('accessToken', newAccessToken, {
         httpOnly: true,
@@ -89,9 +89,23 @@ function redirectToLogin(pathname: string, baseUrl: string): NextResponse {
   return NextResponse.redirect(new URL('/login', baseUrl));
 }
 
-function checkRoleAccess(role: string, pathname: string, request: NextRequest): NextResponse {
+function checkRoleAccess(payload: any, pathname: string, request: NextRequest): NextResponse {
+  const { role, status } = payload;
+
   // Admin has access to everything
   if (role === 'admin') {
+    return NextResponse.next();
+  }
+
+  // Pending users (except on home or logout) are restricted
+  if (status === 'pending') {
+    const isPublicAllowed = pathname === '/home' || pathname === '/leader/home' || pathname === '/login' || pathname === '/leader/login' || pathname.startsWith('/api/auth/logout') || pathname === '/api/auth/me';
+    if (!isPublicAllowed) {
+      if (role === 'leader' || pathname.startsWith('/leader')) {
+        return NextResponse.redirect(new URL('/leader/home', request.url));
+      }
+      return NextResponse.redirect(new URL('/home', request.url));
+    }
     return NextResponse.next();
   }
 

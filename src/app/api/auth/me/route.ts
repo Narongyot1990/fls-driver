@@ -19,49 +19,20 @@ export async function GET() {
       }, { status: 401 });
     }
 
-    if (tokenPayload.role === 'leader') {
-      const leader = await Leader.findById(tokenPayload.userId);
-      if (!leader) {
-        return NextResponse.json({ 
-          success: false, 
-          error: 'Leader not found' 
-        }, { status: 404 });
-      }
-      
-      return NextResponse.json({
-        success: true,
-        user: {
-          id: leader._id,
-          email: leader.email,
-          name: leader.name,
-          branch: leader.branch,
-          role: 'leader',
-        },
-      });
-    } else if (tokenPayload.role === 'admin') {
-      return NextResponse.json({
-        success: true,
-        user: {
-          id: tokenPayload.userId,
-          email: tokenPayload.email,
-          name: 'ITL Administrator',
-          role: 'admin',
-        },
-      });
-    } else if (tokenPayload.role === 'driver') {
-      const user = await User.findById(tokenPayload.userId);
-      if (!user) {
-        return NextResponse.json({ 
-          success: false, 
-          error: 'User found' 
-        }, { status: 404 });
-      }
+    // Unified User Fetching
+    const userRole = tokenPayload.role;
+    const userId = tokenPayload.userId;
 
-      await User.findByIdAndUpdate(tokenPayload.userId, {
+    // Check in User model first (for both drivers and newer LINE-based leaders/admins)
+    const user = await User.findById(userId);
+    
+    if (user) {
+      // Update online status for everyone in User model
+      await User.findByIdAndUpdate(userId, {
         lastSeen: new Date(),
         isOnline: true,
       });
-      
+
       return NextResponse.json({
         success: true,
         user: {
@@ -75,23 +46,36 @@ export async function GET() {
           employeeId: user.employeeId,
           branch: user.branch,
           status: user.status,
+          role: user.role, // Use role from DB
+          // Driver specific fields (safe to include for all)
           vacationDays: user.vacationDays,
           sickDays: user.sickDays,
-          personalDays: user.personalDays,
           performanceTier: user.performanceTier,
-          performancePoints: user.performancePoints,
-          performanceLevel: user.performanceLevel,
-          lastSeen: user.lastSeen,
-          isOnline: user.isOnline,
-          role: 'driver',
         },
       });
     }
 
+    // Fallback for legacy Leader model (Admin accounts or existing Leaders)
+    if (userRole === 'leader' || userRole === 'admin') {
+      const leader = await Leader.findById(userId);
+      if (leader) {
+        return NextResponse.json({
+          success: true,
+          user: {
+            id: leader._id,
+            email: leader.email,
+            name: leader.name,
+            branch: leader.branch,
+            role: leader.role || userRole,
+          },
+        });
+      }
+    }
+
     return NextResponse.json({ 
       success: false, 
-      error: 'Invalid role' 
-    }, { status: 400 });
+      error: 'User not found in system' 
+    }, { status: 404 });
   } catch (error) {
     console.error('Get Current User Error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

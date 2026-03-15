@@ -82,7 +82,7 @@ export async function PATCH(request: NextRequest) {
     if ('error' in authResult) return authResult.error;
 
     const body = await request.json();
-    const { userId, name, surname, phone, employeeId, linePublicId, branch, status, vacationDays, sickDays, personalDays, performanceTier } = body;
+    const { userId, name, surname, phone, employeeId, linePublicId, branch, status, role: newRole, vacationDays, sickDays, personalDays, performanceTier } = body;
 
     if (!userId) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
@@ -97,6 +97,7 @@ export async function PATCH(request: NextRequest) {
     if (employeeId !== undefined) updateData.employeeId = employeeId;
     if (linePublicId !== undefined) updateData.linePublicId = linePublicId;
     if (status !== undefined) updateData.status = status;
+    if (newRole !== undefined) updateData.role = newRole;
     if (vacationDays !== undefined) updateData.vacationDays = vacationDays;
     if (sickDays !== undefined) updateData.sickDays = sickDays;
     if (personalDays !== undefined) updateData.personalDays = personalDays;

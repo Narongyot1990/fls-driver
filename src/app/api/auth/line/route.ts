@@ -85,10 +85,11 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const payload = {
+    const payload: any = {
       userId: user._id.toString(),
-      role: 'driver' as const,
+      role: user.role || 'driver',
       branch: user.branch || undefined,
+      status: user.status || 'pending',
     };
 
     const accessToken = generateAccessToken(payload);
@@ -107,7 +108,7 @@ export async function POST(request: NextRequest) {
         name: user.name,
         surname: user.surname,
         branch: user.branch,
-        role: 'driver',
+        role: user.role || 'driver',
       },
     });
 

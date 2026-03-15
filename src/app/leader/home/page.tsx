@@ -172,12 +172,17 @@ export default function LeaderHomePage() {
               animate={{ y: 0, opacity: 1 }}
               className="flex items-center gap-3"
             >
-              <div
-                className="w-12 h-12 rounded-[var(--radius-md)] flex items-center justify-center text-white font-bold"
-                style={{ background: 'var(--accent)', boxShadow: 'var(--shadow-sm)' }}
-              >
-                {user.name.charAt(0)}
-              </div>
+                <div className="relative">
+                  <div
+                    className="w-12 h-12 rounded-[var(--radius-md)] flex items-center justify-center text-white font-bold"
+                    style={{ background: 'var(--accent)', boxShadow: 'var(--shadow-sm)' }}
+                  >
+                    {user.name.charAt(0)}
+                  </div>
+                  {user.status === 'active' && (
+                    <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full" style={{ background: 'var(--success)', border: '2px solid var(--bg-base)' }} />
+                  )}
+                </div>
               <div className="flex-1 min-w-0">
                 <h1 className="text-fluid-lg font-bold truncate" style={{ color: 'var(--text-primary)' }}>{user.name}</h1>
                 <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>
@@ -192,6 +197,23 @@ export default function LeaderHomePage() {
         <div className="px-4 lg:px-8 py-4">
           <div className="max-w-3xl mx-auto space-y-4">
             
+            {/* Pending Status */}
+            {user.status === 'pending' && (
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.1 }}
+                className="card p-5 text-center"
+                style={{ borderLeftWidth: '4px', borderLeftColor: 'var(--warning)' }}
+              >
+                <div className="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: 'var(--warning-light)' }}>
+                  <CheckSquare className="w-5 h-5" style={{ color: 'var(--warning)' }} />
+                </div>
+                <p className="text-fluid-sm font-semibold" style={{ color: 'var(--warning)' }}>บัญชีอยู่ระหว่างตรวจสอบ</p>
+                <p className="text-fluid-xs mt-1" style={{ color: 'var(--text-muted)' }}>กรุณารอผู้ดูแลระบบอนุมัติการใช้งาน Leader</p>
+              </motion.div>
+            )}
+
             {/* Branch Filter for Admin */}
             {role === 'admin' && (
               <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="flex overflow-x-auto pb-2 gap-2 scrollbar-hide">
