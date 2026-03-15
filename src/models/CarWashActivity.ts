@@ -25,7 +25,7 @@ export interface ICarWashActivity extends Document {
 
 const CommentSchema = new Schema<IComment>(
   {
-    userId: { type: String, ref: 'User', required: true },
+    userId: { type: Schema.Types.Mixed, ref: 'User', required: true },
     text: { type: String, required: true },
     createdAt: { type: Date, default: Date.now },
   },
@@ -34,16 +34,16 @@ const CommentSchema = new Schema<IComment>(
 
 const CarWashActivitySchema = new Schema<ICarWashActivity>(
   {
-    userId: { type: String, ref: 'User', required: true },
+    userId: { type: Schema.Types.Mixed, ref: 'User', required: true },
     activityType: { type: String, default: 'car-wash' },
     imageUrls: [{ type: String }],
     caption: { type: String, default: '' },
     activityDate: { type: Date, required: true },
     activityTime: { type: String, required: true },
-    likes: [{ type: String, ref: 'User' }],
+    likes: [{ type: Schema.Types.Mixed, ref: 'User' }],
     comments: [CommentSchema],
     marked: { type: Boolean, default: false },
-    markedBy: { type: String, ref: 'User' },
+    markedBy: { type: Schema.Types.Mixed, ref: 'User' },
     markedAt: { type: Date },
   },
   { timestamps: true }

@@ -19,7 +19,7 @@ export interface ILeaveRequest extends Document {
 
 const LeaveRequestSchema = new Schema<ILeaveRequest>(
   {
-    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    userId: { type: Schema.Types.Mixed, ref: 'User', required: true },
     leaveType: {
       type: String,
       enum: ['vacation', 'sick', 'personal', 'unpaid'],
@@ -33,7 +33,7 @@ const LeaveRequestSchema = new Schema<ILeaveRequest>(
       enum: ['pending', 'approved', 'rejected', 'cancelled'],
       default: 'pending',
     },
-    approvedBy: { type: String, ref: 'User' },
+    approvedBy: { type: Schema.Types.Mixed, ref: 'User' },
     approvedAt: { type: Date },
     rejectedReason: { type: String },
   },

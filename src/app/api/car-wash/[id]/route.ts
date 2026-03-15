@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import mongoose from 'mongoose';
+import * as mongoose from 'mongoose';
 import { del } from '@vercel/blob';
 import dbConnect from '@/lib/mongodb';
 import { CarWashActivity, IComment } from '@/models/CarWashActivity';
@@ -88,16 +88,17 @@ export async function PATCH(
         return NextResponse.json({ error: 'visitorId is required' }, { status: 400 });
       }
 
+      const visitorObjectId = mongoose.Types.ObjectId.isValid(visitorId) ? new mongoose.Types.ObjectId(visitorId) : visitorId;
       const alreadyLiked = activity.likes.some(
-        (lid: mongoose.Types.ObjectId) => lid.toString() === visitorId
+        (lid: any) => lid.toString() === visitorId
       );
 
       if (alreadyLiked) {
         activity.likes = activity.likes.filter(
-          (lid: mongoose.Types.ObjectId) => lid.toString() !== visitorId
+          (lid: any) => lid.toString() !== visitorId
         );
       } else {
-        activity.likes.push(visitorId);
+        activity.likes.push(visitorObjectId);
       }
 
       await activity.save();
@@ -122,10 +123,10 @@ export async function PATCH(
         createdAt: new Date(),
       };
 
-      if (visitorId === 'admin_root') {
-        commentData.userId = 'admin_root';
-      } else {
+      if (mongoose.Types.ObjectId.isValid(visitorId)) {
         commentData.userId = new mongoose.Types.ObjectId(visitorId);
+      } else {
+        commentData.userId = visitorId;
       }
 
       activity.comments.push(commentData as IComment);
@@ -177,8 +178,9 @@ export async function PATCH(
       }
 
       const { leaderId } = body;
+      const leaderObjectId = mongoose.Types.ObjectId.isValid(leaderId) ? new mongoose.Types.ObjectId(leaderId) : leaderId;
       activity.marked = !activity.marked;
-      activity.markedBy = activity.marked ? leaderId : undefined;
+      activity.markedBy = activity.marked ? leaderObjectId : undefined;
       activity.markedAt = activity.marked ? new Date() : undefined;
 
       await activity.save();

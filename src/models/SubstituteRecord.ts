@@ -22,7 +22,7 @@ export interface ISubstituteRecord extends Document {
 
 const SubstituteRecordSchema = new Schema<ISubstituteRecord>(
   {
-    userId: { type: String, ref: 'User', required: true },
+    userId: { type: Schema.Types.Mixed, ref: 'User', required: true },
     recordType: {
       type: String,
       enum: ['vacation', 'sick', 'personal', 'unpaid', 'absent', 'late', 'accident', 'damage'],
@@ -30,7 +30,7 @@ const SubstituteRecordSchema = new Schema<ISubstituteRecord>(
     },
     description: { type: String },
     date: { type: Date, required: true },
-    createdBy: { type: String, ref: 'User', required: true },
+    createdBy: { type: Schema.Types.Mixed, ref: 'User', required: true },
   },
   { timestamps: true }
 );

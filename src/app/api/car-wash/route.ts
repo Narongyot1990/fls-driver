@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import * as mongoose from 'mongoose';
 import { put } from '@vercel/blob';
 import dbConnect from '@/lib/mongodb';
 import { CarWashActivity } from '@/models/CarWashActivity';
@@ -141,7 +142,7 @@ export async function POST(request: NextRequest) {
     await dbConnect();
 
     const activity = await CarWashActivity.create({
-      userId,
+      userId: mongoose.Types.ObjectId.isValid(userId) ? new mongoose.Types.ObjectId(userId) : userId,
       activityType,
       imageUrls,
       caption,

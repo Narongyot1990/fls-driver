@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import mongoose from 'mongoose';
+import * as mongoose from 'mongoose';
 import dbConnect from '@/lib/mongodb';
 import { SubstituteRecord } from '@/models/SubstituteRecord';
 import { requireAuth, requireLeader } from '@/lib/api-auth';
@@ -70,11 +70,11 @@ export async function POST(request: NextRequest) {
     await dbConnect();
 
     const record = await SubstituteRecord.create({
-      userId,
+      userId: mongoose.Types.ObjectId.isValid(userId) ? new mongoose.Types.ObjectId(userId) : userId,
       recordType,
       date: new Date(date),
       description,
-      createdBy,
+      createdBy: mongoose.Types.ObjectId.isValid(createdBy) ? new mongoose.Types.ObjectId(createdBy) : createdBy,
     });
 
     return NextResponse.json({
