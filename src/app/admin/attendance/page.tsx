@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Users, ChevronLeft, ChevronRight, History as HistoryIcon, ZoomIn, ZoomOut, RotateCcw, AlertTriangle, CalendarDays } from 'lucide-react';
+import { Clock, Users, ChevronLeft, ChevronRight, History as HistoryIcon, ZoomIn, ZoomOut, RotateCcw, AlertTriangle, CalendarDays, Link, Unlink } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import UserAvatar from '@/components/UserAvatar';
 import { usePusher } from '@/hooks/usePusher';
@@ -53,9 +53,13 @@ export default function AttendanceMonitorPage() {
   const [viewDate, setViewDate] = useState(new Date());
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [roleFilter, setRoleFilter] = useState<'all' | 'driver' | 'leader'>('all');
+  const [syncScroll, setSyncScroll] = useState(true);
 
   const timelineRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const rowScrollRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const isSyncingRef = useRef(false);
 
   // ---------- Data Fetching ----------
   const fetchUsers = useCallback(async () => {
@@ -151,18 +155,23 @@ export default function AttendanceMonitorPage() {
     return Array.from(userMap.values());
   }, [users, records]);
 
+  // ---------- Filtered Timeline Data ----------
+  const filteredTimelineData = useMemo(() => {
+    if (roleFilter === 'all') return timelineData;
+    return timelineData.filter(u => u.role === roleFilter);
+  }, [timelineData, roleFilter]);
+
   // ---------- Stats ----------
   const stats = useMemo(() => {
-    const working = timelineData.filter(u => u.sessions.some(s => !s.end)).length;
-    const late = timelineData.filter(u => u.sessions.some(s => s.isLate)).length;
-    const onLeave = 0; // future: integrate leave data
-    const totalHours = timelineData.reduce((acc, u) =>
+    const working = filteredTimelineData.filter(u => u.sessions.some(s => !s.end)).length;
+    const late = filteredTimelineData.filter(u => u.sessions.some(s => s.isLate)).length;
+    const totalHours = filteredTimelineData.reduce((acc, u) =>
       acc + u.sessions.reduce((sa, s) => {
         if (s.start && s.end) return sa + (s.end.getTime() - s.start.getTime()) / 3600000;
         return sa;
       }, 0), 0);
-    return { working, total: users.length, late, onLeave, totalHours: totalHours.toFixed(1) };
-  }, [timelineData, users]);
+    return { working, total: filteredTimelineData.length, late, totalHours: totalHours.toFixed(1) };
+  }, [filteredTimelineData]);
 
   // ---------- Position Calculations ----------
   const getBarPosition = useCallback((start: Date, end: Date | null, vd: Date, zoom: ZoomLevel) => {
@@ -279,6 +288,29 @@ export default function AttendanceMonitorPage() {
           </div>
         </header>
 
+        {/* ========== FILTER + SCROLL MODE BAR ========== */}
+        <div className="px-3 md:px-5 py-1.5 flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg-inset)]/40 shrink-0">
+          {/* Role Filter */}
+          <div className="flex items-center gap-1 bg-[var(--bg-surface)] rounded-lg p-0.5 border border-[var(--border)]">
+            {(['all', 'driver', 'leader'] as const).map(f => (
+              <button key={f} onClick={() => setRoleFilter(f)}
+                className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-wider transition-all ${roleFilter === f
+                  ? 'bg-[var(--accent)] text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
+                {f === 'all' ? `All (${timelineData.length})` : f === 'driver' ? `Driver (${timelineData.filter(u => u.role === 'driver').length})` : `Leader (${timelineData.filter(u => u.role === 'leader').length})`}
+              </button>
+            ))}
+          </div>
+
+          {/* Sync Scroll Toggle */}
+          <button onClick={() => setSyncScroll(v => !v)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border transition-all ${syncScroll
+              ? 'bg-indigo-500/10 text-indigo-500 border-indigo-500/30' : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border-[var(--border)]'}`}
+            title={syncScroll ? 'Synced scroll — all rows move together' : 'Free scroll — each row independent'}>
+            {syncScroll ? <Link className="w-3 h-3" /> : <Unlink className="w-3 h-3" />}
+            {syncScroll ? 'Synced' : 'Free'}
+          </button>
+        </div>
+
         {/* ========== CONTROLS BAR ========== */}
         <div className="px-3 md:px-5 py-2 flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg-surface)]/80 backdrop-blur-sm shrink-0">
           <div className="flex items-center gap-1.5">
@@ -340,7 +372,7 @@ export default function AttendanceMonitorPage() {
           <div className="flex shrink-0 border-b border-[var(--border)] bg-[var(--bg-surface)]">
             {/* Staff column header */}
             <div className="w-[140px] md:w-[180px] shrink-0 border-r border-[var(--border)] bg-slate-50 dark:bg-slate-900/50 flex items-center px-3 py-2 sticky left-0 z-20">
-              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Staff ({users.length})</span>
+              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Staff ({filteredTimelineData.length})</span>
             </div>
             {/* Timeline column headers */}
             <div className="flex-1 overflow-x-auto custom-scrollbar" ref={scrollContainerRef}>
@@ -384,7 +416,7 @@ export default function AttendanceMonitorPage() {
                 </div>
               </div>
             ) : (
-              timelineData.map((user, userIdx) => {
+              filteredTimelineData.map((user, userIdx) => {
                 const isActive = user.sessions.some(s => !s.end);
                 const hasLate = user.sessions.some(s => s.isLate);
                 const noActivity = user.sessions.length === 0;
@@ -423,8 +455,23 @@ export default function AttendanceMonitorPage() {
 
                     {/* Timeline Track */}
                     <div className="flex-1 relative overflow-x-auto custom-scrollbar"
+                      ref={(el) => {
+                        if (el) rowScrollRefs.current.set(user.id, el);
+                        else rowScrollRefs.current.delete(user.id);
+                      }}
                       onScroll={(e) => {
-                        if (scrollContainerRef.current) scrollContainerRef.current.scrollLeft = e.currentTarget.scrollLeft;
+                        if (isSyncingRef.current) return;
+                        if (syncScroll) {
+                          isSyncingRef.current = true;
+                          const scrollLeft = e.currentTarget.scrollLeft;
+                          if (scrollContainerRef.current) scrollContainerRef.current.scrollLeft = scrollLeft;
+                          rowScrollRefs.current.forEach((el, id) => {
+                            if (id !== user.id) el.scrollLeft = scrollLeft;
+                          });
+                          isSyncingRef.current = false;
+                        } else {
+                          if (scrollContainerRef.current) scrollContainerRef.current.scrollLeft = e.currentTarget.scrollLeft;
+                        }
                       }}>
                       <div className="relative h-full" style={{ minWidth: columnHeaders.length * colMinWidth }}>
                         {/* Expected work window marker (day/hour views) */}
@@ -508,6 +555,12 @@ export default function AttendanceMonitorPage() {
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
               <span className="font-bold opacity-60">Active: <span className="font-black text-emerald-600">{stats.working}</span>/{stats.total}</span>
             </span>
+            {roleFilter !== 'all' && (
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-[var(--accent)]" />
+                <span className="font-bold opacity-60 uppercase">{roleFilter} filter</span>
+              </span>
+            )}
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-amber-500" />
               <span className="font-bold opacity-60">Late: <span className="font-black text-amber-500">{stats.late}</span></span>

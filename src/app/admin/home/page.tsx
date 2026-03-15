@@ -19,7 +19,6 @@ export default function AdminHomePage() {
     pendingLeaves: 0,
     pendingDrivers: 0,
     totalLeaders: 0,
-    activeDrivers: 0
   });
 
   useEffect(() => {
@@ -72,8 +71,8 @@ export default function AdminHomePage() {
 
   const stats = [
     { val: branchesLoading ? '-' : branches.length, label: 'สาขา', color: 'var(--info)' },
-    { val: counts.totalLeaders, label: 'LEADERS', color: 'var(--success)' },
-    { val: counts.activeDrivers, label: 'DRIVERS', color: 'var(--accent)' },
+    { val: counts.totalLeaders, label: 'Leaders', color: 'var(--success)' },
+    { val: counts.pendingLeaves, label: 'ขอลา', color: 'var(--accent)' },
     { val: counts.pendingDrivers, label: 'รออนุมัติ', color: 'var(--warning)' },
   ];
 

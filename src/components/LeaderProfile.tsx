@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { 
   User as UserIcon, Calendar, Award, 
@@ -42,14 +42,7 @@ const BentoCard = ({ children, className = "", delay = 0, onClick }: { children:
 );
 
 export default function LeaderProfile({ user, isMe = false, onEditClick, onClose }: LeaderProfileProps) {
-  const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'access' | 'contact'>('overview');
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) return null;
 
   const displayName = user.name && user.surname 
     ? `${user.name} ${user.surname}` 
