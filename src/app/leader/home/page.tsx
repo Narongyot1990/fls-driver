@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
@@ -110,20 +110,12 @@ export default function LeaderHomePage() {
           <div className="max-w-2xl mx-auto space-y-4">
 
             {/* Stat badges */}
-            {(pendingLeave > 0 || pendingDriver > 0) && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 gap-3">
-                {pendingLeave > 0 && (
-                  <button onClick={() => router.push('/leader/approve')} className="card p-3 text-center cursor-pointer">
-                    <p className="text-2xl font-extrabold" style={{ color: 'var(--warning)' }}>{pendingLeave}</p>
-                    <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>รออนุมัติลา</p>
-                  </button>
-                )}
-                {pendingDriver > 0 && (
-                  <button onClick={() => router.push('/leader/drivers')} className="card p-3 text-center cursor-pointer">
-                    <p className="text-2xl font-extrabold" style={{ color: 'var(--accent)' }}>{pendingDriver}</p>
-                    <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>พนักงานใหม่</p>
-                  </button>
-                )}
+            {pendingDriver > 0 && (
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex justify-center">
+                <button onClick={() => router.push('/leader/drivers')} className="card p-3 text-center cursor-pointer min-w-[140px]">
+                  <p className="text-2xl font-extrabold" style={{ color: 'var(--accent)' }}>{pendingDriver}</p>
+                  <p className="text-[11px]" style={{ color: 'var(--text-muted)' }}>พนักงานใหม่</p>
+                </button>
               </motion.div>
             )}
 
