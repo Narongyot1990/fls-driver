@@ -43,7 +43,7 @@ interface Personnel {
 function DriverManagementContent() {
   const router = useRouter();
   const { branches, loading: branchesLoading } = useBranches();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<Personnel | null>(null);
   const [role, setRole] = useState<'leader' | 'admin'>('leader');
   const [allPersonnel, setAllPersonnel] = useState<Personnel[]>([]);
   const [loading, setLoading] = useState(true);
@@ -131,7 +131,7 @@ function DriverManagementContent() {
     { event: 'driver-deleted', callback: handleDriverChanged },
   ], !!user);
 
-  const handleActivate = async (driverId: string, additionalData: any = {}) => {
+  const handleActivate = async (driverId: string, additionalData: Partial<Personnel> = {}) => {
     setActionLoading(driverId);
     try {
       const response = await fetch('/api/users', {
@@ -463,7 +463,7 @@ function DriverManagementContent() {
                       <button
                         type="button"
                         onClick={() => {
-                          const updateData: any = { status: 'active' };
+                          const updateData: Partial<Personnel> = { status: 'active' };
                           if (role === 'leader') {
                              updateData.role = 'driver';
                              updateData.branch = user?.branch;
@@ -565,14 +565,14 @@ function DriverManagementContent() {
                             <div className="grid grid-cols-2 gap-2">
                               <button
                                 type="button"
-                                onClick={() => setSelectedPersonnel({ ...selectedPersonnel, role: 'driver' } as any)}
+                                onClick={() => setSelectedPersonnel({ ...selectedPersonnel, role: 'driver' })}
                                 className={`py-2 rounded-lg text-xs font-black transition-all ${selectedPersonnel.role === 'driver' ? 'bg-[var(--accent)] text-white' : 'bg-[var(--bg-inset)] text-[var(--text-muted)] border border-[var(--border)]'}`}
                               >
                                 DRIVER
                               </button>
                               <button
                                 type="button"
-                                onClick={() => setSelectedPersonnel({ ...selectedPersonnel, role: 'leader' } as any)}
+                                onClick={() => setSelectedPersonnel({ ...selectedPersonnel, role: 'leader' })}
                                 className={`py-2 rounded-lg text-xs font-black transition-all ${selectedPersonnel.role === 'leader' ? 'bg-[var(--accent)] text-white' : 'bg-[var(--bg-inset)] text-[var(--text-muted)] border border-[var(--border)]'}`}
                               >
                                 LEADER

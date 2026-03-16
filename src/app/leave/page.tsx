@@ -28,7 +28,7 @@ function LeaveContent() {
   const targetUserId = searchParams.get('userId');
   
   const [user, setUser] = useState<DriverUser | null>(null);
-  const [authUser, setAuthUser] = useState<any>(null);
+  const [authUser, setAuthUser] = useState<DriverUser | null>(null);
   const [leaveType, setLeaveType] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -269,7 +269,7 @@ function LeaveContent() {
                 {LEAVE_TYPE_LIST.map((type) => {
                   const Icon = type.icon;
                   const isSelected = leaveType === type.value;
-                  const availableDays = type.daysKey ? user?.[type.daysKey] as any ?? 0 : null;
+                  const availableDays = type.daysKey ? user?.[type.daysKey as keyof DriverUser] ?? 0 : null;
                   
                   return (
                     <button
