@@ -1,3 +1,4 @@
+'use client';
 import { useEffect, useState, useCallback, useMemo, useRef, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Users, ChevronLeft, ChevronRight, History as HistoryIcon, ZoomIn, ZoomOut, RotateCcw, AlertTriangle, CalendarDays, Link, Unlink, LayoutGrid, Calendar } from 'lucide-react';
