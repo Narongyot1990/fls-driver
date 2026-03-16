@@ -1,76 +1,132 @@
 'use client';
 
-import { motion } from 'framer-motion';
-import { MapPin, Navigation, Send } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MapPin, Navigation, Send, Clock, Zap, User } from 'lucide-react';
 import SlideButton from './SlideButton';
 
 interface ClockCardProps {
-  timeStr: string;
-  displayDistance: string;
+  user: any;
+  isClockedIn: boolean;
+  isClockedOut: boolean;
+  onClockIn: () => Promise<void>;
+  onClockOut: () => Promise<void>;
+  onOffsiteRequest: () => void;
+  distance: string;
   isInRange: boolean;
-  lastRecordType: 'in' | 'out' | null;
-  actionLoading: boolean;
-  onClockAction: (type: 'in' | 'out') => Promise<void>;
-  onRequestCorrection: (type: 'in' | 'out') => void;
+  loading: boolean;
+  lastType: 'in' | 'out' | null;
 }
 
 export function ClockCard({ 
-  timeStr, displayDistance, isInRange, 
-  lastRecordType, actionLoading,
-  onClockAction, onRequestCorrection 
+  user, isClockedIn, isClockedOut, 
+  onClockIn, onClockOut, onOffsiteRequest, 
+  distance, isInRange, loading, lastType 
 }: ClockCardProps) {
-  const isClockedIn = lastRecordType === 'in';
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const timeStr = currentTime.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const dateStr = currentTime.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short' });
 
   return (
-    <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-white/20 dark:border-white/10 rounded-[32px] p-6 shadow-2xl">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex flex-col">
-          <span className="text-[10px] font-black uppercase tracking-widest opacity-40 mb-1">Current Time</span>
-          <h2 className="text-4xl font-black tracking-tighter tabular-nums leading-none dark:text-white">
-            {timeStr}
-          </h2>
-        </div>
-        
-        <div className="text-right">
-          <div className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider mb-1.5 border ${
-            isInRange ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
-          }`}>
-            <div className={`w-1 h-1 rounded-full ${isInRange ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
-            {isInRange ? 'In Area' : 'Outside'}
-          </div>
-          <p className="text-[10px] font-bold opacity-40 flex items-center justify-end gap-1">
-            <Navigation className="w-2.5 h-2.5" />
-            {displayDistance}
-          </p>
-        </div>
-      </div>
+    <div className="group relative">
+      {/* OUTER GLOW EFFECT */}
+      <div className={`absolute -inset-1 rounded-[40px] opacity-20 blur-xl transition-all duration-1000 ${
+        isClockedIn ? 'bg-emerald-500/30' : 'bg-indigo-500/20'
+      }`} />
+      
+      <div className="relative bg-white/[0.03] backdrop-blur-3xl border border-white/10 rounded-[38px] overflow-hidden shadow-3xl">
+        {/* TOP INFO BAR */}
+        <div className="px-8 py-5 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+           <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center overflow-hidden">
+                {user?.lineProfileImage ? (
+                  <img src={user.lineProfileImage} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-5 h-5 text-indigo-400" />
+                )}
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black tracking-tight text-white uppercase italic truncate max-w-[120px]">
+                  {user?.name || 'Loading...'}
+                </span>
+                <span className="text-[8px] font-bold opacity-30 uppercase tracking-[0.2em]">Node-Link Active</span>
+              </div>
+           </div>
 
-      <div className="space-y-4">
-        {isInRange ? (
-          <SlideButton 
-            onSuccess={async () => {
-              const nextType = isClockedIn ? 'out' : 'in';
-              await onClockAction(nextType);
-            }}
-            isLoading={actionLoading}
-            lastType={lastRecordType}
-            isInRange={true}
-          />
-        ) : (
-          <button 
-            onClick={() => onRequestCorrection(isClockedIn ? 'out' : 'in')}
-            className="w-full h-14 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 flex items-center justify-center gap-3 hover:opacity-90 transition-all active:scale-[0.98] shadow-lg"
-          >
-            <Send className="w-4 h-4" />
-            <span className="text-xs font-black uppercase tracking-widest">
-              Request {isClockedIn ? 'Clock Out' : 'Clock In'}
-            </span>
-          </button>
-        )}
+           <div className="flex flex-col items-end">
+              <div className={`flex items-center gap-2 px-3 py-1 rounded-full border ${
+                isInRange ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+              }`}>
+                 <div className={`w-1.5 h-1.5 rounded-full ${isInRange ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.8)]' : 'bg-rose-500 animate-pulse'}`} />
+                 <span className="text-[9px] font-black uppercase tracking-widest">{isInRange ? 'In Area' : 'Outside'}</span>
+              </div>
+              <span className="text-[9px] font-black opacity-30 tabular-nums mt-1">{distance}</span>
+           </div>
+        </div>
 
-        <div className="flex items-center justify-center gap-2 opacity-20">
-          <MapPin className="w-3 h-3" />
-          <span className="text-[8px] font-black uppercase tracking-[0.2em]">GPS Tracking Active</span>
+        {/* TIME & MAIN DISPLAY */}
+        <div className="p-8 pt-6 pb-8 space-y-8">
+           <div className="flex flex-col items-center text-center">
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-20 mb-2">Syncing Atomic Time</span>
+              <h2 className="text-6xl font-black tracking-tighter tabular-nums text-white drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
+                {timeStr.split(':')[0]}<span className="opacity-20">:</span>{timeStr.split(':')[1]}
+                <span className="text-2xl opacity-10 font-bold -translate-y-4 inline-block ml-1">:{timeStr.split(':')[2]}</span>
+              </h2>
+              <p className="text-[11px] font-black text-indigo-400 uppercase tracking-widest mt-2 drop-shadow-sm">{dateStr}</p>
+           </div>
+
+           <div className="space-y-4">
+              <AnimatePresence mode="wait">
+                {isInRange ? (
+                  <motion.div
+                    key="slider"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                  >
+                    <SlideButton 
+                      onSuccess={async () => {
+                        if (isClockedIn) await onClockOut();
+                        else await onClockIn();
+                      }}
+                      isLoading={loading}
+                      lastType={lastType}
+                      isInRange={true}
+                    />
+                  </motion.div>
+                ) : (
+                  <motion.button
+                    key="offsite"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    onClick={onOffsiteRequest}
+                    className="w-full h-16 rounded-[24px] bg-white text-black flex items-center justify-center gap-4 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-2xl relative overflow-hidden group/btn"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000 ease-in-out" />
+                    <Send className="w-5 h-5" />
+                    <span className="text-xs font-black uppercase tracking-widest">Request Off-site Access</span>
+                  </motion.button>
+                )}
+              </AnimatePresence>
+
+              <div className="flex items-center justify-center gap-6 opacity-20">
+                 <div className="flex items-center gap-2">
+                    <Zap className="w-3 h-3" />
+                    <span className="text-[8px] font-black uppercase tracking-widest">Real-time</span>
+                 </div>
+                 <div className="flex items-center gap-2">
+                    <MapPin className="w-3 h-3" />
+                    <span className="text-[8px] font-black uppercase tracking-widest">Geo-Fenced</span>
+                 </div>
+              </div>
+           </div>
         </div>
       </div>
     </div>
