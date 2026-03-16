@@ -256,7 +256,7 @@ export default function AttendancePage() {
                          />
                        ) : (
                          <button
-                           onClick={() => handleClockAction(canClockIn ? 'in' : 'out')}
+                           onClick={() => alert("กำลังพัฒนา")}
                            disabled={actionLoading}
                            className="w-full max-w-[220px] mx-auto h-[60px] rounded-[28px] bg-gradient-to-r from-gray-600 to-gray-800 flex items-center justify-center text-white font-bold text-sm shadow-xl"
                          >
