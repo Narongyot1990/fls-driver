@@ -209,6 +209,22 @@ export function useAttendanceController() {
   const isClockedOut = records.some(r => r.type === 'out');
   const isInRange = distance !== null && distance <= (branchRadius + 5);
 
+  const allEvents = [
+    ...records.map(r => ({ ...r, eventType: 'actual' as const })),
+    ...myCorrections.map(c => ({
+      _id: c._id,
+      type: c.type,
+      timestamp: c.requestedTime,
+      branch: c.branch,
+      isInside: c.distance <= (c.radius || 55),
+      distance: c.distance,
+      status: c.status,
+      category: c.category,
+      reason: c.reason,
+      eventType: 'correction' as const
+    }))
+  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
   return {
     user,
     loading,
@@ -216,11 +232,12 @@ export function useAttendanceController() {
     distance,
     locLoading,
     records,
+    myCorrections,
+    allEvents,
     actionLoading,
     branchRadius,
     branchLocation,
     mySchedule,
-    myCorrections,
     currentTime,
     isClockedIn,
     isClockedOut,

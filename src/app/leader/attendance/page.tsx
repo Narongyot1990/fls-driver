@@ -142,7 +142,7 @@ function AttendanceContent() {
             {/* Right Col: History */}
             <div className="space-y-6">
               <HistoryTimeline 
-                records={ctrl.records} 
+                records={ctrl.allEvents} 
                 onDeleteRecord={ctrl.handleDeleteRecord} 
               />
             </div>
