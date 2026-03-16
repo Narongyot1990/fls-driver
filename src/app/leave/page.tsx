@@ -28,7 +28,7 @@ function LeaveContent() {
   const targetUserId = searchParams.get('userId');
   
   const [user, setUser] = useState<DriverUser | null>(null);
-  const [authUser, setAuthUser] = useState<DriverUser | null>(null);
+  const [authUser, setAuthUser] = useState<any>(null);
   const [leaveType, setLeaveType] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -40,64 +40,82 @@ function LeaveContent() {
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('driverUser');
-    if (!storedUser) {
-      router.push('/login');
-      return;
-    }
-    const userData = JSON.parse(storedUser);
-    setAuthUser(userData);
-    
-    if (userData.status === 'pending') {
-      setIsPending(true);
-    }
-
-    const fetchTargetUserData = async (id: string) => {
+    // Check if user is logged in via token-based auth first
+    const checkAuth = async () => {
       try {
-        const response = await fetch(`/api/users?id=${id}`);
-        const data = await response.json();
-        if (data.success && data.user) {
-          const u = data.user;
-          setUser({
-            id: u._id,
-            lineDisplayName: u.name && u.surname ? `${u.name} ${u.surname}` : u.lineDisplayName,
-            status: u.status,
-            vacationDays: u.vacationDays ?? 10,
-            sickDays: u.sickDays ?? 10,
-            personalDays: u.personalDays ?? 5,
-          });
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    };
-
-    const fetchMeData = async () => {
-      try {
-        const response = await fetch(`/api/users?status=active`);
-        const data = await response.json();
+        const res = await fetch('/api/auth/me');
+        const data = await res.json();
         if (data.success) {
-          const currentUser = data.users.find((u: any) => u._id === userData.id);
-          if (currentUser) {
-            const updatedUser = {
-              ...userData,
-              vacationDays: currentUser.vacationDays ?? 10,
-              sickDays: currentUser.sickDays ?? 10,
-              personalDays: currentUser.personalDays ?? 5,
-            };
-            setUser(updatedUser);
-          }
+          setAuthUser(data.user);
+          return data.user;
         }
-      } catch (err) {
-        console.error(err);
+      } catch { /* ignore */ }
+      
+      // Fallback to localStorage for drivers
+      const storedUser = localStorage.getItem('driverUser');
+      if (!storedUser) {
+        router.push('/login');
+        return null;
       }
+      const userData = JSON.parse(storedUser);
+      setAuthUser(userData);
+      return userData;
     };
+    
+    checkAuth().then(userData => {
+      if (!userData) return;
+      
+      if (userData.status === 'pending') {
+        setIsPending(true);
+      }
 
-    if (targetUserId && (userData.role === 'leader' || userData.role === 'admin')) {
-      fetchTargetUserData(targetUserId);
-    } else {
-      fetchMeData();
-    }
+      const fetchTargetUserData = async (id: string) => {
+        try {
+          const response = await fetch(`/api/users?id=${id}`);
+          const data = await response.json();
+          if (data.success && data.user) {
+            const u = data.user;
+            setUser({
+              id: u._id,
+              lineDisplayName: u.name && u.surname ? `${u.name} ${u.surname}` : u.lineDisplayName,
+              status: u.status,
+              vacationDays: u.vacationDays ?? 10,
+              sickDays: u.sickDays ?? 10,
+              personalDays: u.personalDays ?? 5,
+            });
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      };
+
+      const fetchMeData = async () => {
+        try {
+          const response = await fetch(`/api/users?status=active`);
+          const data = await response.json();
+          if (data.success) {
+            const currentUser = data.users.find((u: any) => u._id === userData.id);
+            if (currentUser) {
+              const updatedUser = {
+                ...userData,
+                vacationDays: currentUser.vacationDays ?? 10,
+                sickDays: currentUser.sickDays ?? 10,
+                personalDays: currentUser.personalDays ?? 5,
+              };
+              setUser(updatedUser);
+            }
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      };
+
+      if (targetUserId && (userData.role === 'leader' || userData.role === 'admin')) {
+        fetchTargetUserData(targetUserId);
+      } else {
+        fetchMeData();
+      }
+    });
   }, [router, targetUserId]);
 
   const { showToast } = useToast();
@@ -221,10 +239,10 @@ function LeaveContent() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
-      <Sidebar role="driver" />
+      <Sidebar role={authUser?.role || 'driver'} />
 
       <div className="lg:pl-[240px] pb-[72px] lg:pb-6">
-        <PageHeader title="ขอลา" backHref="/home" />
+        <PageHeader title="ขอลา" backHref={authUser?.role === 'driver' ? '/home' : (authUser?.role === 'leader' ? '/leader/home' : '/admin/home')} />
 
         <div className="px-4 lg:px-8 py-3">
           <div className="max-w-2xl mx-auto space-y-4">
@@ -367,7 +385,7 @@ function LeaveContent() {
         }
       />
 
-      <BottomNav role="driver" />
+      <BottomNav role={authUser?.role || 'driver'} />
     </div>
   );
 }
