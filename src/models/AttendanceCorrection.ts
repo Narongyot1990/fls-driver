@@ -18,7 +18,7 @@ export interface IAttendanceCorrection extends Document {
   distance: number;
   branch: string;
   offsiteLocation?: string;
-  approvedBy?: any;
+  approvedBy?: string | mongoose.Types.ObjectId;
   approvedAt?: Date;
   rejectedReason?: string;
   createdAt: Date;
@@ -51,6 +51,11 @@ const AttendanceCorrectionSchema = new Schema<IAttendanceCorrection>(
   },
   { timestamps: true }
 );
+
+AttendanceCorrectionSchema.index({ userId: 1, status: 1, category: 1, createdAt: -1 });
+AttendanceCorrectionSchema.index({ status: 1, createdAt: -1 });
+AttendanceCorrectionSchema.index({ userId: 1, requestedTime: -1 });
+AttendanceCorrectionSchema.index({ branch: 1, requestedTime: -1 });
 
 export const AttendanceCorrection: Model<IAttendanceCorrection> =
   mongoose.models.AttendanceCorrection ||

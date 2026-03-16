@@ -33,5 +33,9 @@ const AttendanceSchema = new Schema<IAttendance>(
   { timestamps: true }
 );
 
+AttendanceSchema.index({ userId: 1, timestamp: -1 });
+AttendanceSchema.index({ branch: 1, timestamp: -1 });
+AttendanceSchema.index({ userId: 1, type: 1, timestamp: -1 });
+
 export const Attendance: Model<IAttendance> =
   mongoose.models.Attendance || mongoose.model<IAttendance>('Attendance', AttendanceSchema);

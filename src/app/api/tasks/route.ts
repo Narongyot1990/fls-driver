@@ -1,89 +1,29 @@
-import { NextRequest, NextResponse } from 'next/server';
-import dbConnect from '@/lib/mongodb';
-import { Task } from '@/models/Task';
-import { requireAuth, requireLeader } from '@/lib/api-auth';
-import { triggerPusher, CHANNELS, EVENTS } from '@/lib/pusher';
+import { NextResponse } from "next/server";
+import { apiHandler } from "@/lib/api-utils";
+import { badRequest } from "@/lib/api-errors";
+import { TasksService } from "@/services/tasks.domain";
+import { CreateTaskSchema, TaskListQuerySchema } from "@/lib/validations/task.schema";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-// GET tasks — drivers see active tasks for their branch; leaders see all
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = requireAuth(request);
-    if ('error' in authResult) return authResult.error;
-    const { payload } = authResult;
-
-    const { searchParams } = new URL(request.url);
-    const status = searchParams.get('status') || 'active';
-    const branch = searchParams.get('branch');
-    const userId = searchParams.get('userId');
-
-    await dbConnect();
-
-    const query: Record<string, unknown> = {};
-    if (status) query.status = status;
-    if (branch) query.branches = branch;
-
-    const tasks = await Task.find(query)
-      .populate('createdBy', 'name surname')
-      .populate('submissions.userId', 'lineDisplayName lineProfileImage name surname performanceTier')
-      .sort({ createdAt: -1 });
-
-    // If userId provided, annotate each task with whether user has submitted
-    const tasksWithStatus = tasks.map((task) => {
-      const taskObj = task.toObject();
-      if (userId) {
-        const submission = task.submissions.find(
-          (s) => s.userId && s.userId.toString() === userId
-        );
-        (taskObj as any).mySubmission = submission || null;
-        (taskObj as any).completed = !!submission;
-      }
-      return taskObj;
-    });
-
-    return NextResponse.json({ success: true, tasks: tasksWithStatus });
-  } catch (error) {
-    console.error('Get Tasks Error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+export const GET = apiHandler(async ({ req, payload }) => {
+  if (!payload) {
+    throw badRequest("Missing auth payload");
   }
-}
 
-// POST — leader creates a new task
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = requireLeader(request);
-    if ('error' in authResult) return authResult.error;
+  const { searchParams } = new URL(req.url);
+  const query = TaskListQuerySchema.parse(Object.fromEntries(searchParams));
+  const tasks = await TasksService.list(payload, query);
+  return NextResponse.json({ success: true, tasks });
+});
 
-    const body = await request.json();
-    const { title, description, category, branches, questions, deadline, createdBy } = body;
-
-    if (!title || !category || !questions || questions.length === 0) {
-      return NextResponse.json({ error: 'title, category, and questions are required' }, { status: 400 });
-    }
-
-    await dbConnect();
-
-    const task = await Task.create({
-      title,
-      description: description || '',
-      category,
-      branches: branches || [],
-      questions,
-      deadline: deadline ? new Date(deadline) : undefined,
-      createdBy,
-      status: 'active',
-    });
-
-    await triggerPusher(CHANNELS.TASKS, EVENTS.NEW_TASK, {
-      taskId: task._id.toString(),
-      title: task.title,
-      branches: task.branches,
-    });
-
-    return NextResponse.json({ success: true, task });
-  } catch (error) {
-    console.error('Create Task Error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+export const POST = apiHandler(async ({ req, payload }) => {
+  if (!payload) {
+    throw badRequest("Missing auth payload");
   }
-}
+
+  const body = await req.json();
+  const input = CreateTaskSchema.parse(body);
+  const task = await TasksService.create(payload, input);
+  return NextResponse.json({ success: true, task });
+}, { allowedRoles: ["leader", "admin"] });

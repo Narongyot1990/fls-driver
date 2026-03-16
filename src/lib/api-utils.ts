@@ -2,15 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from './mongodb';
 import { requireAuth } from './api-auth';
 import { ZodError } from 'zod';
+import { ApiError } from './api-errors';
+import type { TokenPayload } from './jwt-auth';
 
 type HandlerContext = {
-  payload: any;
+  payload: TokenPayload | null;
   req: NextRequest;
 };
 
 type ApiHandlerOptions = {
   requireAuth?: boolean;
-  allowedRoles?: string[];
+  allowedRoles?: TokenPayload['role'][];
 };
 
 export function apiHandler(
@@ -42,23 +44,32 @@ export function apiHandler(
       // 3. Execute Handler
       return await handler({ payload, req });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[API_ERROR]', error);
 
-      // Zod Validation Error handling
       if (error instanceof ZodError) {
         return NextResponse.json({
           success: false,
           error: 'Validation failed',
-          details: error.errors.map(e => ({ path: e.path, message: e.message }))
+          code: 'VALIDATION_ERROR',
+          details: error.issues.map(issue => ({ path: issue.path, message: issue.message }))
         }, { status: 400 });
       }
 
-      // Generic Error handling
+      if (error instanceof ApiError) {
+        return NextResponse.json({
+          success: false,
+          error: error.message,
+          code: error.code,
+          details: error.details
+        }, { status: error.status });
+      }
+
       return NextResponse.json({
         success: false,
-        error: error.message || 'Internal server error'
-      }, { status: error.status || 500 });
+        error: error instanceof Error ? error.message : 'Internal server error',
+        code: 'INTERNAL_SERVER_ERROR'
+      }, { status: 500 });
     }
   };
 }

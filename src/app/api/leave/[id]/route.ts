@@ -1,220 +1,43 @@
-import { NextRequest, NextResponse } from 'next/server';
-import dbConnect from '@/lib/mongodb';
-import { LeaveRequest } from '@/models/LeaveRequest';
-import { User, IUser } from '@/models/User';
-import { requireAuth, requireLeader } from '@/lib/api-auth';
-import { triggerPusher, CHANNELS, EVENTS } from '@/lib/pusher';
-import mongoose from 'mongoose';
+import { NextRequest, NextResponse } from "next/server";
+import { apiHandler } from "@/lib/api-utils";
+import { badRequest } from "@/lib/api-errors";
+import { LeaveService } from "@/services/leave.domain";
+import { CancelLeaveSchema, ReviewLeaveSchema } from "@/lib/validations/leave.schema";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  try {
-    const authResult = requireAuth(request);
-    if ('error' in authResult) return authResult.error;
+  const { id } = await params;
 
-    const { id } = await params;
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 400 }
-      );
+  return apiHandler(async ({ req, payload }) => {
+    if (!payload) {
+      throw badRequest("Missing auth payload");
     }
 
-    await dbConnect();
-
-    const leaveRequest = await LeaveRequest.findById(id);
-
-    if (!leaveRequest) {
-      return NextResponse.json(
-        { error: 'Leave request not found' },
-        { status: 404 }
-      );
-    }
-
-    if (leaveRequest.userId.toString() !== userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 403 }
-      );
-    }
-
-    if (leaveRequest.status === 'rejected' || leaveRequest.status === 'cancelled') {
-      return NextResponse.json(
-        { error: 'Cannot cancel this leave request' },
-        { status: 400 }
-      );
-    }
-
-    if (leaveRequest.status === 'approved') {
-      const user = await User.findById(userId);
-      if (user) {
-        const start = new Date(leaveRequest.startDate);
-        const end = new Date(leaveRequest.endDate);
-        const leaveDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-
-        const quotaUpdate: mongoose.UpdateQuery<IUser> = {};
-        if (leaveRequest.leaveType === 'vacation') {
-          quotaUpdate.vacationDays = user.vacationDays + leaveDays;
-        } else if (leaveRequest.leaveType === 'sick') {
-          quotaUpdate.sickDays = user.sickDays + leaveDays;
-        } else if (leaveRequest.leaveType === 'personal') {
-          quotaUpdate.personalDays = user.personalDays + leaveDays;
-        }
-
-        await User.findByIdAndUpdate(userId, quotaUpdate);
-      }
-    }
-
-    leaveRequest.status = 'cancelled';
-    await leaveRequest.save();
-
-    await triggerPusher(CHANNELS.LEAVE_REQUESTS, EVENTS.LEAVE_CANCELLED, {
-      id: leaveRequest._id.toString(),
-      userId: userId,
-    });
-    await triggerPusher(CHANNELS.DASHBOARD, EVENTS.LEAVE_CANCELLED, { id: leaveRequest._id.toString() });
-
-    const response: { success: boolean; message: string; remainingQuota?: { vacationDays: number; sickDays: number; personalDays: number } } = {
-      success: true,
-      message: 'Leave request cancelled',
-    };
-
-    if (leaveRequest.status === 'cancelled') {
-      const user = await User.findById(userId);
-      if (user) {
-        response.remainingQuota = {
-          vacationDays: user.vacationDays,
-          sickDays: user.sickDays,
-          personalDays: user.personalDays,
-        };
-      }
-    }
-
-    return NextResponse.json(response);
-  } catch (error) {
-    console.error('Cancel Leave Error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
+    const { searchParams } = new URL(req.url);
+    const input = CancelLeaveSchema.parse({ userId: searchParams.get("userId") ?? undefined });
+    const result = await LeaveService.cancel(payload, id, input);
+    return NextResponse.json(result);
+  })(request);
 }
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  try {
-    const authResult = requireAuth(request);
-    if ('error' in authResult) return authResult.error;
+  const { id } = await params;
 
-    const { role } = authResult.payload;
-    
-    // Only leader or admin can approve/reject
-    if (role !== 'leader' && role !== 'admin') {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
+  return apiHandler(async ({ req, payload }) => {
+    if (!payload) {
+      throw badRequest("Missing auth payload");
     }
 
-    const { id } = await params;
-    const body = await request.json();
-    const { status, approvedBy, rejectedReason } = body;
-
-    if (!status || !['approved', 'rejected'].includes(status)) {
-      return NextResponse.json(
-        { error: 'Invalid status' },
-        { status: 400 }
-      );
-    }
-
-    if (status === 'rejected' && !rejectedReason) {
-      return NextResponse.json(
-        { error: 'กรุณาระบุเหตุผลที่ไม่อนุมัติ' },
-        { status: 400 }
-      );
-    }
-
-    await dbConnect();
-
-    const leaveRequest = await LeaveRequest.findById(id).populate('userId');
-
-    if (!leaveRequest) {
-      return NextResponse.json(
-        { error: 'Leave request not found' },
-        { status: 404 }
-      );
-    }
-
-    // Check branch permission for leaders (admin can approve any)
-    const { branch: leaderBranch } = authResult.payload;
-    const driverBranch = (leaveRequest.userId as any)?.branch;
-    
-    if (role === 'leader' && leaderBranch && driverBranch !== leaderBranch) {
-      return NextResponse.json(
-        { error: 'ไม่มีสิทธิ์อนุมัติคำขอลาของสาขาอื่น' },
-        { status: 403 }
-      );
-    }
-
-    if (status === 'approved') {
-      const user = await User.findById(leaveRequest.userId);
-      if (user) {
-        const start = new Date(leaveRequest.startDate);
-        const end = new Date(leaveRequest.endDate);
-        const leaveDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-
-        const quotaUpdate: mongoose.UpdateQuery<IUser> = {};
-        if (leaveRequest.leaveType === 'vacation') {
-          quotaUpdate.vacationDays = Math.max(0, user.vacationDays - leaveDays);
-        } else if (leaveRequest.leaveType === 'sick') {
-          quotaUpdate.sickDays = Math.max(0, user.sickDays - leaveDays);
-        } else if (leaveRequest.leaveType === 'personal') {
-          quotaUpdate.personalDays = Math.max(0, user.personalDays - leaveDays);
-        }
-
-        await User.findByIdAndUpdate(user._id, quotaUpdate);
-      }
-    }
-
-    leaveRequest.status = status;
-    // admin_root is not a valid ObjectId — store as-is for special admin account
-    const approverId = authResult.payload.userId;
-    leaveRequest.approvedBy = mongoose.Types.ObjectId.isValid(approverId)
-      ? new mongoose.Types.ObjectId(approverId) as any
-      : approverId as any;
-    leaveRequest.approvedAt = new Date();
-    if (status === 'rejected' && rejectedReason) {
-      leaveRequest.rejectedReason = rejectedReason;
-    }
-    await leaveRequest.save();
-    // Only populate approvedBy if it's a valid ObjectId (skip for admin_root string)
-    if (mongoose.Types.ObjectId.isValid(approverId)) {
-      await leaveRequest.populate('approvedBy', 'name surname lineDisplayName lineProfileImage performanceTier branch role');
-    }
-
-    const driverUserId = (leaveRequest.userId as any)?._id?.toString() || leaveRequest.userId.toString();
-    await triggerPusher(CHANNELS.LEAVE_REQUESTS, EVENTS.LEAVE_STATUS_CHANGED, {
-      id: leaveRequest._id.toString(),
-      status,
-      driverUserId,
-    });
-    await triggerPusher(CHANNELS.DASHBOARD, EVENTS.LEAVE_STATUS_CHANGED, {
-      id: leaveRequest._id.toString(),
-      status,
-    });
-
-    return NextResponse.json({
-      success: true,
-      request: leaveRequest,
-    });
-  } catch (error) {
-    console.error('Update Leave Error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
+    const body = await req.json();
+    const input = ReviewLeaveSchema.parse(body);
+    const result = await LeaveService.review(payload, id, input);
+    return NextResponse.json({ success: true, request: result });
+  })(request);
 }

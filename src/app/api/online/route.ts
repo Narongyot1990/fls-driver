@@ -1,51 +1,30 @@
-import { NextResponse } from 'next/server';
-import dbConnect from '@/lib/mongodb';
-import { User } from '@/models/User';
-import { getCurrentUser } from '@/lib/jwt-auth';
+import { NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/jwt-auth";
+import dbConnect from "@/lib/mongodb";
+import { OnlineService } from "@/services/ops.domain";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export async function POST() {
   try {
-    const tokenPayload = await getCurrentUser();
-    
-    if (!tokenPayload) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // Skip for admin_root (no User record)
-    if (tokenPayload.userId === 'admin_root') {
-      return NextResponse.json({ success: true });
-    }
-    
+    const payload = await getCurrentUser();
     await dbConnect();
-    
-    await User.findByIdAndUpdate(tokenPayload.userId, {
-      lastSeen: new Date(),
-      isOnline: true,
-    });
-    
+    await OnlineService.heartbeat(payload);
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Heartbeat Error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Internal server error";
+    const status = message === "Unauthorized" ? 401 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }
 
 export async function DELETE() {
   try {
-    const tokenPayload = await getCurrentUser();
-    
-    if (tokenPayload && tokenPayload.userId !== 'admin_root') {
-      await dbConnect();
-      await User.findByIdAndUpdate(tokenPayload.userId, {
-        isOnline: false,
-      });
-    }
-    
+    const payload = await getCurrentUser();
+    await dbConnect();
+    await OnlineService.disconnect(payload);
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Disconnect Error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

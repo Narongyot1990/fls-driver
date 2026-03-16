@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyAccessToken, verifyRefreshToken, TokenPayload } from '@/lib/jwt-auth';
+import { forbidden, unauthorized } from '@/lib/api-errors';
+
+export type AuthResult = { payload: TokenPayload } | { error: NextResponse };
 
 export function getTokenPayload(request: NextRequest): TokenPayload | null {
   const accessToken = request.cookies.get('accessToken')?.value;
@@ -18,46 +21,52 @@ export function getTokenPayload(request: NextRequest): TokenPayload | null {
   return null;
 }
 
-export function requireAuth(request: NextRequest): { payload: TokenPayload } | { error: NextResponse } {
+export function requireAuth(request: NextRequest): AuthResult {
   const payload = getTokenPayload(request);
   if (!payload) {
-    return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) };
+    const error = unauthorized();
+    return { error: NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.status }) };
   }
   return { payload };
 }
 
-export function requireLeader(request: NextRequest): { payload: TokenPayload } | { error: NextResponse } {
+export function requireLeader(request: NextRequest): AuthResult {
   const result = requireAuth(request);
   if ('error' in result) return result;
   if (result.payload.role !== 'leader' && result.payload.role !== 'admin') {
-    return { error: NextResponse.json({ error: 'Forbidden: Management access required' }, { status: 403 }) };
+    const error = forbidden('Forbidden: Management access required');
+    return { error: NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.status }) };
   }
   return result;
 }
 
-export function requireDriver(request: NextRequest): { payload: TokenPayload } | { error: NextResponse } {
+export function requireDriver(request: NextRequest): AuthResult {
   const result = requireAuth(request);
   if ('error' in result) return result;
   if (result.payload.role !== 'driver') {
-    return { error: NextResponse.json({ error: 'Forbidden: Driver access required' }, { status: 403 }) };
-  }
-  return result;
-}
-export function requireAdmin(request: NextRequest): { payload: TokenPayload } | { error: NextResponse } {
-  const result = requireAuth(request);
-  if ('error' in result) return result;
-  if (result.payload.role !== 'admin') {
-    return { error: NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 }) };
+    const error = forbidden('Forbidden: Driver access required');
+    return { error: NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.status }) };
   }
   return result;
 }
 
-export function requireSuperuser(request: NextRequest): { payload: TokenPayload } | { error: NextResponse } {
+export function requireAdmin(request: NextRequest): AuthResult {
+  const result = requireAuth(request);
+  if ('error' in result) return result;
+  if (result.payload.role !== 'admin') {
+    const error = forbidden('Forbidden: Admin access required');
+    return { error: NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.status }) };
+  }
+  return result;
+}
+
+export function requireSuperuser(request: NextRequest): AuthResult {
   // Superuser = admin only (not leader)
   const result = requireAuth(request);
   if ('error' in result) return result;
   if (result.payload.role !== 'admin') {
-    return { error: NextResponse.json({ error: 'Forbidden: Superuser access required' }, { status: 403 }) };
+    const error = forbidden('Forbidden: Superuser access required');
+    return { error: NextResponse.json({ success: false, error: error.message, code: error.code }, { status: error.status }) };
   }
   return result;
 }

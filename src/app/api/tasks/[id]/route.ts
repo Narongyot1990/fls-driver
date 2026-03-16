@@ -1,150 +1,63 @@
-import { NextRequest, NextResponse } from 'next/server';
-import mongoose from 'mongoose';
-import dbConnect from '@/lib/mongodb';
-import { Task } from '@/models/Task';
-import { requireAuth, requireLeader } from '@/lib/api-auth';
-import { triggerPusher, CHANNELS, EVENTS } from '@/lib/pusher';
+import { NextRequest, NextResponse } from "next/server";
+import { apiHandler } from "@/lib/api-utils";
+import { badRequest } from "@/lib/api-errors";
+import { TasksService } from "@/services/tasks.domain";
+import { TaskPatchSchema } from "@/lib/validations/task.schema";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-// GET single task
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  try {
-    const authResult = requireAuth(request);
-    if ('error' in authResult) return authResult.error;
+  const { id } = await params;
 
-    const { id } = await params;
-    await dbConnect();
-
-    const task = await Task.findById(id)
-      .populate('createdBy', 'name surname')
-      .populate('submissions.userId', 'lineDisplayName lineProfileImage name surname performanceTier');
-
-    if (!task) {
-      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+  return apiHandler(async ({ payload }) => {
+    if (!payload) {
+      throw badRequest("Missing auth payload");
     }
 
+    const task = await TasksService.getById(payload, id);
     return NextResponse.json({ success: true, task });
-  } catch (error) {
-    console.error('Get Task Error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
+  })(request);
 }
 
-// PATCH — submit answers or update task
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  try {
-    const authResult = requireAuth(request);
-    if ('error' in authResult) return authResult.error;
-    const { payload } = authResult;
+  const { id } = await params;
 
-    const { id } = await params;
-    const body = await request.json();
-    const { action } = body;
-
-    await dbConnect();
-
-    const task = await Task.findById(id);
-    if (!task) {
-      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+  return apiHandler(async ({ req, payload }) => {
+    if (!payload) {
+      throw badRequest("Missing auth payload");
     }
 
-    // --- SUBMIT answers (driver) ---
-    if (action === 'submit') {
-      const { userId, answers } = body;
-      if (!userId || !answers) {
-        return NextResponse.json({ error: 'userId and answers are required' }, { status: 400 });
-      }
+    const body = await req.json();
+    const input = TaskPatchSchema.parse(body);
 
-      // Check if already submitted
-      const already = task.submissions.find(
-        (s) => s.userId.toString() === userId
-      );
-      if (already) {
-        return NextResponse.json({ error: 'Already submitted' }, { status: 400 });
-      }
-
-      // Calculate score
-      let score = 0;
-      const total = task.questions.length;
-      task.questions.forEach((q, i) => {
-        if (answers[i] === q.correctIndex) score++;
-      });
-
-      task.submissions.push({
-        userId: new mongoose.Types.ObjectId(userId),
-        answers,
-        score,
-        total,
-        submittedAt: new Date(),
-      } as any);
-
-      await task.save();
-      await task.populate('submissions.userId', 'lineDisplayName lineProfileImage name surname performanceTier');
-
-      await triggerPusher(CHANNELS.TASKS, EVENTS.TASK_SUBMITTED, {
-        taskId: id,
-        userId,
-        score,
-        total,
-      });
-
-      return NextResponse.json({ success: true, task, score, total });
+    if (input.action === "submit") {
+      const result = await TasksService.submit(payload, id, input);
+      return NextResponse.json({ success: true, ...result });
     }
 
-    // --- UPDATE task (leader) ---
-    if (payload.role !== 'leader') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const { title, description, category, branches, questions, deadline, status } = body;
-    if (title !== undefined) task.title = title;
-    if (description !== undefined) task.description = description;
-    if (category !== undefined) task.category = category;
-    if (branches !== undefined) task.branches = branches;
-    if (questions !== undefined) task.questions = questions;
-    if (deadline !== undefined) task.deadline = deadline ? new Date(deadline) : undefined;
-    if (status !== undefined) task.status = status;
-
-    await task.save();
-
-    await triggerPusher(CHANNELS.TASKS, EVENTS.TASK_UPDATED, { taskId: id });
-
+    const task = await TasksService.update(payload, id, input.data);
     return NextResponse.json({ success: true, task });
-  } catch (error) {
-    console.error('Update Task Error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
+  })(request);
 }
 
-// DELETE task (leader only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
-  try {
-    const authResult = requireLeader(request);
-    if ('error' in authResult) return authResult.error;
+  const { id } = await params;
 
-    const { id } = await params;
-    await dbConnect();
-
-    const task = await Task.findByIdAndDelete(id);
-    if (!task) {
-      return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+  return apiHandler(async ({ payload }) => {
+    if (!payload) {
+      throw badRequest("Missing auth payload");
     }
 
-    await triggerPusher(CHANNELS.TASKS, EVENTS.TASK_DELETED, { taskId: id });
-
+    await TasksService.remove(payload, id);
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Delete Task Error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
+  }, { allowedRoles: ["leader", "admin"] })(request);
 }

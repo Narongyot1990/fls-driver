@@ -10,7 +10,7 @@ export interface ILeaveRequest extends Document {
   endDate: Date;
   reason: string;
   status: LeaveStatus;
-  approvedBy?: any; // Allow string or ObjectId
+  approvedBy?: string | mongoose.Types.ObjectId;
   approvedAt?: Date;
   rejectedReason?: string;
   createdAt: Date;
@@ -39,6 +39,10 @@ const LeaveRequestSchema = new Schema<ILeaveRequest>(
   },
   { timestamps: true }
 );
+
+LeaveRequestSchema.index({ userId: 1, status: 1, startDate: 1, endDate: 1 });
+LeaveRequestSchema.index({ status: 1, createdAt: -1 });
+LeaveRequestSchema.index({ startDate: 1, endDate: 1, status: 1 });
 
 export const LeaveRequest: Model<ILeaveRequest> =
   mongoose.models.LeaveRequest ||

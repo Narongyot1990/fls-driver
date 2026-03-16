@@ -42,5 +42,7 @@ const WorkScheduleSchema = new Schema<IWorkSchedule>(
   { timestamps: true }
 );
 
+WorkScheduleSchema.index({ updatedAt: -1 });
+
 export const WorkSchedule: Model<IWorkSchedule> =
   mongoose.models.WorkSchedule || mongoose.model<IWorkSchedule>('WorkSchedule', WorkScheduleSchema);

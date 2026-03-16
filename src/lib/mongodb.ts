@@ -5,6 +5,9 @@ import '@/models/LeaveRequest';
 import '@/models/CarWashActivity';
 import '@/models/Leader';
 import '@/models/SubstituteRecord';
+import '@/models/Attendance';
+import '@/models/AttendanceCorrection';
+import '@/models/Settings';
 
 const MONGODB_URI = process.env.MONGODB_URI!;
 
@@ -35,6 +38,10 @@ async function dbConnect() {
   if (!cached.promise) {
     const opts = {
       bufferCommands: false,
+      maxPoolSize: 10,
+      minPoolSize: 1,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
     };
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
