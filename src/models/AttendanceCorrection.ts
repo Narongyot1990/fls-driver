@@ -1,11 +1,13 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export type CorrectionStatus = 'pending' | 'approved' | 'rejected';
+export type CorrectionCategory = 'correction' | 'offsite';
 
 export interface IAttendanceCorrection extends Document {
   userId: string;
   userName: string;
   type: 'in' | 'out';
+  category: CorrectionCategory;
   requestedTime: Date;
   reason: string;
   status: CorrectionStatus;
@@ -15,6 +17,7 @@ export interface IAttendanceCorrection extends Document {
   };
   distance: number;
   branch: string;
+  offsiteLocation?: string;
   approvedBy?: any;
   approvedAt?: Date;
   rejectedReason?: string;
@@ -27,6 +30,7 @@ const AttendanceCorrectionSchema = new Schema<IAttendanceCorrection>(
     userId: { type: String, required: true },
     userName: { type: String, required: true },
     type: { type: String, enum: ['in', 'out'], required: true },
+    category: { type: String, enum: ['correction', 'offsite'], default: 'correction' },
     requestedTime: { type: Date, required: true },
     reason: { type: String, required: true },
     status: {
@@ -40,6 +44,7 @@ const AttendanceCorrectionSchema = new Schema<IAttendanceCorrection>(
     },
     distance: { type: Number, required: true },
     branch: { type: String, required: true },
+    offsiteLocation: { type: String },
     approvedBy: { type: Schema.Types.Mixed, ref: 'User' },
     approvedAt: { type: Date },
     rejectedReason: { type: String },

@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, XCircle, Clock, MapPin, Inbox, MessageSquare, ChevronLeft, Calendar } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, MapPin, Inbox, MessageSquare, ChevronLeft, Calendar, Briefcase, MapPinned } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 import BottomNav from '@/components/BottomNav';
 import { useToast } from '@/components/Toast';
@@ -16,12 +16,14 @@ interface CorrectionRequest {
   userId: string;
   userName: string;
   type: 'in' | 'out';
+  category?: 'correction' | 'offsite';
   requestedTime: string;
   reason: string;
   status: 'pending' | 'approved' | 'rejected';
   location: { lat: number; lon: number };
   distance: number;
   branch: string;
+  offsiteLocation?: string;
   createdAt: string;
 }
 
@@ -195,12 +197,15 @@ export default function AdminCorrectionPage() {
                           className="card bg-[var(--bg-surface)] border border-[var(--border)] overflow-hidden"
                         >
                            <div className="p-4 flex items-start gap-4 border-b border-[var(--border)]">
-                              <div className="w-10 h-10 rounded-xl bg-[var(--bg-inset)] flex items-center justify-center text-indigo-500 font-bold">
-                                 {req.userName.charAt(0)}
+                              <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${req.category === 'offsite' ? 'bg-violet-500/10 text-violet-500' : 'bg-[var(--bg-inset)] text-indigo-500'}`}>
+                                 {req.category === 'offsite' ? <Briefcase className="w-5 h-5" /> : req.userName.charAt(0)}
                               </div>
                               <div className="flex-1 min-w-0">
-                                 <h3 className="text-sm font-black tracking-tight underline decoration-indigo-500/30">{req.userName}</h3>
+                                 <h3 className={`text-sm font-black tracking-tight underline ${req.category === 'offsite' ? 'decoration-violet-500/30' : 'decoration-indigo-500/30'}`}>{req.userName}</h3>
                                  <div className="flex items-center gap-2 mt-1">
+                                    {req.category === 'offsite' && (
+                                      <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-500">Off-site</span>
+                                    )}
                                     <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${req.type === 'in' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
                                        Clock {req.type}
                                     </span>
@@ -223,10 +228,13 @@ export default function AdminCorrectionPage() {
                                     </div>
                                  </div>
                                  <div>
-                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-30 mb-1">Location Info</p>
+                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-30 mb-1">{req.category === 'offsite' ? 'Off-site Location' : 'Location Info'}</p>
                                     <div className="flex items-center gap-2 text-[11px] font-bold">
-                                       <MapPin className="w-3 h-3 text-amber-500" />
-                                       {Math.round(req.distance)}m (นอกพื้นที่)
+                                       {req.category === 'offsite' ? (
+                                         <><MapPinned className="w-3 h-3 text-violet-500" /> {req.offsiteLocation || 'ไม่ระบุ'}</>
+                                       ) : (
+                                         <><MapPin className="w-3 h-3 text-amber-500" /> {Math.round(req.distance)}m (นอกพื้นที่)</>
+                                       )}
                                     </div>
                                  </div>
                               </div>
@@ -244,12 +252,12 @@ export default function AdminCorrectionPage() {
                               <button 
                                 onClick={() => handleAction(req._id, 'approved')}
                                 disabled={actionLoading === req._id}
-                                className="flex-1 py-3 rounded-xl bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+                                className={`flex-1 py-3 rounded-xl text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all ${req.category === 'offsite' ? 'bg-violet-500 shadow-violet-500/20' : 'bg-emerald-500 shadow-emerald-500/20'}`}
                               >
                                 {actionLoading === req._id ? <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : (
                                   <>
                                     <CheckCircle2 className="w-3.5 h-3.5" />
-                                    อนุมัติแก้ไข
+                                    {req.category === 'offsite' ? 'อนุมัตินอกสถานที่' : 'อนุมัติแก้ไข'}
                                   </>
                                 )}
                               </button>

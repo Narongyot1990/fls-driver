@@ -45,34 +45,38 @@ export async function POST(request: NextRequest) {
     if ('error' in authResult) return authResult.error;
 
     const body = await request.json();
-    const { type, requestedTime, reason, location, distance, branch } = body;
+    const { type, requestedTime, reason, location, distance, branch, category, offsiteLocation } = body;
 
     if (!type || !requestedTime || !reason || !location || !branch) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    const reqCategory = category || 'correction';
     const { userId } = authResult.payload;
 
     await dbConnect();
 
-    // 1. Prevent duplicate pending requests of the same type
+    // 1. Prevent duplicate pending requests of the same type+category
     const existingPending = await AttendanceCorrection.findOne({
       userId,
       type,
+      category: reqCategory,
       status: 'pending'
     });
     if (existingPending) {
-      return NextResponse.json({ error: `มีคำขอ ${type === 'in' ? 'เข้างาน' : 'ออกงาน'} รอดำเนินการอยู่แล้ว` }, { status: 400 });
+      const label = reqCategory === 'offsite' ? 'ทำงานนอกสถานที่' : (type === 'in' ? 'เข้างาน' : 'ออกงาน');
+      return NextResponse.json({ error: `มีคำขอ${label}รอดำเนินการอยู่แล้ว` }, { status: 400 });
     }
 
-    // 2. Validate against current attendance state
-    // If last record is 'in', can only request 'out' correction, and vice versa.
-    const lastRecord = await Attendance.findOne({ userId }).sort({ timestamp: -1 });
-    if (type === 'in' && lastRecord && lastRecord.type === 'in') {
-      return NextResponse.json({ error: 'คุณอยู่ในระบบแล้ว (Clock In อยู่) ไม่สามารถขอเข้างานซ้ำได้' }, { status: 400 });
-    }
-    if (type === 'out' && (!lastRecord || lastRecord.type === 'out')) {
-      return NextResponse.json({ error: 'คุณยังไม่ได้เข้างาน หรือออกงานไปแล้ว ไม่สามารถขอออกงานได้' }, { status: 400 });
+    // 2. Validate against current attendance state (skip for offsite requests)
+    if (reqCategory !== 'offsite') {
+      const lastRecord = await Attendance.findOne({ userId }).sort({ timestamp: -1 });
+      if (type === 'in' && lastRecord && lastRecord.type === 'in') {
+        return NextResponse.json({ error: 'คุณอยู่ในระบบแล้ว (Clock In อยู่) ไม่สามารถขอเข้างานซ้ำได้' }, { status: 400 });
+      }
+      if (type === 'out' && (!lastRecord || lastRecord.type === 'out')) {
+        return NextResponse.json({ error: 'คุณยังไม่ได้เข้างาน หรือออกงานไปแล้ว ไม่สามารถขอออกงานได้' }, { status: 400 });
+      }
     }
 
     // Fetch user name
@@ -96,11 +100,13 @@ export async function POST(request: NextRequest) {
       userId,
       userName,
       type,
+      category: reqCategory,
       requestedTime: new Date(requestedTime),
       reason,
       location,
       distance,
       branch,
+      offsiteLocation: offsiteLocation || undefined,
       status: 'pending'
     });
 
