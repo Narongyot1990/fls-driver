@@ -124,11 +124,37 @@ export async function GET(request: NextRequest) {
     // Higher limit for admin month views
     const limit = (role === 'admin' && range === 'month') ? 2000 : 500;
     
+    // 1. Fetch actual attendance records
+    const attendanceRecords = await Attendance.find(query).sort({ timestamp: -1 }).limit(limit);
     
-    const records = await Attendance.find(query).sort({ timestamp: -1 }).limit(limit);
+    // 2. Fetch attendance corrections for the same query (if applicable)
+    let corrections: any[] = [];
+    if (query.userId || role === 'admin') {
+       const { AttendanceCorrection } = await import('@/models/AttendanceCorrection');
+       
+       const correctionQuery: any = { status: { $ne: 'approved' } };
+       if (query.userId) correctionQuery.userId = query.userId;
+       if (query.branch && role === 'admin') correctionQuery.branch = query.branch;
+       
+       // Handle timestamp range for corrections too
+       if (query.timestamp) {
+         correctionQuery.requestedTime = query.timestamp;
+       }
+
+       corrections = await AttendanceCorrection.find(correctionQuery).sort({ requestedTime: -1 }).limit(100);
+    }
+
+    // 3. Merge and unify
+    const unifiedRecords = [
+      ...attendanceRecords.map(r => ({ ...r.toObject(), eventType: 'actual' })),
+      ...corrections.map(c => ({
+        ...c.toObject(),
+        timestamp: c.requestedTime, // Use consistent field name
+        eventType: 'correction'
+      }))
+    ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     
-    
-    return NextResponse.json({ success: true, records });
+    return NextResponse.json({ success: true, records: unifiedRecords });
   } catch (error) {
     console.error('Get Attendance Error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -237,12 +263,20 @@ export async function DELETE(request: NextRequest) {
 
     await dbConnect();
 
-    const record = await Attendance.findById(id);
+    let record = await Attendance.findById(id);
+    let modelType: 'attendance' | 'correction' = 'attendance';
+
+    if (!record) {
+      const { AttendanceCorrection } = await import('@/models/AttendanceCorrection');
+      record = await AttendanceCorrection.findById(id) as any;
+      modelType = 'correction';
+    }
+
     if (!record) {
       return NextResponse.json({ error: 'Record not found' }, { status: 404 });
     }
 
-    // Permission check: only owner or admin
+    // Permission check: only owner or admin (handling both models)
     const { userId: currentUserId, role } = authResult.payload;
     const recordUserId = record.userId.toString();
     const currentUserIdStr = currentUserId.toString();
@@ -252,7 +286,25 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized: You can only delete your own records' }, { status: 403 });
     }
 
-    await Attendance.findByIdAndDelete(id);
+    if (modelType === 'attendance') {
+      await Attendance.findByIdAndDelete(id);
+      
+      // Cascading Delete for associated correction
+      try {
+        const { AttendanceCorrection } = await import('@/models/AttendanceCorrection');
+        const timeBuffer = 1000;
+        const startTime = new Date(record.timestamp.getTime() - timeBuffer);
+        const endTime = new Date(record.timestamp.getTime() + timeBuffer);
+        await AttendanceCorrection.deleteMany({
+          userId: record.userId,
+          type: record.type,
+          requestedTime: { $gte: startTime, $lte: endTime }
+        });
+      } catch (err) { console.error('Cascading Delete Error:', err); }
+    } else {
+      const { AttendanceCorrection } = await import('@/models/AttendanceCorrection');
+      await AttendanceCorrection.findByIdAndDelete(id);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

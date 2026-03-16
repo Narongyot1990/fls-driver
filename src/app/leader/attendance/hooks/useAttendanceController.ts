@@ -18,7 +18,6 @@ export function useAttendanceController() {
   const [branchRadius, setBranchRadius] = useState(50);
   const [branchLocation, setBranchLocation] = useState<any>(null);
   const [mySchedule, setMySchedule] = useState<any[]>([]);
-  const [myCorrections, setMyCorrections] = useState<any[]>([]);
   const [currentTime, setCurrentTime] = useState(new Date());
 
   // Update time every minute
@@ -78,23 +77,12 @@ export function useAttendanceController() {
     } catch (err) { console.error(err); }
   }, [user?._id]);
 
-  const fetchMyCorrections = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/attendance/correction`);
-      const data = await res.json();
-      if (data.success) {
-        setMyCorrections(data.corrections || []);
-      }
-    } catch (err) { console.error(err); }
-  }, []);
-
   useEffect(() => {
     if (user) {
       fetchRecords();
       fetchMySchedule();
-      fetchMyCorrections();
     }
-  }, [user, fetchRecords, fetchMySchedule, fetchMyCorrections]);
+  }, [user, fetchRecords, fetchMySchedule]);
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371e3;
@@ -193,7 +181,7 @@ export function useAttendanceController() {
       const data = await res.json();
       if (data.success) {
         showToast('success', 'ส่งคำขอแล้ว รอ Admin อนุมัติ');
-        fetchMyCorrections();
+        fetchRecords(); // Refresh the unified list
         return true;
       } else {
         showToast('error', data.error || 'เกิดข้อผิดพลาด');
@@ -212,28 +200,13 @@ export function useAttendanceController() {
     return `${(m / 1000).toFixed(1)} km`;
   };
 
-  const isClockedIn = records.length > 0 && records[0].type === 'in';
-  const isClockedOut = records.length > 0 && records[0].type === 'out';
-  const lastRecordType = records.length > 0 ? records[0].type : 'out';
+  const actualRecords = records.filter(r => r.eventType === 'actual');
+  const isClockedIn = actualRecords.length > 0 && actualRecords[0].type === 'in';
+  const isClockedOut = actualRecords.length > 0 && actualRecords[0].type === 'out';
+  const lastRecordType = actualRecords.length > 0 ? actualRecords[0].type : 'out';
   const isInRange = distance !== null && distance <= (branchRadius + 5);
 
-  const allEvents = useMemo(() => [
-    ...records.map(r => ({ ...r, eventType: 'actual' as const })),
-    ...myCorrections
-      .filter(c => c.status !== 'approved') // Approved corrections are now reflected in 'records'
-      .map(c => ({
-        _id: c._id,
-        type: c.type,
-        timestamp: c.requestedTime,
-        branch: c.branch,
-        isInside: (c.distance || 0) <= (c.radius || 55),
-        distance: c.distance,
-        status: c.status,
-        category: c.category,
-        reason: c.reason,
-        eventType: 'correction' as const
-      }))
-  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()), [records, myCorrections]);
+  const allEvents = records; // Backend now provides merged events
 
   const attendancePairs = useMemo(() => {
     const pairs: { in?: any; out?: any; id: string }[] = [];
@@ -268,7 +241,6 @@ export function useAttendanceController() {
     displayDistance: formatDistance(distance),
     locLoading,
     records,
-    myCorrections,
     allEvents,
     attendancePairs,
     lastRecordType,
