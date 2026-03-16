@@ -88,10 +88,10 @@ const TaskSchema = new Schema<ITask>(
   { timestamps: true }
 );
 
-TaskSchema.pre('validate', function validateTaskModel(next) {
+TaskSchema.pre("validate", function validateTaskModel(this: ITask) {
   for (const question of this.questions) {
     if (question.correctIndex >= question.options.length) {
-      return next(new Error(`Question correctIndex out of range: "${question.question}"`));
+      throw new Error(`Question correctIndex out of range: "${question.question}"`);
     }
   }
 
@@ -99,24 +99,22 @@ TaskSchema.pre('validate', function validateTaskModel(next) {
   for (const submission of this.submissions) {
     const submitterId = submission.userId.toString();
     if (seenSubmitters.has(submitterId)) {
-      return next(new Error('Duplicate submissions for the same user are not allowed'));
+      throw new Error("Duplicate submissions for the same user are not allowed");
     }
     seenSubmitters.add(submitterId);
 
     if (submission.total !== this.questions.length) {
-      return next(new Error('Submission total must match the number of task questions'));
+      throw new Error("Submission total must match the number of task questions");
     }
 
     if (submission.answers.length > this.questions.length) {
-      return next(new Error('Submission answers exceed the number of task questions'));
+      throw new Error("Submission answers exceed the number of task questions");
     }
 
     if (submission.score > submission.total) {
-      return next(new Error('Submission score cannot exceed submission total'));
+      throw new Error("Submission score cannot exceed submission total");
     }
   }
-
-  next();
 });
 
 TaskSchema.index({ status: 1, createdAt: -1 });
