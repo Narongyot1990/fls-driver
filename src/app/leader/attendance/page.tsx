@@ -361,25 +361,27 @@ function SlideButton({ type, disabled, onSuccess, errorMsg, isClockedIn }: any) 
   };
 
   return (
-    <div className="space-y-3" ref={containerRef}>
+    <div className="w-full" ref={containerRef}>
       <div 
-        className={`relative w-full h-[60px] rounded-[24px] p-1.5 flex items-center overflow-hidden shadow-2xl backdrop-blur-3xl transition-all
-          ${isClockedIn ? 'bg-black/30 border-white/5 shadow-inner' : 'bg-white/10 dark:bg-black/30 border-white/10 dark:border-white/5'}`}
-        style={{ border: '1px solid' }}
+        className={`relative max-w-[280px] mx-auto h-[60px] rounded-[28px] p-1.5 flex items-center overflow-hidden transition-all duration-300
+          ${isClockedIn 
+            ? 'bg-black/40 border-white/5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.05),0_8px_32px_rgba(0,0,0,0.4)]' 
+            : 'bg-white/10 dark:bg-black/30 border-white/10 dark:border-white/5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),0_8px_32px_rgba(0,0,0,0.3)]'}`}
+        style={{ border: '1px solid', backdropFilter: 'blur(24px)' }}
       >
-        <motion.div style={{ opacity }} className="absolute inset-0 flex items-center justify-center font-black text-[10px] uppercase tracking-[0.25em] pointer-events-none text-white drop-shadow-md text-center">
+        <motion.div style={{ opacity }} className="absolute inset-0 flex items-center justify-center font-black text-[10px] uppercase tracking-[0.2em] pointer-events-none text-white/90 drop-shadow-md text-center">
            {errorMsg ? (
-             <span className="text-rose-300 leading-tight px-4">{errorMsg}</span>
+             <span className="text-rose-300/90 leading-tight px-4">{errorMsg}</span>
            ) : (
              <span className="leading-tight pl-2">{label}</span>
            )}
         </motion.div>
         
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
-           <div className={`flex gap-1.5 ${type === 'in' ? 'pl-8' : 'pr-8'}`}>
-              {[1,2,3,4].map(i => (
-                <ChevronRight key={i} className={`w-3.5 h-3.5 ${type === 'out' ? 'rotate-180' : ''} animate-pulse`} 
-                  style={{ animationDelay: `${type === 'in' ? i*150 : (5-i)*150}ms` }} />
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
+           <div className={`flex gap-2 ${type === 'in' ? 'pl-10' : 'pr-10'}`}>
+              {[1,2,3].map(i => (
+                <ChevronRight key={i} className={`w-4 h-4 ${type === 'out' ? 'rotate-180' : ''} animate-pulse`} 
+                  style={{ animationDelay: `${type === 'in' ? i*200 : (4-i)*200}ms` }} />
               ))}
            </div>
         </div>
@@ -388,12 +390,12 @@ function SlideButton({ type, disabled, onSuccess, errorMsg, isClockedIn }: any) 
           <motion.div
             drag="x"
             dragConstraints={type === 'in' ? { left: 0, right: maxWidth } : { left: -maxWidth, right: 0 }}
-            dragElastic={0.08}
+            dragElastic={0.1}
             onDragEnd={onDragEnd}
-            className="w-[48px] h-[48px] rounded-[18px] flex items-center justify-center shadow-[0_4px_12px_rgba(0,0,0,0.3)] cursor-grab active:cursor-grabbing z-10 border border-white/20 active:scale-95 transition-transform"
+            className="w-[48px] h-[48px] rounded-[22px] flex items-center justify-center shadow-xl cursor-grab active:cursor-grabbing z-10 border border-white/30 active:scale-90 transition-transform duration-200"
             style={{ x, background: bgColor, color: 'white' }}
           >
-            {type === 'in' ? <Clock className="w-5 h-5 drop-shadow-sm" /> : <LogOut className="w-5 h-5 drop-shadow-sm rotate-180" />}
+            {type === 'in' ? <Clock className="w-5 h-5 drop-shadow-md" /> : <LogOut className="w-5 h-5 drop-shadow-md rotate-180" />}
           </motion.div>
         </div>
       </div>
