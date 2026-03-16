@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dayjs from 'dayjs';
@@ -22,7 +22,7 @@ interface DriverUser {
   personalDays?: number;
 }
 
-export default function LeavePage() {
+function LeaveContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const targetUserId = searchParams.get('userId');
@@ -269,7 +269,7 @@ export default function LeavePage() {
                 {LEAVE_TYPE_LIST.map((type) => {
                   const Icon = type.icon;
                   const isSelected = leaveType === type.value;
-                  const availableDays = type.daysKey ? user?.[type.daysKey] ?? 0 : null;
+                  const availableDays = type.daysKey ? user?.[type.daysKey] as any ?? 0 : null;
                   
                   return (
                     <button
@@ -369,5 +369,21 @@ export default function LeavePage() {
 
       <BottomNav role="driver" />
     </div>
+  );
+}
+
+function Loading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--bg-base)' }}>
+      <div className="w-10 h-10 rounded-full border-[3px] animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--accent)' }} />
+    </div>
+  );
+}
+
+export default function LeavePage() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <LeaveContent />
+    </Suspense>
   );
 }
