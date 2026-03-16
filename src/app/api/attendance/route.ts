@@ -243,9 +243,13 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Permission check: only owner or admin
-    const { userId, role } = authResult.payload;
-    if (role !== 'admin' && record.userId.toString() !== userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    const { userId: currentUserId, role } = authResult.payload;
+    const recordUserId = record.userId.toString();
+    const currentUserIdStr = currentUserId.toString();
+
+    if (role !== 'admin' && recordUserId !== currentUserIdStr) {
+      console.log(`[DELETE Permission Denied] Record Owner: ${recordUserId}, Requester: ${currentUserIdStr}, Role: ${role}`);
+      return NextResponse.json({ error: 'Unauthorized: You can only delete your own records' }, { status: 403 });
     }
 
     await Attendance.findByIdAndDelete(id);
