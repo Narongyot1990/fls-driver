@@ -247,13 +247,22 @@ export default function AttendancePage() {
                             </div>
                          </motion.div>
                        )}
-                       <SlideButton 
-                         type={canClockIn ? 'in' : 'out'} 
-                         disabled={!isInRange || actionLoading}
-                         onSuccess={() => handleClockAction(canClockIn ? 'in' : 'out')}
-                         errorMsg={!isInRange ? `Out of Range (${Math.round(distance || 0)}m)` : ''}
-                         isClockedIn={isClockedIn}
-                       />
+                       {isInRange ? (
+                         <SlideButton 
+                           type={canClockIn ? 'in' : 'out'} 
+                           disabled={actionLoading}
+                           onSuccess={() => handleClockAction(canClockIn ? 'in' : 'out')}
+                           isClockedIn={isClockedIn}
+                         />
+                       ) : (
+                         <button
+                           onClick={() => handleClockAction(canClockIn ? 'in' : 'out')}
+                           disabled={actionLoading}
+                           className="w-full max-w-[220px] mx-auto h-[60px] rounded-[28px] bg-gradient-to-r from-gray-600 to-gray-800 flex items-center justify-center text-white font-bold text-sm shadow-xl"
+                         >
+                           ขอทำงานนอกสถานที่
+                         </button>
+                       )}
                     </div>
                   ) : isClockedOut ? (
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-4 text-center bg-white/10 dark:bg-black/40 backdrop-blur-xl rounded-[28px] border border-white/10 shadow-2xl">
