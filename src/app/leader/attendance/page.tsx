@@ -50,19 +50,20 @@ export default function AttendancePage() {
   }, [router]);
 
   const fetchRecords = useCallback(async () => {
+    if (!user?._id) return;
     try {
       const today = new Date().toISOString().split('T')[0];
-      const res = await fetch(`/api/attendance?date=${today}`);
+      const res = await fetch(`/api/attendance?date=${today}&userId=${user._id}`);
       const data = await res.json();
       if (data.success) {
         // Sort descending
         const sorted = data.records.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-        setRecords(sorted.slice(0, 20));
+        setRecords(sorted);
       }
     } catch (err) {
       console.error(err);
     }
-  }, []);
+  }, [user?._id]);
 
   useEffect(() => {
     if (user) {
@@ -160,6 +161,24 @@ export default function AttendancePage() {
     else if (target === 'office' && branchLocation) mapRef.current?.flyTo(branchLocation.lat, branchLocation.lon);
   };
 
+  const getWorkingTime = () => {
+    const inRec = records.find(r => r.type === 'in');
+    const outRec = records.find(r => r.type === 'out');
+    if (inRec && outRec) {
+      const diff = new Date(outRec.timestamp).getTime() - new Date(inRec.timestamp).getTime();
+      const hours = Math.floor(diff / 3600000);
+      const mins = Math.floor((diff % 3600000) / 60000);
+      return `${hours} ชม. ${mins} นาที`;
+    }
+    if (inRec && !outRec) {
+      const diff = new Date().getTime() - new Date(inRec.timestamp).getTime();
+      const hours = Math.floor(diff / 3600000);
+      const mins = Math.floor((diff % 3600000) / 60000);
+      return `กำลังทำงาน (${hours}ช. ${mins}ม.)`;
+    }
+    return null;
+  };
+
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
       <Sidebar role="leader" />
@@ -176,9 +195,9 @@ export default function AttendancePage() {
            </button>
         </header>
 
-        <main className="px-4 max-w-xl mx-auto space-y-3">
+        <main className="px-4 max-w-xl mx-auto space-y-4">
           
-          {/* Map Area - Height Optimized */}
+          {/* Map Area - Top */}
           <div className="relative w-full h-[180px] rounded-3xl overflow-hidden border border-[var(--border)] shadow-xl mt-2">
             {branchLocation && (
               <BranchMap 
@@ -201,7 +220,7 @@ export default function AttendancePage() {
                </button>
             </div>
 
-            {/* Distance Display - Dual Units */}
+            {/* Distance Display */}
             <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 text-white flex items-center gap-3">
                <div>
                   <p className="text-[8px] font-black opacity-50 tracking-widest uppercase">Distance</p>
@@ -219,44 +238,7 @@ export default function AttendancePage() {
             </div>
           </div>
 
-          {/* New History List - Compact (Scrollable) */}
-          <div className="card p-1">
-             <div className="flex items-center justify-between p-3 border-b border-[var(--border)] bg-[var(--bg-inset)] rounded-t-2xl">
-                <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Today's Logs (Recent)</span>
-                <HistoryIcon className="w-3 h-3 opacity-30" />
-             </div>
-             <div className="max-h-[148px] overflow-y-auto overflow-x-hidden p-2 space-y-2 custom-scrollbar">
-                {records.length === 0 ? (
-                  <div className="py-8 text-center opacity-30">
-                     <p className="text-[10px] font-black uppercase tracking-widest">No Logs Yet</p>
-                  </div>
-                ) : (
-                  records.map((rec) => (
-                    <div key={rec._id} className="flex items-center justify-between p-3 rounded-2xl bg-[var(--bg-inset)] border border-[var(--border)] group">
-                       <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${rec.type === 'in' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
-                             {rec.type === 'in' ? <Clock className="w-4 h-4" /> : <LogOut className="w-4 h-4" />}
-                          </div>
-                          <div>
-                             <p className="text-xs font-black uppercase tracking-tight">{rec.type === 'in' ? 'Clock In' : 'Clock Out'}</p>
-                             <p className="text-[9px] font-bold opacity-50 uppercase tracking-widest">{new Date(rec.timestamp).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.</p>
-                          </div>
-                       </div>
-                       <div className="flex items-center gap-3">
-                           <span className={`text-[8px] font-black px-2 py-0.5 rounded-full ${rec.isInside ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
-                              {rec.isInside ? 'IN GEO' : 'OUT GEO'}
-                           </span>
-                           <button onClick={() => handleDeleteRecord(rec._id)} className="w-7 h-7 rounded-lg flex items-center justify-center text-rose-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-500/10">
-                              <Trash2 className="w-3.5 h-3.5" />
-                           </button>
-                       </div>
-                    </div>
-                  ))
-                )}
-             </div>
-          </div>
-
-          {/* Action Area: Slide to Clock */}
+          {/* Action Area (Middle) - Interaction point */}
           <div className="py-2">
              <AnimatePresence mode="wait">
                 {canClockIn || canClockOut ? (
@@ -266,18 +248,75 @@ export default function AttendancePage() {
                        disabled={!isInRange || actionLoading}
                        onSuccess={() => handleClockAction(canClockIn ? 'in' : 'out')}
                        errorMsg={!isInRange ? `นอกรัศมี ${Math.round(distance || 0)} ม.` : ''}
+                       isClockedIn={isClockedIn}
                      />
+                     {isClockedIn && (
+                       <div className="flex items-center justify-center gap-2 py-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                          <span className="text-[10px] font-black uppercase text-emerald-500 tracking-widest">
+                            Shift in Progress: {getWorkingTime()}
+                          </span>
+                       </div>
+                     )}
                   </div>
                 ) : isClockedOut ? (
                   <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="card p-5 text-center bg-emerald-500/5 border-dashed border-emerald-500/20">
                      <CheckCircle2 className="w-8 h-8 mx-auto mb-2 text-emerald-500 opacity-60" />
                      <p className="text-xs font-black uppercase text-emerald-500 tracking-widest">Shift Completed</p>
-                     <p className="text-[10px] font-bold opacity-40 mt-1 uppercase">บันทึกเวลาเรียบร้อยสำหรับวันนี้</p>
+                     <p className="text-[10px] font-bold opacity-60 mt-1 uppercase">เวลาทำงานรวม: {getWorkingTime()}</p>
+                     <p className="text-[9px] font-bold opacity-40 mt-1 uppercase">บันทึกเวลาเรียบร้อยสำหรับวันนี้</p>
                   </motion.div>
                 ) : null}
              </AnimatePresence>
           </div>
 
+          {/* New History List - Bottom (Step Progress) */}
+          <div className="card p-1">
+             <div className="flex items-center justify-between p-3 border-b border-[var(--border)] bg-[var(--bg-inset)] rounded-t-2xl">
+                <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Personal Timeline (Today)</span>
+                <HistoryIcon className="w-3 h-3 opacity-30" />
+             </div>
+             <div className="max-h-[220px] overflow-y-auto overflow-x-hidden p-4 space-y-0 custom-scrollbar relative">
+                {records.length === 0 ? (
+                  <div className="py-8 text-center opacity-30">
+                     <p className="text-[10px] font-black uppercase tracking-widest">No Personal Logs</p>
+                  </div>
+                ) : (
+                  <div className="relative pl-6 space-y-6">
+                    {/* Vertical Step Line */}
+                    <div className="absolute left-2.5 top-1 bottom-1 w-[2px] bg-[var(--tm-grid)]" />
+                    
+                    {records.map((rec, idx) => (
+                      <div key={rec._id} className="relative">
+                         {/* Step dot */}
+                         <div className={`absolute -left-[29px] top-1.5 w-4 h-4 rounded-full border-4 border-[var(--bg-surface)] z-10 
+                           ${rec.type === 'in' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]'}`} />
+                         
+                         <div className="flex items-start justify-between group">
+                            <div>
+                               <div className="flex items-center gap-2">
+                                  <p className="text-[11px] font-black uppercase tracking-tight">
+                                    {rec.type === 'in' ? 'Clock In' : 'Clock Out'} 
+                                    <span className="ml-2 text-amber-500 opacity-60">@{rec.branch || 'AYA'}</span>
+                                  </p>
+                                  <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md ${rec.isInside ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'}`}>
+                                     {rec.isInside ? 'Verified' : 'Out of Bounds'}
+                                  </span>
+                               </div>
+                               <p className="text-[10px] font-bold opacity-40 uppercase tracking-widest mt-0.5">
+                                 {new Date(rec.timestamp).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} น.
+                               </p>
+                            </div>
+                            <button onClick={() => handleDeleteRecord(rec._id)} className="w-8 h-8 rounded-xl flex items-center justify-center text-rose-500 opacity-0 group-hover:opacity-100 transition-all hover:bg-rose-500/10">
+                               <Trash2 className="w-4 h-4" />
+                            </button>
+                         </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+             </div>
+          </div>
         </main>
       </div>
       <BottomNav role="leader" />
@@ -291,49 +330,68 @@ export default function AttendancePage() {
   );
 }
 
-function SlideButton({ type, disabled, onSuccess, errorMsg }: any) {
+function SlideButton({ type, disabled, onSuccess, errorMsg, isClockedIn }: any) {
   const x = useMotionValue(0);
-  const maxWidth = 260; // Approximate button width - padding
-  const opacity = useTransform(x, [0, maxWidth], [0.3, 1]);
-  const bgColor = type === 'in' ? 'var(--accent)' : '#475569';
-  const label = type === 'in' ? 'Slide to Clock In' : 'Slide to Clock Out';
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [maxWidth, setMaxWidth] = useState(260);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      setMaxWidth(containerRef.current.clientWidth - 56); // handle - thumb width (48) - padding
+    }
+  }, []);
+
+  const opacity = useTransform(x, [0, type === 'in' ? maxWidth : -maxWidth], [0.3, 1]);
+  const bgColor = type === 'in' ? 'var(--accent)' : '#f43f5e';
+  const label = type === 'in' ? 'Slide Right to Clock In' : 'Slide Left to Clock Out';
 
   const onDragEnd = () => {
-    if (x.get() > maxWidth * 0.8 && !disabled) {
+    const currentX = x.get();
+    if (type === 'in' && currentX > maxWidth * 0.8 && !disabled) {
       onSuccess();
-      x.set(0);
-    } else {
-      x.set(0);
+    } else if (type === 'out' && currentX < -maxWidth * 0.8 && !disabled) {
+      onSuccess();
     }
+    x.set(0);
   };
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" ref={containerRef}>
       <div 
-        className={`relative w-full h-16 rounded-[28px] p-2 flex items-center overflow-hidden transition-all shadow-xl`}
-        style={{ background: 'var(--bg-inset)', border: '1px solid var(--border)' }}
+        className={`relative w-full h-16 rounded-[28px] p-2 flex items-center overflow-hidden transition-all shadow-xl
+          ${isClockedIn ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-[var(--bg-inset)] border-[var(--border)]'}`}
+        style={{ border: '1px solid' }}
       >
-        <motion.div style={{ opacity }} className="absolute inset-0 flex items-center justify-center font-black text-xs uppercase tracking-[0.2em] pointer-events-none">
+        <motion.div style={{ opacity }} className="absolute inset-0 flex items-center justify-center font-black text-[10px] uppercase tracking-[0.2em] pointer-events-none text-center">
            {errorMsg ? (
-             <span className="text-red-500/60">{errorMsg}</span>
-           ) : label}
+             <span className="text-red-500/60 leading-tight">{errorMsg}</span>
+           ) : (
+             <span className="leading-tight">{label}</span>
+           )}
         </motion.div>
         
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-20">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10">
            <div className="flex gap-2">
-              {[1,2,3,4].map(i => <ChevronRight key={i} className={`w-4 h-4 animate-pulse`} style={{ animationDelay: `${i*100}ms` }} />)}
+              {type === 'in' ? (
+                [1,2,3,4].map(i => <ChevronRight key={i} className="w-4 h-4 animate-pulse" style={{ animationDelay: `${i*100}ms` }} />)
+              ) : (
+                [4,3,2,1].map(i => <ChevronRight key={i} className="w-4 h-4 rotate-180 animate-pulse" style={{ animationDelay: `${i*100}ms` }} />)
+              )}
            </div>
         </div>
 
-        <motion.div
-          drag="x"
-          dragConstraints={{ left: 0, right: maxWidth }}
-          onDragEnd={onDragEnd}
-          className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg cursor-grab active:cursor-grabbing z-10"
-          style={{ x, background: bgColor, color: 'white' }}
-        >
-          {type === 'in' ? <Clock className="w-5 h-5" /> : <LogOut className="w-5 h-5" />}
-        </motion.div>
+        <div className={`flex w-full ${type === 'in' ? 'justify-start' : 'justify-end'}`}>
+          <motion.div
+            drag="x"
+            dragConstraints={type === 'in' ? { left: 0, right: maxWidth } : { left: -maxWidth, right: 0 }}
+            dragElastic={0.1}
+            onDragEnd={onDragEnd}
+            className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg cursor-grab active:cursor-grabbing z-10"
+            style={{ x, background: bgColor, color: 'white' }}
+          >
+            {type === 'in' ? <Clock className="w-5 h-5" /> : <LogOut className="w-5 h-5" />}
+          </motion.div>
+        </div>
       </div>
     </div>
   );
