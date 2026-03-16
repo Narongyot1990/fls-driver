@@ -479,37 +479,37 @@ function AttendanceMonitorContent() {
           </div>
 
           {/* Scrollable Rows */}
-          <div ref={timelineRef} className="flex-1 overflow-auto custom-scrollbar">
-            {loading && filteredTimelineData.length === 0 ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center opacity-40">
-                  <div className="w-8 h-8 rounded-full border-2 border-[var(--border)] border-t-[var(--accent)] animate-spin mx-auto mb-3" />
-                  <p className="text-[11px] font-bold uppercase tracking-widest">Loading...</p>
-                </div>
-              </div>
-            ) : filteredTimelineData.length === 0 ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center opacity-40 p-10">
-                  <Users className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                  <p className="text-[12px] font-black uppercase tracking-widest">No Staff Found</p>
-                  <p className="text-[10px] font-bold mt-2 opacity-60">Activate users to start monitoring attendance</p>
-                </div>
-              </div>
-            ) : (
-              filteredTimelineData.map((user, userIdx) => {
-                const isActive = user.sessions.some(s => !s.end);
-                const hasLate = user.sessions.some(s => s.isLate);
-                const noActivity = user.sessions.length === 0;
-                const isSelected = selectedUser === user.id;
+      <div ref={timelineRef} className="flex-1 overflow-auto custom-scrollbar">
+        {loading && filteredTimelineData.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center opacity-40">
+              <div className="w-8 h-8 rounded-full border-2 border-[var(--border)] border-t-[var(--accent)] animate-spin mx-auto mb-3" />
+              <p className="text-[11px] font-bold uppercase tracking-widest">Loading...</p>
+            </div>
+          </div>
+        ) : filteredTimelineData.length === 0 ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center opacity-40 p-10">
+              <Users className="w-12 h-12 mx-auto mb-4 opacity-20" />
+              <p className="text-[12px] font-black uppercase tracking-widest">No Staff Found</p>
+              <p className="text-[10px] font-bold mt-2 opacity-60">Activate users to start monitoring attendance</p>
+            </div>
+          </div>
+        ) : (
+          filteredTimelineData.map((user, userIdx) => {
+            const isActive = user.sessions.some(s => !s.end);
+            const hasLate = user.sessions.some(s => s.isLate);
+            const noActivity = user.sessions.length === 0;
+            const isSelected = selectedUser === user.id;
 
-                return (
-                  <div key={user.id}
-                    className={`flex border-b border-[var(--border)]/30 group transition-colors min-h-[48px] cursor-pointer hover:bg-[var(--accent)]/[0.03]
-                      ${isSelected ? 'bg-[var(--accent)]/5' : ''}`}
-                    onClick={() => setSelectedUser(isSelected ? null : user.id)}>
+            return (
+              <div key={user.id}
+                className={`flex border-b border-[var(--border)]/30 group transition-colors min-h-[56px] cursor-pointer hover:bg-[var(--accent)]/[0.03]
+                  ${isSelected ? 'bg-[var(--accent)]/5' : ''}`}
+                onClick={() => setSelectedUser(isSelected ? null : user.id)}>
 
-                    {/* Staff Info (sticky left) */}
-                    <div className="w-[50px] md:w-[180px] shrink-0 px-1 md:px-2 py-1.5 border-r border-[var(--border)]/30 bg-[var(--bg-surface)] sticky left-0 z-10 flex flex-col md:flex-row items-center gap-1 md:gap-2">
+                {/* Staff Info (sticky left) */}
+                <div className="w-[50px] md:w-[180px] shrink-0 px-1 md:px-2 py-2 border-r border-[var(--border)]/30 bg-[var(--bg-surface)] sticky left-0 z-10 flex flex-col md:flex-row items-center gap-1 md:gap-2">
                       <div className="relative shrink-0">
                         <div className="w-7 h-7 md:w-8 md:h-8 rounded-full overflow-hidden bg-[var(--bg-inset)] border border-[var(--border)] shadow-sm">
                           {user.image ? (
@@ -593,32 +593,26 @@ function AttendanceMonitorContent() {
                             </div>
                           );
                         })}
-                        {/* Gradient session bars (Popping Style) */}
+                        {/* Step Progress session bars */}
                         {user.sessions.map((session, idx) => {
                           const { left, width } = getBarPosition(session.start, session.end, refDate, pxPerMinute, currentTime);
                           if (width <= 0) return null;
                           const isLive = !session.end;
                           
-                          // Richer Gradients
-                          const bg = session.isLate
-                            ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' // Amber to Dark Amber
+                          const colorClass = session.isLate ? 'amber' : isLive ? 'emerald' : 'indigo';
+                          const gradient = session.isLate
+                            ? 'from-amber-400 to-amber-600'
                             : isLive
-                              ? `linear-gradient(135deg, #10b981 0%, #059669 100%)` // Emerald to Green
-                              : `linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)`; // Indigo to Dark Indigo
+                              ? 'from-emerald-400 to-emerald-600'
+                              : 'from-indigo-400 to-indigo-600';
 
                           return (
                             <motion.div key={idx}
-                              initial={{ opacity: 0, scaleY: 0.8 }}
-                              animate={{ opacity: 1, scaleY: 1 }}
-                              transition={{ delay: idx * 0.04, duration: 0.3 }}
-                              className={`absolute top-1/2 -translate-y-1/2 h-[20px] md:h-[24px] rounded-lg flex items-center px-2 shadow-sm border border-white/10 dark:border-white/5 cursor-pointer backdrop-blur-[2px] transition-all
-                                ${isLive ? 'animate-pulse-subtle shadow-[0_0_12px_rgba(16,185,129,0.3)] ring-1 ring-emerald-400/30' : 'hover:brightness-110 shadow-lg'}`}
-                              style={{
-                                left: `${left}px`,
-                                width: `${Math.max(2, width)}px`,
-                                background: bg,
-                                transformOrigin: 'center',
-                              }}
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: idx * 0.02 }}
+                              className="absolute top-1/2 -translate-y-1/2 flex items-center group/session h-8"
+                              style={{ left: `${left}px`, width: `${Math.max(12, width)}px` }}
                               onMouseEnter={(e) => {
                                 const rect = e.currentTarget.getBoundingClientRect();
                                 setTooltip({
@@ -635,18 +629,40 @@ function AttendanceMonitorContent() {
                                 });
                               }}
                               onMouseLeave={() => setTooltip(null)}>
-                              {width > 8 && (
-                                <>
-                                  <div className={`shrink-0 w-2 h-2 rounded-full border border-white/40 ${isLive ? 'bg-white animate-ping' : 'bg-white/60'}`} />
-                                  <span className="text-[8px] md:text-[9px] font-black text-white ml-1.5 whitespace-nowrap drop-shadow-md tracking-tight uppercase">
-                                    {session.start.getHours().toString().padStart(2, '0')}:{session.start.getMinutes().toString().padStart(2, '0')}
-                                    {session.end && ` - ${session.end.getHours().toString().padStart(2, '0')}:${session.end.getMinutes().toString().padStart(2, '0')}`}
+                              
+                              {/* The connecting track */}
+                              <div className={`absolute left-0 right-0 h-[3px] rounded-full opacity-20 bg-${colorClass}-500`} />
+                              
+                              {/* The progress line */}
+                              <div className={`absolute left-0 h-[3px] rounded-full bg-gradient-to-r ${gradient} shadow-sm z-10 transition-all`}
+                                style={{ width: '100%' }} />
+
+                              {/* Start Node */}
+                              <div className={`absolute left-0 w-3.5 h-3.5 rounded-full border-2 border-[var(--bg-surface)] z-20 shadow-md ${session.isLate ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+
+                              {/* End Node or Pulse Indicator */}
+                              {isLive ? (
+                                <div className="absolute right-0 flex items-center justify-center z-20">
+                                  <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-[var(--bg-surface)] shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
+                                  <div className="absolute w-6 h-6 rounded-full bg-emerald-500 animate-ping opacity-20" />
+                                </div>
+                              ) : (
+                                <div className={`absolute right-0 w-3.5 h-3.5 rounded-full border-2 border-[var(--bg-surface)] z-20 shadow-md ${gradient.split(' ')[1].replace('to-', 'bg-')}`} />
+                              )}
+
+                              {/* Time Label (Visible on hover or if wide enough) */}
+                              {width > 40 && (
+                                <div className="absolute -top-4 left-1/2 -translate-x-1/2 opacity-0 group-hover/session:opacity-100 transition-opacity bg-[var(--bg-surface)] px-1.5 py-0.5 rounded border border-[var(--border)] shadow-sm pointer-events-none z-30">
+                                  <span className="text-[7px] font-black whitespace-nowrap opacity-60">
+                                    {session.start.getHours()}:{session.start.getMinutes().toString().padStart(2, '0')}
+                                    {session.end && ` - ${session.end.getHours()}:${session.end.getMinutes().toString().padStart(2, '0')}`}
                                   </span>
-                                </>
+                                </div>
                               )}
                             </motion.div>
                           );
                         })}
+
 
                         {/* "Now" Indicator (Vertical Line) */}
                         <div className="absolute top-0 bottom-0 w-px bg-red-500/30 z-20 pointer-events-none"

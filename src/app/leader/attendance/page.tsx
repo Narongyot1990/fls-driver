@@ -93,10 +93,11 @@ function AttendanceContent() {
               <ClockCard 
                 timeStr={timeStr}
                 dateStr={dateStr}
-                distance={ctrl.distance}
+                displayDistance={ctrl.displayDistance}
                 isInRange={ctrl.isInRange}
                 isClockedIn={ctrl.isClockedIn}
                 isClockedOut={ctrl.isClockedOut}
+                lastRecordType={ctrl.lastRecordType}
                 actionLoading={ctrl.actionLoading}
                 locLoading={ctrl.locLoading}
                 onClockAction={ctrl.handleClockAction}
@@ -142,8 +143,9 @@ function AttendanceContent() {
             {/* Right Col: History */}
             <div className="space-y-6">
               <HistoryTimeline 
-                records={ctrl.allEvents} 
+                pairs={ctrl.attendancePairs} 
                 onDeleteRecord={ctrl.handleDeleteRecord} 
+                onRequestCorrection={(type) => { setCorrectionType(type); setIsCorrectionOpen(true); }}
               />
             </div>
           </div>

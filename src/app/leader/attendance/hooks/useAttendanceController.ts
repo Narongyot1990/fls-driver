@@ -1,6 +1,4 @@
-'use client';
-
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useBranches } from '@/hooks/useBranches';
 import { useToast } from '@/components/Toast';
@@ -205,11 +203,18 @@ export function useAttendanceController() {
     }
   };
 
-  const isClockedIn = records.some(r => r.type === 'in');
-  const isClockedOut = records.some(r => r.type === 'out');
+  const formatDistance = (m: number | null) => {
+    if (m === null) return '---';
+    if (m >= 1000) return `${(m / 1000).toFixed(1)} km`;
+    return `${Math.round(m)} m`;
+  };
+
+  const isClockedIn = records.length > 0 && records[0].type === 'in';
+  const isClockedOut = records.length > 0 && records[0].type === 'out';
+  const lastRecordType = records.length > 0 ? records[0].type : 'out';
   const isInRange = distance !== null && distance <= (branchRadius + 5);
 
-  const allEvents = [
+  const allEvents = useMemo(() => [
     ...records.map(r => ({ ...r, eventType: 'actual' as const })),
     ...myCorrections.map(c => ({
       _id: c._id,
@@ -223,17 +228,45 @@ export function useAttendanceController() {
       reason: c.reason,
       eventType: 'correction' as const
     }))
-  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()), [records, myCorrections]);
+
+  const attendancePairs = useMemo(() => {
+    const pairs: { in?: any; out?: any; id: string }[] = [];
+    const sortedEvents = [...allEvents].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    
+    let currentPair: any = null;
+
+    sortedEvents.forEach(evt => {
+      if (evt.type === 'in') {
+        if (currentPair) pairs.push(currentPair);
+        currentPair = { in: evt, id: evt._id };
+      } else if (evt.type === 'out') {
+        if (currentPair) {
+          currentPair.out = evt;
+          pairs.push(currentPair);
+          currentPair = null;
+        } else {
+          pairs.push({ out: evt, id: evt._id });
+        }
+      }
+    });
+    if (currentPair) pairs.push(currentPair);
+
+    return pairs.reverse(); 
+  }, [allEvents]);
 
   return {
     user,
     loading,
     location,
     distance,
+    displayDistance: formatDistance(distance),
     locLoading,
     records,
     myCorrections,
     allEvents,
+    attendancePairs,
+    lastRecordType,
     actionLoading,
     branchRadius,
     branchLocation,

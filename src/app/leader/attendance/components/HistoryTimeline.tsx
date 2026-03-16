@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { History as HistoryIcon, Trash2, MapPin, ShieldCheck, MapPinned, Briefcase, MessageSquare } from 'lucide-react';
+import { History as HistoryIcon, Trash2, MapPin, ShieldCheck, MapPinned, Briefcase, MessageSquare, ArrowRight, Circle } from 'lucide-react';
 
 interface TimelineEvent {
   _id: string;
@@ -16,124 +16,156 @@ interface TimelineEvent {
   reason?: string;
 }
 
-interface HistoryTimelineProps {
-  records: TimelineEvent[];
-  onDeleteRecord: (id: string) => void;
+interface AttendancePair {
+  in?: TimelineEvent;
+  out?: TimelineEvent;
+  id: string;
 }
 
-export function HistoryTimeline({ records, onDeleteRecord }: HistoryTimelineProps) {
+interface HistoryTimelineProps {
+  pairs: AttendancePair[];
+  onDeleteRecord: (id: string) => void;
+  onRequestCorrection: (type: 'in' | 'out') => void;
+}
+
+export function HistoryTimeline({ pairs, onDeleteRecord, onRequestCorrection }: HistoryTimelineProps) {
+  const formatTime = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatDate = (iso: string) => {
+    const d = new Date(iso);
+    return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+  };
+
   return (
-    <div className="card overflow-hidden bg-[var(--bg-surface)] border-[var(--border)] rounded-[28px] shadow-lg">
-      <div className="flex items-center justify-between p-5 border-b border-[var(--border)] bg-[var(--bg-inset)]/30">
-        <div className="flex items-center gap-2.5">
-          <HistoryIcon className="w-4 h-4 text-[var(--accent)]" />
-          <span className="text-[11px] font-black uppercase tracking-[0.2em] opacity-60">Attendance History</span>
+    <div className="card overflow-hidden bg-[var(--bg-surface)] border-[var(--border)] rounded-[32px] shadow-lg">
+      <div className="flex items-center justify-between p-6 border-b border-[var(--border)] bg-[var(--bg-inset)]/30">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-[var(--accent)]/10 flex items-center justify-center">
+            <HistoryIcon className="w-4 h-4 text-[var(--accent)]" />
+          </div>
+          <div>
+            <span className="text-xs font-black uppercase tracking-widest block">Attendance Sessions</span>
+            <span className="text-[10px] font-bold opacity-30 uppercase tracking-[0.2em]">Bird's eye view</span>
+          </div>
         </div>
-        <span className="px-2 py-0.5 rounded-md bg-[var(--bg-inset)] border border-[var(--border)] text-[8px] font-black opacity-30 uppercase tracking-widest">Recent Logs</span>
       </div>
 
-      <div className="max-h-[500px] overflow-y-auto p-6 custom-scrollbar relative">
-        {records.length === 0 ? (
-          <div className="py-12 text-center flex flex-col items-center gap-3 opacity-20">
-            <HistoryIcon className="w-10 h-10" />
-            <p className="text-[10px] font-black uppercase tracking-[0.2em]">No logs found</p>
+      <div className="max-h-[600px] overflow-y-auto p-6 space-y-4 custom-scrollbar">
+        {pairs.length === 0 ? (
+          <div className="py-20 text-center flex flex-col items-center gap-4 opacity-20">
+            <HistoryIcon className="w-12 h-12" />
+            <p className="text-xs font-black uppercase tracking-[0.2em]">No history found</p>
           </div>
         ) : (
-          <div className="relative pl-8 space-y-8">
-            {/* Vertical Line */}
-            <div className="absolute left-[11px] top-1.5 bottom-1.5 w-[2px] bg-gradient-to-b from-[var(--border)] via-[var(--border)] to-transparent" />
-            
-            {records.map((rec, idx) => {
-              const date = new Date(rec.timestamp);
-              const isToday = date.toDateString() === new Date().toDateString();
-              
-              return (
-                <motion.div 
-                  key={rec._id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: idx * 0.05 }}
-                  className="relative group"
-                >
-                  {/* Timeline Dot */}
-                  <div className={`absolute -left-[27px] top-1 w-5 h-5 rounded-full border-4 border-[var(--bg-surface)] z-10 shadow-sm
-                    ${rec.type === 'in' 
-                      ? 'bg-emerald-500 shadow-emerald-500/20' 
-                      : 'bg-rose-500 shadow-rose-500/20'}`} 
-                  />
-                  
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1.5 flex-1 min-w-0 pr-4">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className={`text-[12px] font-black uppercase tracking-tight ${rec.type === 'in' ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                          Clock {rec.type.toUpperCase()}
-                        </p>
-                        
-                        {rec.eventType === 'correction' && (
-                          <div className={`flex items-center gap-1 text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${
-                            rec.category === 'offsite' ? 'bg-violet-500/10 text-violet-500 border-violet-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'
-                          }`}>
-                            {rec.category === 'offsite' ? <Briefcase className="w-2.5 h-2.5" /> : <MessageSquare className="w-2.5 h-2.5" />}
-                            {rec.category === 'offsite' ? 'Mission' : 'Correction'}
-                          </div>
-                        )}
-
-                        {rec.status && (
-                          <div className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${
-                            rec.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                            rec.status === 'rejected' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
-                            'bg-slate-500/10 text-slate-500 border-slate-500/20'
-                          }`}>
-                            {rec.status}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-4 flex-wrap">
-                        <p className="text-[13px] font-black tracking-tight tabular-nums opacity-80">
-                          {isToday ? date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : 
-                           date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                          <span className="text-[10px] font-bold opacity-30 ml-1">น.</span>
-                        </p>
-                        
-                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-[var(--bg-inset)] border border-[var(--border)]">
-                          <MapPin className="w-3 h-3 text-amber-500" />
-                          <span className="text-[9px] font-black text-amber-600/70">@{rec.branch || 'AYA'}</span>
-                        </div>
-
-                        {rec.eventType === 'actual' && (
-                          <div className={`flex items-center gap-1 text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md border ${
-                            rec.isInside 
-                              ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' 
-                              : 'bg-rose-500/10 text-rose-500 border-rose-500/20'
-                          }`}>
-                            {rec.isInside ? <ShieldCheck className="w-2.5 h-2.5" /> : <MapPinned className="w-2.5 h-2.5" />}
-                            {rec.isInside ? 'Auto-Verified' : 'Manual'}
-                          </div>
-                        )}
-                      </div>
-
-                      {rec.reason && (
-                        <p className="text-[10px] font-bold opacity-40 italic mt-1 line-clamp-1">{rec.reason}</p>
-                      )}
+          pairs.map((pair, idx) => (
+            <motion.div 
+              key={pair.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.05 }}
+              className="p-5 rounded-3xl bg-[var(--bg-inset)] border border-[var(--border)] group/card hover:border-[var(--accent)]/30 transition-all"
+            >
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-[var(--border)]/50">
+                <div className="flex items-center gap-2">
+                  <div className="px-2.5 py-1 rounded-lg bg-white/5 border border-[var(--border)] text-[10px] font-black tracking-tighter opacity-60">
+                    {pair.in ? formatDate(pair.in.timestamp) : pair.out ? formatDate(pair.out.timestamp) : '---'}
+                  </div>
+                  {!pair.out && (
+                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[8px] font-black uppercase tracking-widest">
+                      <Circle className="w-2 h-2 fill-current animate-pulse" />
+                      Active Session
                     </div>
+                  )}
+                </div>
+                {/* Branch Info */}
+                <div className="flex items-center gap-1.5 opacity-40">
+                  <MapPin className="w-3 h-3" />
+                  <span className="text-[10px] font-bold">{(pair.in?.branch || pair.out?.branch || 'HQ').toUpperCase()}</span>
+                </div>
+              </div>
 
-                    {rec.eventType === 'actual' && (
-                      <button 
-                        onClick={() => onDeleteRecord(rec._id)} 
-                        className="p-2 rounded-xl text-rose-500/30 hover:text-rose-500 hover:bg-rose-500/10 transition-all active:scale-90"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+                {/* Clock IN Side */}
+                <div className="relative">
+                  {pair.in ? (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">In</span>
+                        <button onClick={() => onDeleteRecord(pair.in!._id)} className="opacity-0 group-hover/card:opacity-100 p-1 text-rose-500/40 hover:text-rose-500 transition-all"><Trash2 className="w-3 h-3" /></button>
+                      </div>
+                      <p className="text-xl font-black tabular-nums">{formatTime(pair.in.timestamp)}</p>
+                      <div className="flex items-center gap-1 opacity-30 text-[8px] font-bold">
+                        {pair.in.isInside ? <ShieldCheck className="w-2.5 h-2.5" /> : <MapPinned className="w-2.5 h-2.5" />}
+                        {pair.in.isInside ? 'Auto' : 'Manual'}
+                      </div>
+                    </div>
+                  ) : (
+                    <button onClick={() => onRequestCorrection('in')} className="w-full h-12 rounded-2xl border border-dashed border-[var(--border)] flex flex-col items-center justify-center opacity-40 hover:opacity-100 hover:border-[var(--accent)] transition-all">
+                      <span className="text-[8px] font-black uppercase tracking-widest">Missing In</span>
+                    </button>
+                  )}
+                </div>
+
+                <ArrowRight className={`w-5 h-5 opacity-10 ${pair.out ? 'text-[var(--accent)] opacity-40' : ''}`} />
+
+                {/* Clock OUT Side */}
+                <div className="relative">
+                  {pair.out ? (
+                    <div className="space-y-1 text-right">
+                      <div className="flex items-center justify-between flex-row-reverse">
+                        <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest">Out</span>
+                        <button onClick={() => onDeleteRecord(pair.out!._id)} className="opacity-0 group-hover/card:opacity-100 p-1 text-rose-500/40 hover:text-rose-500 transition-all"><Trash2 className="w-3 h-3" /></button>
+                      </div>
+                      <p className="text-xl font-black tabular-nums">{formatTime(pair.out.timestamp)}</p>
+                      <div className="flex items-center justify-end gap-1 opacity-30 text-[8px] font-bold">
+                        {pair.out.isInside ? <ShieldCheck className="w-2.5 h-2.5" /> : <MapPinned className="w-2.5 h-2.5" />}
+                        {pair.out.isInside ? 'Auto' : 'Manual'}
+                      </div>
+                    </div>
+                  ) : (
+                    <button onClick={() => onRequestCorrection('out')} className="w-full h-12 rounded-2xl border border-dashed border-[var(--border)] flex flex-col items-center justify-center opacity-40 hover:opacity-100 hover:border-rose-500 transition-all">
+                      <span className="text-[8px] font-black uppercase tracking-widest text-rose-500">Wait Out</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Status footer for corrections/missions */}
+              {(pair.in?.eventType === 'correction' || pair.out?.eventType === 'correction') && (
+                <div className="mt-4 pt-3 border-t border-[var(--border)]/30 flex items-center gap-3">
+                  <div className="flex -space-x-1">
+                    {pair.in?.eventType === 'correction' && (
+                      <div className={`w-5 h-5 rounded-full border border-[var(--bg-inset)] flex items-center justify-center ${pair.in.category === 'offsite' ? 'bg-violet-500' : 'bg-amber-500'}`}>
+                        {pair.in.category === 'offsite' ? <Briefcase className="w-2.5 h-2.5 text-white" /> : <MessageSquare className="w-2.5 h-2.5 text-white" />}
+                      </div>
+                    )}
+                    {pair.out?.eventType === 'correction' && (
+                      <div className={`w-5 h-5 rounded-full border border-[var(--bg-inset)] flex items-center justify-center ${pair.out.category === 'offsite' ? 'bg-violet-500' : 'bg-amber-500'}`}>
+                        {pair.out.category === 'offsite' ? <Briefcase className="w-2.5 h-2.5 text-white" /> : <MessageSquare className="w-2.5 h-2.5 text-white" />}
+                      </div>
                     )}
                   </div>
-                </motion.div>
-              );
-            })}
-          </div>
+                  <div className="flex-1 truncate">
+                    <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Reason</p>
+                    <p className="text-[10px] font-bold truncate italic">"{pair.in?.reason || pair.out?.reason}"</p>
+                  </div>
+                  <div className={`px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest border ${
+                    (pair.in?.status === 'approved' || pair.out?.status === 'approved') ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
+                    (pair.in?.status === 'rejected' || pair.out?.status === 'rejected') ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
+                    'bg-slate-500/10 text-slate-500 border-slate-500/20'
+                  }`}>
+                    {pair.in?.status || pair.out?.status || 'Pending'}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          ))
         )}
       </div>
-      
+
       <style jsx global>{`
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
