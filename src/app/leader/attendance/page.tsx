@@ -313,7 +313,6 @@ export default function AttendancePage() {
                 )}
              </div>
           </div>
-        </main>
       </div>
       <BottomNav role="leader" />
       
