@@ -52,7 +52,16 @@ export default function AttendanceMonitorPage() {
 
   const [zoomLevel, setZoomLevel] = useState<ZoomLevel>(TIMELINE_CONFIG.ZOOM.LEVELS[TIMELINE_CONFIG.ZOOM.DEFAULT]);
   const [zoomValue, setZoomValue] = useState<number>(TIMELINE_CONFIG.ZOOM.DEFAULT);
-  const [viewDate, setViewDate] = useState(new Date());
+  
+  // Continuous Timeline Range: +/- 15 days from now
+  const [refDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 15);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+  const [totalDays] = useState(31);
+  
   const [tooltip, setTooltip] = useState<TooltipData | null>(null);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [roleFilter, setRoleFilter] = useState<'all' | 'driver' | 'leader'>('all');
@@ -87,14 +96,10 @@ export default function AttendanceMonitorPage() {
   const fetchRecords = useCallback(async () => {
     try {
       setLoading(true);
-      const d = new Date(viewDate);
-      let range = 'day';
-      if (zoomLevel === 'month') {
-        d.setDate(1);
-        range = 'month';
-      }
-      const dateStr = d.toISOString().split('T')[0];
-      const res = await fetch(`${TIMELINE_CONFIG.API.ATTENDANCE}?date=${dateStr}&range=${range}`);
+      const start = new Date(refDate).toISOString();
+      const end = new Date(refDate);
+      end.setDate(end.getDate() + totalDays);
+      const res = await fetch(`${TIMELINE_CONFIG.API.ATTENDANCE}?startDate=${start}&endDate=${end.toISOString()}`);
       const data = await res.json();
       if (data.success) setRecords(data.records || []);
     } catch (err) {
@@ -102,7 +107,7 @@ export default function AttendanceMonitorPage() {
     } finally {
       setLoading(false);
     }
-  }, [viewDate, zoomLevel]);
+  }, [refDate, totalDays]);
 
   useEffect(() => {
     fetchUsers();
@@ -114,7 +119,9 @@ export default function AttendanceMonitorPage() {
 
   const fetchWorkSchedules = useCallback(async () => {
     try {
-      const month = `${viewDate.getFullYear()}-${String(viewDate.getMonth() + 1).padStart(2, '0')}`;
+      // Fetch current and surrounding months to be safe
+      const now = new Date();
+      const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
       const res = await fetch(`/api/work-schedule?month=${month}`);
       const data = await res.json();
       if (data.success) {
@@ -123,7 +130,7 @@ export default function AttendanceMonitorPage() {
         setWorkSchedules(map);
       }
     } catch (err) { console.error(err); }
-  }, [viewDate]);
+  }, []);
 
   useEffect(() => { fetchWorkSchedules(); }, [fetchWorkSchedules]);
 
@@ -134,16 +141,27 @@ export default function AttendanceMonitorPage() {
     setZoomLevel(TIMELINE_CONFIG.ZOOM.LEVELS[v]);
   }, []);
 
-  const navigateDate = useCallback((direction: 'prev' | 'next') => {
-    const d = new Date(viewDate);
-    const delta = direction === 'next' ? 1 : -1;
-    if (zoomLevel === 'month') d.setMonth(d.getMonth() + delta);
-    else if (zoomLevel === 'day') d.setDate(d.getDate() + delta);
-    else d.setDate(d.getDate() + delta); // hour view still navigates by day
-    setViewDate(d);
-  }, [viewDate, zoomLevel]);
+  const pxPerMinute = (TIMELINE_CONFIG as any).SCALE[zoomLevel.toUpperCase()] || 1.0;
+  const totalWidth = totalDays * 24 * 60 * pxPerMinute;
 
-  const goToToday = useCallback(() => setViewDate(new Date()), []);
+  useEffect(() => {
+    // Initial scroll to "Now"
+    if (scrollContainerRef.current) {
+      const now = new Date();
+      const minutesFromRef = (now.getTime() - refDate.getTime()) / 60000;
+      const scrollPos = minutesFromRef * pxPerMinute - (scrollContainerRef.current.clientWidth / 2);
+      scrollContainerRef.current.scrollLeft = scrollPos;
+    }
+  }, [pxPerMinute, refDate]);
+
+  const goToToday = useCallback(() => {
+    if (scrollContainerRef.current) {
+      const now = new Date();
+      const minutesFromRef = (now.getTime() - refDate.getTime()) / 60000;
+      const scrollPos = minutesFromRef * pxPerMinute - (scrollContainerRef.current.clientWidth / 2);
+      scrollContainerRef.current.scrollTo({ left: scrollPos, behavior: 'smooth' });
+    }
+  }, [pxPerMinute, refDate]);
 
   // ---------- Process Timeline Data ----------
   const timelineData = useMemo<TimelineUser[]>(() => {
@@ -200,71 +218,51 @@ export default function AttendanceMonitorPage() {
     return { working, total: filteredTimelineData.length, late, totalHours: totalHours.toFixed(1) };
   }, [filteredTimelineData]);
 
-  // ---------- Position Calculations ----------
-  const getBarPosition = useCallback((start: Date, end: Date | null, vd: Date, zoom: ZoomLevel, now: Date) => {
-    // Current date range boundaries for the view
-    const viewStart = new Date(vd);
-    viewStart.setHours(0, 0, 0, 0);
-    const viewEnd = new Date(vd);
-    viewEnd.setHours(23, 59, 59, 999);
-
-    if (zoom === 'month') {
-      const monthStart = new Date(vd.getFullYear(), vd.getMonth(), 1);
-      const daysInMonth = new Date(vd.getFullYear(), vd.getMonth() + 1, 0).getDate();
-      const monthEnd = new Date(vd.getFullYear(), vd.getMonth(), daysInMonth, 23, 59, 59, 999);
-
-      // Clip start/end to month boundaries
-      const effectiveStart = start < monthStart ? monthStart : start;
-      const finishedEnd = end || (now > monthEnd ? monthEnd : now);
-      const effectiveEnd = finishedEnd > monthEnd ? monthEnd : finishedEnd;
-
-      if (effectiveEnd < monthStart || effectiveStart > monthEnd) return { left: 0, width: 0 };
-
-      const startD = effectiveStart.getDate() - 1 + effectiveStart.getHours() / 24 + effectiveStart.getMinutes() / 1440;
-      const endD = effectiveEnd.getDate() - 1 + effectiveEnd.getHours() / 24 + effectiveEnd.getMinutes() / 1440;
-      
-      return { left: (startD / daysInMonth) * 100, width: Math.max(0.2, ((endD - startD) / daysInMonth) * 100) };
-    } else {
-      // Day/Hour view (24h)
-      // Clip start/end to day boundaries
-      const effectiveStart = start < viewStart ? viewStart : start;
-      const finishedEnd = end || (now > viewEnd ? viewEnd : now);
-      const effectiveEnd = finishedEnd > viewEnd ? viewEnd : finishedEnd;
-
-      if (effectiveEnd < viewStart || effectiveStart > viewEnd) return { left: 0, width: 0 };
-
-      const startH = effectiveStart.getHours() + effectiveStart.getMinutes() / 60;
-      const endH = effectiveEnd.getHours() + effectiveEnd.getMinutes() / 60;
-      
-      return { left: (startH / 24) * 100, width: Math.max(0.5, ((endH - startH) / 24) * 100) };
-    }
+  // ---------- Position Calculations (Absolute Pixels) ----------
+  const getBarPosition = useCallback((start: Date, end: Date | null, ref: Date, pxMin: number, now: Date) => {
+    const left = ((start.getTime() - ref.getTime()) / 60000) * pxMin;
+    const finalEnd = end || now;
+    const width = ((finalEnd.getTime() - start.getTime()) / 60000) * pxMin;
+    
+    return { left, width: Math.max(1, width) };
   }, []);
 
-  // ---------- Column Headers ----------
+  // ---------- Dynamic Column Markers ----------
   const columnHeaders = useMemo(() => {
-    if (zoomLevel === 'month') {
-      const daysInMonth = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate();
-      return Array.from({ length: daysInMonth }, (_, i) => {
-        const d = new Date(viewDate.getFullYear(), viewDate.getMonth(), i + 1);
-        const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-        const isToday = d.toDateString() === new Date().toDateString();
-        return { label: String(i + 1), isWeekend, isToday, key: `d${i}` };
-      });
-    } else {
-      // Day view: 24 columns (0-23h), Hour view: 24 columns but wider
-      return Array.from({ length: 24 }, (_, i) => {
-        const isWorkHour = i >= TIMELINE_CONFIG.SCHEDULE.EXPECTED_START && i < TIMELINE_CONFIG.SCHEDULE.EXPECTED_END;
-        const isNowHour = new Date().getHours() === i && viewDate.toDateString() === new Date().toDateString();
-        return { label: `${i.toString().padStart(2, '0')}:00`, isWorkHour, isNowHour, key: `h${i}` };
+    const markers: { label: string; subLabel?: string; left: number; key: string; isDayStart?: boolean; isToday?: boolean }[] = [];
+    const intervalMinutes = zoomLevel === 'month' ? 1440 : 60; // Day markers or Hour markers
+    
+    for (let i = 0; i < totalDays * 24 * 60; i += intervalMinutes) {
+      const d = new Date(refDate.getTime() + i * 60000);
+      const isDayStart = d.getHours() === 0;
+      const isToday = d.toDateString() === new Date().toDateString();
+      
+      let label = "";
+      if (zoomLevel === 'month') {
+        label = d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+      } else {
+        label = d.getHours().toString().padStart(2, '0') + ":00";
+      }
+
+      markers.push({
+        label,
+        subLabel: isDayStart && zoomLevel !== 'month' ? d.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric' }) : undefined,
+        left: i * pxPerMinute,
+        key: `m-${i}`,
+        isDayStart,
+        isToday
       });
     }
-  }, [zoomLevel, viewDate]);
+    return markers;
+  }, [zoomLevel, pxPerMinute, refDate, totalDays]);
 
   // ---------- Date Display ----------
+  // ---------- Display Utils ----------
   const dateRangeLabel = useMemo(() => {
-    if (zoomLevel === 'month') return viewDate.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
-    return viewDate.toLocaleDateString('th-TH', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  }, [zoomLevel, viewDate]);
+    const end = new Date(refDate);
+    end.setDate(end.getDate() + totalDays - 1);
+    return `${refDate.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' })} - ${end.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+  }, [refDate, totalDays]);
 
   const isZoomMin = zoomValue === TIMELINE_CONFIG.ZOOM.MIN;
   const isZoomMax = zoomValue === TIMELINE_CONFIG.ZOOM.MAX;
@@ -370,16 +368,20 @@ export default function AttendanceMonitorPage() {
         {/* ========== CONTROLS BAR ========== */}
         <div className="px-3 md:px-5 py-2 flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg-surface)]/80 backdrop-blur-sm shrink-0">
           <div className="flex items-center gap-1.5">
-            <button onClick={() => navigateDate('prev')}
+            <button onClick={() => {
+              if (scrollContainerRef.current) scrollContainerRef.current.scrollBy({ left: -200, behavior: 'smooth' });
+            }}
               className="w-7 h-7 rounded-lg bg-[var(--bg-inset)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button onClick={goToToday}
               className="px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest bg-[var(--accent)]/10 text-[var(--accent)] hover:bg-[var(--accent)]/20 transition-colors flex items-center gap-1">
               <RotateCcw className="w-3 h-3" />
-              Today
+              Now
             </button>
-            <button onClick={() => navigateDate('next')}
+            <button onClick={() => {
+              if (scrollContainerRef.current) scrollContainerRef.current.scrollBy({ left: 200, behavior: 'smooth' });
+            }}
               className="w-7 h-7 rounded-lg bg-[var(--bg-inset)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -387,12 +389,12 @@ export default function AttendanceMonitorPage() {
 
           <div className="flex items-center gap-2">
             <CalendarDays className="w-3.5 h-3.5 text-[var(--accent)]" />
-            <span className="text-[11px] md:text-[13px] font-black text-[var(--text-primary)]">{dateRangeLabel}</span>
+            <span className="text-[11px] md:text-[13px] font-black text-[var(--text-primary)] uppercase tracking-tight">{dateRangeLabel}</span>
           </div>
 
           <div className="flex items-center gap-2 text-[9px] font-bold opacity-40">
             <span className="hidden md:inline uppercase tracking-widest">
-              {zoomLevel === 'month' ? `${columnHeaders.length} Days` : '24 Hours'}
+              Continuous Timeline
             </span>
           </div>
         </div>
@@ -431,7 +433,7 @@ export default function AttendanceMonitorPage() {
               <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Staff ({filteredTimelineData.length})</span>
             </div>
             {/* Timeline column headers */}
-            <div className="flex-1 overflow-x-auto custom-scrollbar" ref={scrollContainerRef}
+            <div className="flex-1 overflow-x-auto custom-scrollbar no-scrollbar-ui" ref={scrollContainerRef}
               onScroll={(e) => {
                 if (isSyncingRef.current) return;
                 isSyncingRef.current = true;
@@ -439,23 +441,28 @@ export default function AttendanceMonitorPage() {
                 rowScrollRefs.current.forEach(el => { el.scrollLeft = sl; });
                 isSyncingRef.current = false;
               }}>
-              <div className="flex min-w-max">
+              <div className="relative h-10" style={{ width: totalWidth }}>
                 {columnHeaders.map(col => (
                   <div key={col.key}
-                    className={`flex items-center justify-center py-2 border-r border-[var(--border)]/20 transition-colors
-                      ${'isWeekend' in col && col.isWeekend ? 'bg-rose-50/30 dark:bg-rose-950/10' : ''}
-                      ${'isToday' in col && col.isToday ? 'bg-[var(--accent)]/8' : ''}
-                      ${'isNowHour' in col && col.isNowHour ? 'bg-[var(--accent)]/8' : ''}`}
-                    style={{ minWidth: colMinWidth, width: colMinWidth }}>
-                    <span className={`text-[8px] md:text-[9px] font-black
-                      ${'isWeekend' in col && col.isWeekend ? 'text-rose-500' : ''}
-                      ${'isToday' in col && col.isToday ? 'text-[var(--accent)]' : ''}
-                      ${'isNowHour' in col && col.isNowHour ? 'text-[var(--accent)]' : ''}
-                      ${!('isWeekend' in col && col.isWeekend) && !('isToday' in col && col.isToday) && !('isNowHour' in col && col.isNowHour) ? 'text-slate-400' : ''}`}>
+                    className={`absolute top-0 bottom-0 border-l border-[var(--border)]/15 transition-colors pl-1 flex flex-col justify-center
+                      ${col.isDayStart ? 'border-l-2 border-[var(--border)]/40' : ''}
+                      ${col.isToday ? 'bg-[var(--accent)]/5' : ''}`}
+                    style={{ left: col.left }}>
+                    <span className={`text-[8px] font-black uppercase tracking-tighter leading-none
+                      ${col.isToday ? 'text-[var(--accent)]' : col.isDayStart ? 'text-slate-500' : 'text-slate-400'}`}>
                       {col.label}
                     </span>
+                    {col.subLabel && (
+                      <span className="text-[7px] font-bold opacity-40 uppercase mt-0.5">{col.subLabel}</span>
+                    )}
                   </div>
                 ))}
+                
+                {/* Now Indicator Header Marker */}
+                <div className="absolute top-0 bottom-0 w-px bg-red-500 z-30 pointer-events-none"
+                  style={{ left: ((currentTime.getTime() - refDate.getTime()) / 60000) * pxPerMinute }}>
+                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-red-500" />
+                </div>
               </div>
             </div>
           </div>
@@ -516,7 +523,7 @@ export default function AttendanceMonitorPage() {
                     </div>
 
                     {/* Timeline Track */}
-                    <div className="flex-1 relative overflow-x-auto custom-scrollbar"
+                    <div className="flex-1 relative overflow-x-auto custom-scrollbar no-scrollbar-ui"
                       ref={(el) => {
                         if (el) rowScrollRefs.current.set(user.id, el);
                         else rowScrollRefs.current.delete(user.id);
@@ -535,51 +542,65 @@ export default function AttendanceMonitorPage() {
                           if (scrollContainerRef.current) scrollContainerRef.current.scrollLeft = e.currentTarget.scrollLeft;
                         }
                       }}>
-                      <div className="relative h-full min-h-[48px]" style={{ minWidth: columnHeaders.length * colMinWidth }}>
-                        {/* Assigned shift backgrounds */}
+                      <div className="relative h-full min-h-[48px]" style={{ width: totalWidth }}>
+                        {/* Dynamic Grid Lines */}
+                        {columnHeaders.filter(c => c.isDayStart || (zoomLevel !== 'month' && !c.isDayStart)).map(c => (
+                          <div key={`grid-${c.key}`} className={`absolute top-0 bottom-0 border-l ${c.isDayStart ? 'border-[var(--tm-grid)]/60 w-px' : 'border-[var(--tm-grid)] w-px'}`}
+                            style={{ left: c.left }} />
+                        ))}
+                        
+                        {/* Assigned shift backgrounds (Bracketed Style) */}
                         {(workSchedules[user.id] || []).map((entry) => {
                           const entryDate = new Date(entry.date);
-                          if (zoomLevel === 'month') {
-                            const dim = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate();
-                            const day = entryDate.getDate();
-                            const s = day - 1 + entry.startHour / 24;
-                            const eEnd = entry.endHour < entry.startHour ? day + entry.endHour / 24 : day - 1 + entry.endHour / 24;
-                            return (
-                              <div key={entry.date} className="absolute top-1 bottom-1 pointer-events-none rounded"
-                                style={{ left: `${(s / dim) * 100}%`, width: `${Math.max(0.5, ((eEnd - s) / dim) * 100)}%`, background: entry.color + '15', borderLeft: `2px solid ${entry.color}40` }} />
-                            );
-                          } else {
-                            if (entryDate.toDateString() !== viewDate.toDateString()) return null;
-                            const dur = entry.endHour < entry.startHour ? 24 - entry.startHour + entry.endHour : entry.endHour - entry.startHour;
-                            return (
-                              <div key={entry.date} className="absolute top-1 bottom-1 pointer-events-none rounded"
-                                style={{ left: `${(entry.startHour / 24) * 100}%`, width: `${Math.max(0.5, (dur / 24) * 100)}%`, background: entry.color + '15', borderLeft: `2px solid ${entry.color}40` }} />
-                            );
-                          }
-                        })}
+                          const start = new Date(entryDate);
+                          start.setHours(entry.startHour, entry.startMinute, 0, 0);
+                          const dur = entry.endHour < entry.startHour ? (24 - entry.startHour + entry.endHour) * 60 : (entry.endHour - entry.startHour) * 60;
+                          
+                          if (start < refDate) return null;
 
-                        {/* Gradient session bars */}
+                          const left = ((start.getTime() - refDate.getTime()) / 60000) * pxPerMinute;
+                          const width = dur * pxPerMinute;
+
+                          return (
+                            <div key={entry.date} className="absolute top-1 bottom-1 pointer-events-none group/shift"
+                              style={{ left: `${left}px`, width: `${Math.max(4, width)}px` }}>
+                              {/* Bracket background */}
+                              <div className="absolute inset-0 rounded-sm opacity-[0.08] dark:opacity-[0.12] backdrop-blur-[1px]" style={{ background: entry.color }} />
+                              {/* Left bracket */}
+                              <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-full shadow-sm" style={{ background: entry.color }} />
+                              {/* Right bracket */}
+                              <div className="absolute right-0 top-0 bottom-0 w-1 rounded-r-full shadow-sm" style={{ background: entry.color }} />
+                              {/* Top/Bottom accents */}
+                              <div className="absolute top-0 left-0 right-0 h-[1.5px] opacity-40" style={{ background: entry.color }} />
+                              <div className="absolute bottom-0 left-0 right-0 h-[1.5px] opacity-40" style={{ background: entry.color }} />
+                            </div>
+                          );
+                        })}
+                        {/* Gradient session bars (Popping Style) */}
                         {user.sessions.map((session, idx) => {
-                          const { left, width } = getBarPosition(session.start, session.end, viewDate, zoomLevel, currentTime);
+                          const { left, width } = getBarPosition(session.start, session.end, refDate, pxPerMinute, currentTime);
                           if (width <= 0) return null;
                           const isLive = !session.end;
+                          
+                          // Richer Gradients
                           const bg = session.isLate
-                            ? 'linear-gradient(90deg, #f59e0b, #fbbf24)'
+                            ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' // Amber to Dark Amber
                             : isLive
-                              ? `linear-gradient(90deg, ${TIMELINE_CONFIG.COLORS.ACTIVE}, ${TIMELINE_CONFIG.COLORS.ACTIVE_LIGHT})`
-                              : `linear-gradient(90deg, ${TIMELINE_CONFIG.COLORS.COMPLETED}, ${TIMELINE_CONFIG.COLORS.COMPLETED_LIGHT})`;
+                              ? `linear-gradient(135deg, #10b981 0%, #059669 100%)` // Emerald to Green
+                              : `linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)`; // Indigo to Dark Indigo
 
                           return (
                             <motion.div key={idx}
-                              initial={{ opacity: 0, scaleX: 0 }}
-                              animate={{ opacity: 1, scaleX: 1 }}
+                              initial={{ opacity: 0, scaleY: 0.8 }}
+                              animate={{ opacity: 1, scaleY: 1 }}
                               transition={{ delay: idx * 0.04, duration: 0.3 }}
-                              className={`absolute top-1/2 -translate-y-1/2 h-[18px] md:h-[22px] rounded-md flex items-center px-1.5 shadow-sm cursor-pointer transition-transform hover:scale-y-110 ${isLive ? 'animate-pulse-subtle' : ''}`}
+                              className={`absolute top-1/2 -translate-y-1/2 h-[20px] md:h-[24px] rounded-lg flex items-center px-2 shadow-sm border border-white/10 dark:border-white/5 cursor-pointer backdrop-blur-[2px] transition-all
+                                ${isLive ? 'animate-pulse-subtle shadow-[0_0_12px_rgba(16,185,129,0.3)] ring-1 ring-emerald-400/30' : 'hover:brightness-110 shadow-lg'}`}
                               style={{
-                                left: `${left}%`,
-                                width: `${Math.max(1.2, width)}%`,
+                                left: `${left}px`,
+                                width: `${Math.max(2, width)}px`,
                                 background: bg,
-                                transformOrigin: 'left center',
+                                transformOrigin: 'center',
                               }}
                               onMouseEnter={(e) => {
                                 const rect = e.currentTarget.getBoundingClientRect();
@@ -597,10 +618,10 @@ export default function AttendanceMonitorPage() {
                                 });
                               }}
                               onMouseLeave={() => setTooltip(null)}>
-                              {width > 5 && (
+                              {width > 8 && (
                                 <>
-                                  {isLive && <div className="w-1.5 h-1.5 rounded-full bg-white/90 shrink-0 animate-pulse" />}
-                                  <span className="text-[7px] font-bold text-white/90 ml-1 whitespace-nowrap drop-shadow-sm">
+                                  <div className={`shrink-0 w-2 h-2 rounded-full border border-white/40 ${isLive ? 'bg-white animate-ping' : 'bg-white/60'}`} />
+                                  <span className="text-[8px] md:text-[9px] font-black text-white ml-1.5 whitespace-nowrap drop-shadow-md tracking-tight uppercase">
                                     {session.start.getHours().toString().padStart(2, '0')}:{session.start.getMinutes().toString().padStart(2, '0')}
                                     {session.end && ` - ${session.end.getHours().toString().padStart(2, '0')}:${session.end.getMinutes().toString().padStart(2, '0')}`}
                                   </span>
@@ -609,12 +630,17 @@ export default function AttendanceMonitorPage() {
                             </motion.div>
                           );
                         })}
+
+                        {/* "Now" Indicator (Vertical Line) */}
+                        <div className="absolute top-0 bottom-0 w-px bg-red-500/30 z-20 pointer-events-none"
+                          style={{ left: ((currentTime.getTime() - refDate.getTime()) / 60000) * pxPerMinute }} />
                       </div>
                     </div>
                   </div>
                 );
               })
             )}
+
           </div>
         </div>
 
@@ -679,6 +705,8 @@ export default function AttendanceMonitorPage() {
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+        .no-scrollbar-ui::-webkit-scrollbar { display: none; }
+        .no-scrollbar-ui { -ms-overflow-style: none; scrollbar-width: none; }
         @keyframes pulse-subtle { 0%, 100% { opacity: 1; } 50% { opacity: 0.85; } }
         .animate-pulse-subtle { animation: pulse-subtle 2s ease-in-out infinite; }
       `}</style>

@@ -61,8 +61,13 @@ export async function GET(request: NextRequest) {
       if (branch) query.branch = branch;
     }
 
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+
     // Date range handling
-    if (date) {
+    if (startDate && endDate) {
+      query.timestamp = { $gte: new Date(startDate), $lte: new Date(endDate) };
+    } else if (date) {
       const baseDate = new Date(date);
       let start: Date;
       let end: Date;

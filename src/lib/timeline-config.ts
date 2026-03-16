@@ -48,6 +48,13 @@ export const TIMELINE_CONFIG = {
     WEEKEND_DARK: '#fce7f3',
   },
 
+  /** Scale for continuous timeline (pixels per minute) */
+  SCALE: {
+    MONTH: 0.05, // 1h = 3px, 1d = 72px
+    DAY: 1.0,    // 1h = 60px, 1d = 1440px
+    HOUR: 4.0,   // 1h = 240px
+  },
+
   /** Animation durations (ms) */
   ANIMATION: {
     TRANSITION: 300,

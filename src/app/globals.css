@@ -15,7 +15,12 @@
 
   /* Accent — Indigo */
   --accent: #4F46E5;
-  --accent-light: #EEF2FF;
+  --accent-light: #34d399;
+  
+  /* Timeline specific */
+  --tm-grid: rgba(0, 0, 0, 0.05);
+  --tm-bg-staff: #f8fafc;
+  --tm-text-bar: #ffffff;
   --accent-hover: #4338CA;
   --accent-muted: #A5B4FC;
   --accent-glow: rgba(79, 70, 229, 0.25);
@@ -73,6 +78,11 @@
   --accent-hover: #6366F1;
   --accent-muted: #6366F1;
   --accent-glow: rgba(129,140,248,0.3);
+
+  /* Timeline specific */
+  --tm-grid: rgba(255, 255, 255, 0.03);
+  --tm-bg-staff: rgba(15, 23, 42, 0.8);
+  --tm-text-bar: #ffffff;
 
   --success: #10b981;
   --success-light: rgba(16,185,129,0.1);
