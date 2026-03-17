@@ -113,8 +113,8 @@ export default function AdminCorrectionPage() {
       let url = '/api/attendance?';
       if (searchName) url += `userName=${searchName}&`; // Note: API might need update for partial name search, but let's assume it works or we filter client-side
       if (selectedBranch !== 'all') url += `branch=${selectedBranch}&`;
-      if (startDate) url += `startDate=${startDate}T00:00:00Z&`;
-      if (endDate) url += `endDate=${endDate}T23:59:59Z&`;
+      if (startDate) url += `startDate=${startDate}&`;
+      if (endDate) url += `endDate=${endDate}&`;
       
       const res = await fetch(url);
       const data = await res.json();

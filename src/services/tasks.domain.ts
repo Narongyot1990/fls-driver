@@ -1,4 +1,4 @@
-import mongoose, { FilterQuery } from "mongoose";
+import mongoose, { type QueryFilter } from "mongoose";
 import { forbidden, notFound, badRequest, conflict } from "@/lib/api-errors";
 import { CHANNELS, EVENTS, triggerPusher } from "@/lib/pusher";
 import type { TokenPayload } from "@/lib/jwt-auth";
@@ -57,7 +57,7 @@ type ScoreSummary = {
 };
 
 class TaskRepository {
-  async findMany(query: FilterQuery<ITask>) {
+  async findMany(query: QueryFilter<ITask>) {
     const tasks = await Task.find(query)
       .populate("createdBy", "name surname")
       .populate("submissions.userId", "lineDisplayName lineProfileImage name surname performanceTier")
@@ -309,8 +309,8 @@ export class TasksService {
   }
 }
 
-function buildTaskListFilter(actor: TaskActor, query: TaskListQueryInput): FilterQuery<ITask> {
-  const filter: FilterQuery<ITask> = {};
+function buildTaskListFilter(actor: TaskActor, query: TaskListQueryInput): QueryFilter<ITask> {
+  const filter: QueryFilter<ITask> = {};
   if (query.status) {
     filter.status = query.status;
   }
@@ -356,20 +356,21 @@ function resolveSubmissionUserId(userId: unknown) {
   return String(userId);
 }
 
-function mapTask(task: Record<string, unknown>): TaskLean {
+function mapTask(task: unknown): TaskLean {
+  const source = task as Record<string, unknown>;
   return {
-    _id: String(task._id),
-    title: String(task.title),
-    description: String(task.description ?? ""),
-    category: String(task.category),
-    branches: Array.isArray(task.branches) ? task.branches.map(String) : [],
-    questions: Array.isArray(task.questions) ? (task.questions as ITaskQuestion[]) : [],
-    submissions: Array.isArray(task.submissions) ? (task.submissions as ITaskSubmission[]) : [],
-    deadline: task.deadline ? new Date(task.deadline as Date) : undefined,
-    status: task.status as "active" | "closed",
-    createdBy: task.createdBy,
-    createdAt: new Date(task.createdAt as Date),
-    updatedAt: new Date(task.updatedAt as Date),
+    _id: String(source._id),
+    title: String(source.title),
+    description: String(source.description ?? ""),
+    category: String(source.category),
+    branches: Array.isArray(source.branches) ? source.branches.map(String) : [],
+    questions: Array.isArray(source.questions) ? (source.questions as ITaskQuestion[]) : [],
+    submissions: Array.isArray(source.submissions) ? (source.submissions as ITaskSubmission[]) : [],
+    deadline: source.deadline ? new Date(source.deadline as Date) : undefined,
+    status: source.status as "active" | "closed",
+    createdBy: source.createdBy,
+    createdAt: new Date(source.createdAt as Date),
+    updatedAt: new Date(source.updatedAt as Date),
   };
 }
 

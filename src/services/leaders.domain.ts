@@ -19,7 +19,7 @@ export class LeadersService {
       email: input.email,
       password: hashedPassword,
       name: input.name,
-      branch: input.branch ?? null,
+      branch: input.branch ?? undefined,
       role: input.role ?? "leader",
     });
 
@@ -43,12 +43,13 @@ export class LeadersService {
   }
 }
 
-function toLeaderResponse(leader: Record<string, unknown>) {
+function toLeaderResponse(leader: unknown) {
+  const source = leader as Record<string, unknown>;
   return {
-    id: leader._id,
-    email: leader.email,
-    name: leader.name,
-    branch: leader.branch,
-    role: leader.role,
+    id: source._id,
+    email: source.email,
+    name: source.name,
+    branch: source.branch,
+    role: source.role,
   };
 }

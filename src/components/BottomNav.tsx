@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, CalendarDays, Rss, UserCircle } from 'lucide-react';
@@ -11,24 +11,24 @@ interface NavItem {
 }
 
 const driverNav: NavItem[] = [
-  { icon: Home, label: 'หน้าหลัก', href: '/home' },
-  { icon: CalendarDays, label: 'ปฏิทิน', href: '/dashboard' },
-  { icon: Rss, label: 'กิจกรรม', href: '/car-wash/feed' },
-  { icon: UserCircle, label: 'โปรไฟล์', href: '/profile' },
+  { icon: Home, label: 'Home', href: '/home' },
+  { icon: CalendarDays, label: 'Calendar', href: '/dashboard' },
+  { icon: Rss, label: 'Activity', href: '/car-wash/feed' },
+  { icon: UserCircle, label: 'Profile', href: '/profile' },
 ];
 
-const managementNav: NavItem[] = [
-  { icon: Home, label: 'หน้าหลัก', href: '/leader/home' },
-  { icon: CalendarDays, label: 'ปฏิทิน', href: '/dashboard' },
-  { icon: Rss, label: 'กิจกรรม', href: '/leader/car-wash' },
-  { icon: UserCircle, label: 'โปรไฟล์', href: '/leader/settings?view=profile' },
+const leaderNav: NavItem[] = [
+  { icon: Home, label: 'Home', href: '/leader/home' },
+  { icon: CalendarDays, label: 'Calendar', href: '/dashboard' },
+  { icon: Rss, label: 'Activity', href: '/leader/car-wash' },
+  { icon: UserCircle, label: 'Profile', href: '/leader/settings?view=profile' },
 ];
 
 const adminNav: NavItem[] = [
-  { icon: Home, label: 'หน้าหลัก', href: '/admin/home' },
-  { icon: CalendarDays, label: 'ปฏิทิน', href: '/dashboard' },
-  { icon: Rss, label: 'กิจกรรม', href: '/leader/car-wash' },
-  { icon: UserCircle, label: 'โปรไฟล์', href: '/leader/settings?view=profile' },
+  { icon: Home, label: 'Home', href: '/admin/home' },
+  { icon: CalendarDays, label: 'Calendar', href: '/dashboard' },
+  { icon: Rss, label: 'Activity', href: '/admin/car-wash' },
+  { icon: UserCircle, label: 'Profile', href: '/admin/settings?view=profile' },
 ];
 
 export default function BottomNav({ role }: { role: 'driver' | 'leader' | 'admin' }) {
@@ -37,7 +37,7 @@ export default function BottomNav({ role }: { role: 'driver' | 'leader' | 'admin
 
   let items = driverNav;
   if (role === 'admin') items = adminNav;
-  else if (role === 'leader') items = managementNav;
+  else if (role === 'leader') items = leaderNav;
 
   return (
     <nav
@@ -46,8 +46,12 @@ export default function BottomNav({ role }: { role: 'driver' | 'leader' | 'admin
     >
       <div className="flex items-center justify-around px-2 h-16 max-w-lg mx-auto">
         {items.map((item) => {
-          const isActive = pathname === item.href || 
-            (item.href !== '/home' && item.href !== '/leader/home' && item.href !== '/admin/home' && pathname.startsWith(item.href));
+          const isActive =
+            pathname === item.href ||
+            (item.href !== '/home' &&
+              item.href !== '/leader/home' &&
+              item.href !== '/admin/home' &&
+              pathname.startsWith(item.href));
           const Icon = item.icon;
 
           return (
@@ -61,7 +65,7 @@ export default function BottomNav({ role }: { role: 'driver' | 'leader' | 'admin
               }}
             >
               {isActive && (
-                <motion.div 
+                <motion.div
                   layoutId="nav-pill"
                   className="absolute inset-0 bg-[var(--accent-light)] rounded-2xl -z-10"
                   transition={{ type: 'spring', bounce: 0.3, duration: 0.6 }}

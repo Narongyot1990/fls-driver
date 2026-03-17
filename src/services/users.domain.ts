@@ -1,4 +1,4 @@
-import { FilterQuery, UpdateQuery } from "mongoose";
+import { type QueryFilter, type UpdateQuery } from "mongoose";
 import { badRequest, forbidden, notFound } from "@/lib/api-errors";
 import { CHANNELS, EVENTS, triggerPusher } from "@/lib/pusher";
 import type { TokenPayload } from "@/lib/jwt-auth";
@@ -141,8 +141,8 @@ export class UsersService {
   }
 }
 
-function buildUserListFilter(actor: UserActor, query: UserListQueryInput): FilterQuery<IUser> {
-  const filter: FilterQuery<IUser> = {};
+function buildUserListFilter(actor: UserActor, query: UserListQueryInput): QueryFilter<IUser> {
+  const filter: QueryFilter<IUser> = {};
   if (query.role) filter.role = query.role;
 
   if (actor.role === "driver") {

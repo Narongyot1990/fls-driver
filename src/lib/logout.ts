@@ -9,6 +9,7 @@ export async function performLogout(role: 'driver' | 'leader' | 'admin' = 'drive
 
   localStorage.removeItem('driverUser');
   localStorage.removeItem('leaderUser');
+  localStorage.removeItem('adminUser');
   localStorage.removeItem('pendingStatus');
 
   // Leaders and Drivers use LINE login (/login)

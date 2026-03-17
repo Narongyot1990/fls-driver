@@ -1,4 +1,4 @@
-import mongoose, { FilterQuery } from "mongoose";
+import mongoose, { type QueryFilter } from "mongoose";
 import { conflict, forbidden, notFound, badRequest } from "@/lib/api-errors";
 import type { TokenPayload } from "@/lib/jwt-auth";
 import type {
@@ -52,7 +52,7 @@ type PopulatedLeaveRecord = Omit<LeaveRecord, "userId" | "approvedBy"> & {
 type QuotaSummary = Pick<IUser, "vacationDays" | "sickDays" | "personalDays">;
 
 class LeaveRepository {
-  async findMany(query: FilterQuery<ILeaveRequest>) {
+  async findMany(query: QueryFilter<ILeaveRequest>) {
     const requests = await LeaveRequest.find(query)
       .populate("userId", "lineDisplayName employeeId phone name surname lineProfileImage performanceTier performancePoints performanceLevel branch")
       .populate("approvedBy", "name surname lineDisplayName lineProfileImage performanceTier branch role")
@@ -275,7 +275,7 @@ export class LeaveService {
 }
 
 async function buildLeaveScope(actor: LeaveActor, query: LeaveQueryInput) {
-  const filter: FilterQuery<ILeaveRequest> = {};
+  const filter: QueryFilter<ILeaveRequest> = {};
 
   if (actor.role === "driver") {
     if (actor.branch) {
@@ -440,20 +440,21 @@ function mapLeaveRequest(record: Partial<ILeaveRequest> & { _id?: mongoose.Types
   };
 }
 
-function mapPopulatedLeaveRequest(record: Record<string, unknown>): PopulatedLeaveRecord {
+function mapPopulatedLeaveRequest(record: unknown): PopulatedLeaveRecord {
+  const source = record as Record<string, unknown>;
   return {
-    _id: String(record._id),
-    userId: mapReference(record.userId),
-    leaveType: record.leaveType as LeaveType,
-    startDate: new Date(record.startDate as Date),
-    endDate: new Date(record.endDate as Date),
-    reason: String(record.reason),
-    status: record.status as LeaveStatus,
-    approvedBy: mapOptionalReference(record.approvedBy),
-    approvedAt: record.approvedAt ? new Date(record.approvedAt as Date) : undefined,
-    rejectedReason: typeof record.rejectedReason === "string" ? record.rejectedReason : undefined,
-    createdAt: new Date(record.createdAt as Date),
-    updatedAt: new Date(record.updatedAt as Date),
+    _id: String(source._id),
+    userId: mapReference(source.userId),
+    leaveType: source.leaveType as LeaveType,
+    startDate: new Date(source.startDate as Date),
+    endDate: new Date(source.endDate as Date),
+    reason: String(source.reason),
+    status: source.status as LeaveStatus,
+    approvedBy: mapOptionalReference(source.approvedBy),
+    approvedAt: source.approvedAt ? new Date(source.approvedAt as Date) : undefined,
+    rejectedReason: typeof source.rejectedReason === "string" ? source.rejectedReason : undefined,
+    createdAt: new Date(source.createdAt as Date),
+    updatedAt: new Date(source.updatedAt as Date),
   };
 }
 

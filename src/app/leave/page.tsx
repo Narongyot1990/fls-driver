@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, Suspense } from 'react';
+import { Suspense, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dayjs from 'dayjs';
@@ -12,196 +12,55 @@ import DatePickerModal from '@/components/DatePickerModal';
 import { LEAVE_TYPE_LIST } from '@/lib/leave-types';
 import { usePusher } from '@/hooks/usePusher';
 import { useToast } from '@/components/Toast';
+import { useLeaveFormController } from '@/app/leave/_hooks/useLeaveFormController';
 
-interface DriverUser {
-  id: string;
-  lineDisplayName: string;
-  status?: string;
-  vacationDays?: number;
-  sickDays?: number;
-  personalDays?: number;
-}
+type LeaveBalanceKey = 'vacationDays' | 'sickDays' | 'personalDays';
 
 function LeaveContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const targetUserId = searchParams.get('userId');
-  
-  const [user, setUser] = useState<DriverUser | null>(null);
-  const [authUser, setAuthUser] = useState<any>(null);
-  const [leaveType, setLeaveType] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [reason, setReason] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
-  const [isPending, setIsPending] = useState(false);
-  const [showDatePicker, setShowDatePicker] = useState(false);
 
-  useEffect(() => {
-    // Check if user is logged in via token-based auth first
-    const checkAuth = async () => {
-      try {
-        const res = await fetch('/api/auth/me');
-        const data = await res.json();
-        if (data.success) {
-          setAuthUser(data.user);
-          return data.user;
-        }
-      } catch { /* ignore */ }
-      
-      // Fallback to localStorage for drivers
-      const storedUser = localStorage.getItem('driverUser');
-      if (!storedUser) {
-        router.push('/login');
-        return null;
-      }
-      const userData = JSON.parse(storedUser);
-      setAuthUser(userData);
-      return userData;
-    };
-    
-    checkAuth().then(userData => {
-      if (!userData) return;
-      
-      if (userData.status === 'pending') {
-        setIsPending(true);
-      }
-
-      const fetchTargetUserData = async (id: string) => {
-        try {
-          const response = await fetch(`/api/users?id=${id}`);
-          const data = await response.json();
-          if (data.success && data.user) {
-            const u = data.user;
-            setUser({
-              id: u._id,
-              lineDisplayName: u.name && u.surname ? `${u.name} ${u.surname}` : u.lineDisplayName,
-              status: u.status,
-              vacationDays: u.vacationDays ?? 10,
-              sickDays: u.sickDays ?? 10,
-              personalDays: u.personalDays ?? 5,
-            });
-          }
-        } catch (err) {
-          console.error(err);
-        }
-      };
-
-      const fetchMeData = async () => {
-        try {
-          const response = await fetch(`/api/users?status=active`);
-          const data = await response.json();
-          if (data.success) {
-            const currentUser = data.users.find((u: any) => u._id === userData.id);
-            if (currentUser) {
-              const updatedUser = {
-                ...userData,
-                vacationDays: currentUser.vacationDays ?? 10,
-                sickDays: currentUser.sickDays ?? 10,
-                personalDays: currentUser.personalDays ?? 5,
-              };
-              setUser(updatedUser);
-            }
-          }
-        } catch (err) {
-          console.error(err);
-        }
-      };
-
-      if (targetUserId && (userData.role === 'leader' || userData.role === 'admin')) {
-        fetchTargetUserData(targetUserId);
-      } else {
-        fetchMeData();
-      }
-    });
-  }, [router, targetUserId]);
+  const {
+    authUser,
+    requestUser,
+    leaveType,
+    startDate,
+    endDate,
+    reason,
+    loading,
+    initializing,
+    error,
+    success,
+    showDatePicker,
+    isPending,
+    setLeaveType,
+    setReason,
+    setShowDatePicker,
+    handleDateSelect,
+    submit,
+  } = useLeaveFormController(targetUserId);
 
   const { showToast } = useToast();
 
-  // Pusher realtime — leave status changed (approved/rejected)
-  const handleLeaveStatus = useCallback(async (data: { status?: string; driverUserId?: string }) => {
-    if (!user) return;
-    if (data.driverUserId && data.driverUserId !== user.id) return;
-    // Smart refresh: re-fetch user quota instead of reloading
-    try {
-      const response = await fetch(`/api/users?status=active`);
-      const json = await response.json();
-      if (json.success) {
-        const currentUser = json.users.find((u: any) => u._id === user.id);
-        if (currentUser) {
-          setUser((prev) => prev ? {
-            ...prev,
-            vacationDays: currentUser.vacationDays ?? 10,
-            sickDays: currentUser.sickDays ?? 10,
-            personalDays: currentUser.personalDays ?? 5,
-          } : prev);
-        }
-      }
-    } catch { /* ignore */ }
-    const statusText = data.status === 'approved' ? 'อนุมัติแล้ว' : data.status === 'rejected' ? 'ไม่อนุมัติ' : 'มีการเปลี่ยนแปลง';
-    showToast(data.status === 'approved' ? 'success' : 'info', `ใบลาของคุณ${statusText}`);
-  }, [user, showToast]);
+  const handleLeaveStatus = useCallback(
+    async (data: { status?: string; driverUserId?: string }) => {
+      if (!requestUser) return;
+      if (data.driverUserId && data.driverUserId !== requestUser.id) return;
 
-  usePusher('leave-requests', [
-    { event: 'leave-status-changed', callback: handleLeaveStatus },
-  ], !!user);
+      const statusText = data.status === 'approved' ? 'ได้รับการอนุมัติแล้ว' : data.status === 'rejected' ? 'ไม่ได้รับการอนุมัติ' : 'มีการอัปเดต';
+      showToast(data.status === 'approved' ? 'success' : 'info', `ใบลาของคุณ${statusText}`);
+    },
+    [requestUser, showToast],
+  );
 
-  const handleDateSelect = (range: { from: Date; to: Date }) => {
-    setStartDate(dayjs(range.from).format('YYYY-MM-DD'));
-    setEndDate(dayjs(range.to).format('YYYY-MM-DD'));
-  };
+  usePusher(
+    'leave-requests',
+    [{ event: 'leave-status-changed', callback: handleLeaveStatus }],
+    Boolean(requestUser),
+  );
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
-    if (!leaveType || !startDate || !endDate || !reason) {
-      setError('กรุณากรอกข้อมูลให้ครบถ้วน');
-      return;
-    }
-
-    if (new Date(startDate) > new Date(endDate)) {
-      setError('วันที่เริ่มต้นต้องไม่มากกว่าวันที่สิ้นสุด');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const response = await fetch('/api/leave', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: user?.id,
-          leaveType,
-          startDate,
-          endDate,
-          reason,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setSuccess(true);
-        setTimeout(() => {
-          router.push('/leave/history');
-        }, 1500);
-      } else {
-        setError(data.error || 'เกิดข้อผิดพลาด');
-      }
-    } catch (err) {
-      setError('เกิดข้อผิดพลาด');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!user) {
+  if (initializing || !requestUser) {
     return null;
   }
 
@@ -217,7 +76,9 @@ function LeaveContent() {
             <AlertCircle className="w-7 h-7" style={{ color: 'var(--warning)' }} />
           </div>
           <h2 className="text-fluid-lg font-bold mb-2" style={{ color: 'var(--text-primary)' }}>รอการยืนยัน</h2>
-          <p className="text-fluid-sm mb-3" style={{ color: 'var(--text-muted)' }}>บัญชีของคุณยังไม่ได้รับการยืนยัน กรุณารอหัวหน้างานอนุมัติก่อนใช้งาน</p>
+          <p className="text-fluid-sm mb-3" style={{ color: 'var(--text-muted)' }}>
+            บัญชีของคุณยังไม่เปิดใช้งาน กรุณารอหัวหน้างานอนุมัติ
+          </p>
           <button onClick={() => router.push('/home')} className="btn btn-primary w-full">
             กลับหน้าหลัก
           </button>
@@ -233,7 +94,7 @@ function LeaveContent() {
   };
 
   const getDateDisplay = () => {
-    if (!startDate || !endDate) return 'เลือกวันที่ลา';
+    if (!startDate || !endDate) return 'เลือกช่วงวันที่ลา';
     return `${dayjs(startDate).format('D')} - ${dayjs(endDate).format('D MMM YYYY')} ${getLeaveDaysDisplay()}`;
   };
 
@@ -242,12 +103,10 @@ function LeaveContent() {
       <Sidebar role={authUser?.role || 'driver'} />
 
       <div className="lg:pl-[240px] pb-[72px] lg:pb-6">
-        <PageHeader title="ขอลา" backHref={authUser?.role === 'driver' ? '/home' : (authUser?.role === 'leader' ? '/leader/home' : '/admin/home')} />
+        <PageHeader title="ขอลา" backHref={authUser?.role === 'driver' ? '/home' : authUser?.role === 'leader' ? '/leader/home' : '/admin/home'} />
 
         <div className="px-4 lg:px-8 py-3">
           <div className="max-w-2xl mx-auto space-y-4">
-
-            {/* Success */}
             <AnimatePresence>
               {success && (
                 <motion.div
@@ -259,13 +118,12 @@ function LeaveContent() {
                   <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: 'var(--success-light)' }}>
                     <CheckCircle2 className="w-7 h-7" style={{ color: 'var(--success)' }} />
                   </div>
-                  <p className="text-fluid-lg font-bold" style={{ color: 'var(--text-primary)' }}>ส่งคำขอสำเร็จ!</p>
+                  <p className="text-fluid-lg font-bold" style={{ color: 'var(--text-primary)' }}>ส่งคำขอสำเร็จ</p>
                   <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>กำลังไปหน้าประวัติ...</p>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Error */}
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
@@ -278,7 +136,6 @@ function LeaveContent() {
               </motion.div>
             )}
 
-            {/* Leave Type Selection */}
             <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="card p-3.5">
               <label className="block text-fluid-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>
                 ประเภทการลา
@@ -287,8 +144,8 @@ function LeaveContent() {
                 {LEAVE_TYPE_LIST.map((type) => {
                   const Icon = type.icon;
                   const isSelected = leaveType === type.value;
-                  const availableDays = type.daysKey ? user?.[type.daysKey as keyof DriverUser] ?? 0 : null;
-                  
+                  const availableDays = type.daysKey ? requestUser[type.daysKey as LeaveBalanceKey] ?? 0 : null;
+
                   return (
                     <button
                       key={type.value}
@@ -316,10 +173,9 @@ function LeaveContent() {
               </div>
             </motion.div>
 
-            {/* Date Selection */}
             <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="card p-3.5">
               <label className="block text-fluid-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>
-                วันที่
+                วันที่ลา
               </label>
               <button
                 type="button"
@@ -334,9 +190,8 @@ function LeaveContent() {
               </button>
             </motion.div>
 
-            {/* Reason Form */}
             <motion.form
-              onSubmit={handleSubmit}
+              onSubmit={submit}
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.2 }}
@@ -351,7 +206,7 @@ function LeaveContent() {
                   onChange={(e) => setReason(e.target.value)}
                   rows={3}
                   className="input resize-none"
-                  placeholder="ระบุเหตุผลการลา..."
+                  placeholder="กรุณาระบุเหตุผลการลา..."
                   required
                 />
               </div>

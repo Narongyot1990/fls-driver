@@ -95,10 +95,11 @@ function AttendanceMonitorContent() {
   const fetchRecords = useCallback(async () => {
     try {
       setLoading(true);
-      const start = new Date(refDate).toISOString();
+      const start = new Date(refDate).toISOString().split('T')[0];
       const end = new Date(refDate);
       end.setDate(end.getDate() + totalDays);
-      const res = await fetch(`${TIMELINE_CONFIG.API.ATTENDANCE}?startDate=${start}&endDate=${end.toISOString()}`);
+      const endDate = end.toISOString().split('T')[0];
+      const res = await fetch(`${TIMELINE_CONFIG.API.ATTENDANCE}?startDate=${start}&endDate=${endDate}`);
       const data = await res.json();
       if (data.success) setRecords(data.records || []);
     } catch (err) {

@@ -11,33 +11,32 @@ import { usePusherMulti } from '@/hooks/usePusher';
 import { useBranches } from '@/hooks/useBranches';
 import { performLogout } from '@/lib/logout';
 
+interface AdminSessionUser {
+  id: string;
+  role: 'admin';
+  name?: string;
+}
+
+interface MenuCardProps {
+  label: string;
+  icon: React.ElementType;
+  href: string;
+  color: string;
+  desc: string;
+  horizontal?: boolean;
+  badge?: number;
+}
+
 export default function AdminHomePage() {
   const router = useRouter();
   const { branches, loading: branchesLoading } = useBranches();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<AdminSessionUser | null>(null);
   const [counts, setCounts] = useState({
     pendingLeaves: 0,
     pendingDrivers: 0,
     totalLeaders: 0,
     pendingCorrections: 0,
   });
-
-  useEffect(() => {
-    const fetchMe = async () => {
-      try {
-        const res = await fetch('/api/auth/me');
-        const data = await res.json();
-        if (data.success && data.user.role === 'admin') {
-          setUser(data.user);
-        } else {
-          router.push('/login');
-        }
-      } catch {
-        router.push('/login');
-      }
-    };
-    fetchMe();
-  }, [router]);
 
   const fetchCounts = useCallback(async () => {
     try {
@@ -49,7 +48,23 @@ export default function AdminHomePage() {
     } catch { /* ignore */ }
   }, []);
 
-  useEffect(() => { if (user) fetchCounts(); }, [user, fetchCounts]);
+  useEffect(() => {
+    const fetchMe = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        const data = await res.json();
+        if (data.success && data.user.role === 'admin') {
+          setUser(data.user);
+          fetchCounts();
+        } else {
+          router.push('/login');
+        }
+      } catch {
+        router.push('/login');
+      }
+    };
+    fetchMe();
+  }, [router, fetchCounts]);
 
   usePusherMulti([
     { channel: 'leave-requests', bindings: [
@@ -99,7 +114,7 @@ export default function AdminHomePage() {
             <div className="flex items-center gap-1.5">
               <ThemeToggle />
               <button
-                onClick={() => router.push('/leader/settings')}
+                onClick={() => router.push('/admin/settings')}
                 className="w-8 h-8 rounded-lg flex items-center justify-center border border-[var(--border)] bg-[var(--bg-surface)] text-[var(--text-muted)] hover:bg-[var(--bg-inset)] transition-colors"
                 title="โปรไฟล์"
               >
@@ -162,11 +177,11 @@ export default function AdminHomePage() {
                   <h3 className="text-[10px] font-black uppercase tracking-widest opacity-30">Operations</h3>
                 </div>
                 <div className="grid grid-cols-5 gap-1.5">
-                  <MenuCard label="อนุมัติลา" icon={CheckSquare} href="/leader/approve" color="var(--success)" desc="Leaves" />
+                  <MenuCard label="อนุมัติลา" icon={CheckSquare} href="/admin/approve" color="var(--success)" desc="Leaves" />
                   <MenuCard label="แก้เวลา" icon={MessageSquare} href="/admin/attendance/corrections" color="var(--amber-500)" desc="Correction" badge={counts.pendingCorrections} />
-                  <MenuCard label="ประวัติ" icon={Clock} href="/leader/history" color="var(--text-muted)" desc="History" />
-                  <MenuCard label="พนักงาน" icon={Users} href="/leader/drivers" color="var(--accent)" desc="Drivers" />
-                  <MenuCard label="มอบหมายงาน" icon={ClipboardCheck} href="/leader/tasks" color="var(--info)" desc="Tasks" />
+                  <MenuCard label="ประวัติ" icon={Clock} href="/admin/history" color="var(--text-muted)" desc="History" />
+                  <MenuCard label="พนักงาน" icon={Users} href="/admin/drivers" color="var(--accent)" desc="Drivers" />
+                  <MenuCard label="มอบหมายงาน" icon={ClipboardCheck} href="/admin/tasks" color="var(--info)" desc="Tasks" />
                 </div>
               </div>
 
@@ -179,7 +194,7 @@ export default function AdminHomePage() {
                 <div className="grid grid-cols-3 gap-2">
                   <MenuCard label="วิเคราะห์" icon={CalendarDays} href="/dashboard" color="var(--warning)" desc="Analytics" />
                   <MenuCard label="สาขา" icon={MapPin} href="/admin/branches" color="var(--info)" desc="Branches" />
-                  <MenuCard label="ตั้งค่า" icon={User} href="/leader/settings" color="var(--text-muted)" desc="Settings" />
+                  <MenuCard label="ตั้งค่า" icon={User} href="/admin/settings" color="var(--text-muted)" desc="Settings" />
                 </div>
               </div>
             </div>
@@ -195,7 +210,7 @@ export default function AdminHomePage() {
   );
 }
 
-function MenuCard({ label, icon: Icon, href, color, desc, horizontal, badge }: any) {
+function MenuCard({ label, icon: Icon, href, color, desc, horizontal, badge = 0 }: MenuCardProps) {
   const router = useRouter();
   return (
     <motion.button
@@ -218,3 +233,4 @@ function MenuCard({ label, icon: Icon, href, color, desc, horizontal, badge }: a
     </motion.button>
   );
 }
+

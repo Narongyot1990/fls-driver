@@ -1,8 +1,8 @@
-import { FilterQuery } from "mongoose";
-import { AttendanceCorrection } from "@/models/AttendanceCorrection";
-import { LeaveRequest } from "@/models/LeaveRequest";
+import { type QueryFilter } from "mongoose";
+import { AttendanceCorrection, type IAttendanceCorrection } from "@/models/AttendanceCorrection";
+import { LeaveRequest, type ILeaveRequest } from "@/models/LeaveRequest";
 import { Settings, type BranchSetting } from "@/models/Settings";
-import { User } from "@/models/User";
+import { User, type IUser } from "@/models/User";
 import { badRequest, conflict, notFound } from "@/lib/api-errors";
 import { CHANNELS, EVENTS, triggerPusher } from "@/lib/pusher";
 import type { TokenPayload } from "@/lib/jwt-auth";
@@ -176,9 +176,9 @@ export class BranchesService {
 }
 
 async function buildDashboardFilters(actor: BranchActor, filterBranch?: string) {
-  const leaveFilter: FilterQuery<typeof LeaveRequest> = { status: "pending" };
-  let pendingDriverFilter: FilterQuery<typeof User> = { role: "driver", status: "pending" };
-  const correctionFilter: FilterQuery<typeof AttendanceCorrection> = { status: "pending" };
+  const leaveFilter: QueryFilter<ILeaveRequest> = { status: "pending" };
+  let pendingDriverFilter: QueryFilter<IUser> = { role: "driver", status: "pending" };
+  const correctionFilter: QueryFilter<IAttendanceCorrection> = { status: "pending" };
 
   const targetBranch = actor.role === "leader" ? actor.branch : filterBranch && filterBranch !== "all" ? filterBranch : undefined;
 

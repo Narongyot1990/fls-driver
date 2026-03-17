@@ -1,9 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback, Suspense } from 'react';
+import { Suspense, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { FileText, X, AlertCircle, CalendarDays } from 'lucide-react';
+import { FileText, X, AlertCircle } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import BottomNav from '@/components/BottomNav';
 import Sidebar from '@/components/Sidebar';
@@ -13,149 +12,73 @@ import { getLeaveTypeMeta, getStatusBadge, LEAVE_TYPE_LIST } from '@/lib/leave-t
 import { formatDateThai } from '@/lib/date-utils';
 import { usePusher } from '@/hooks/usePusher';
 import { useToast } from '@/components/Toast';
+import { useLeaveHistoryController } from '@/app/leave/_hooks/useLeaveHistoryController';
 
-interface LeaveRequest {
-  _id: string;
-  leaveType: string;
-  startDate: string;
-  endDate: string;
-  reason: string;
-  status: string;
-  rejectedReason?: string;
-  approvedBy?: {
-    _id: string;
-    name: string;
-    surname: string;
-    lineDisplayName: string;
-    lineProfileImage?: string;
-    performanceTier?: string;
-    branch?: string;
-    role?: string;
-  };
-  approvedAt?: string;
-  createdAt: string;
-}
-
-interface DriverUser {
-  id: string;
-  lineDisplayName: string;
-  vacationDays: number;
-  sickDays: number;
-  personalDays: number;
-}
-
+type LeaveBalanceKey = 'vacationDays' | 'sickDays' | 'personalDays';
 
 function LeaveHistoryContent() {
-  const router = useRouter();
-  const [user, setUser] = useState<DriverUser | null>(null);
-  const [requests, setRequests] = useState<LeaveRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [cancellingId, setCancellingId] = useState<string | null>(null);
-  const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
-  const [showProfile, setShowProfile] = useState(false);
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem('driverUser');
-    if (!storedUser) {
-      router.push('/login');
-      return;
-    }
-    setUser(JSON.parse(storedUser));
-  }, [router]);
-
-  useEffect(() => {
-    if (!user) return;
-
-    const fetchHistory = async () => {
-      try {
-        const response = await fetch(`/api/leave?userId=${user.id}`);
-        const data = await response.json();
-        if (data.success) {
-          setRequests(data.requests);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchHistory();
-  }, [user]);
+  const {
+    user,
+    requests,
+    loading,
+    initializing,
+    error,
+    cancellingId,
+    profileUser,
+    showProfile,
+    setShowProfile,
+    refreshHistory,
+    cancelRequest,
+    openApproverProfile,
+  } = useLeaveHistoryController();
 
   const { showToast } = useToast();
 
-  // Pusher realtime — leave status changes
   const handleLeaveChanged = useCallback(async () => {
-    if (!user) return;
-    try {
-      const response = await fetch(`/api/leave?userId=${user.id}`);
-      const data = await response.json();
-      if (data.success) setRequests(data.requests);
-    } catch { /* ignore */ }
+    await refreshHistory();
     showToast('info', 'สถานะใบลามีการอัปเดต');
-  }, [user, showToast]);
+  }, [refreshHistory, showToast]);
 
-  usePusher('leave-requests', [
-    { event: 'leave-status-changed', callback: handleLeaveChanged },
-    { event: 'leave-cancelled', callback: handleLeaveChanged },
-  ], !!user);
+  usePusher(
+    'leave-requests',
+    [
+      { event: 'leave-status-changed', callback: handleLeaveChanged },
+      { event: 'leave-cancelled', callback: handleLeaveChanged },
+    ],
+    Boolean(user),
+  );
 
   const handleCancel = async (leaveId: string) => {
-    const request = requests.find(r => r._id === leaveId);
+    const request = requests.find((item) => item._id === leaveId);
     const isApproved = request?.status === 'approved';
-    
-    const message = isApproved 
-      ? 'คุณต้องการยกเลิกคำขอลานี้หรือไม่?\n\nหมายเหตุ: วันลาที่ใช้ไปจะถูกคืนกลับมา'
-      : 'คุณต้องการยกเลิกคำขอลานี้หรือไม่?';
-    
-    if (!confirm(message)) {
+
+    const message = isApproved
+      ? 'ต้องการยกเลิกใบลาที่อนุมัติแล้วใช่หรือไม่? โควต้าจะถูกคืน'
+      : 'ต้องการยกเลิกใบลานี้ใช่หรือไม่?';
+
+    if (!window.confirm(message)) {
       return;
     }
 
-    setCancellingId(leaveId);
-
-    try {
-      const response = await fetch(`/api/leave/${leaveId}?userId=${user?.id}`, {
-        method: 'DELETE',
-      });
-      const data = await response.json();
-
-      if (data.success) {
-        if (isApproved) {
-          const updatedUser = {
-            ...user!,
-            vacationDays: data.remainingQuota?.vacationDays ?? user!.vacationDays,
-            sickDays: data.remainingQuota?.sickDays ?? user!.sickDays,
-            personalDays: data.remainingQuota?.personalDays ?? user!.personalDays,
-          };
-          setUser(updatedUser);
-          localStorage.setItem('driverUser', JSON.stringify(updatedUser));
-        }
-        setRequests(requests.filter(r => r._id !== leaveId));
-      } else {
-        alert(data.error || 'เกิดข้อผิดพลาด');
-      }
-    } catch (err) {
-      alert('เกิดข้อผลาพ');
-    } finally {
-      setCancellingId(null);
+    const ok = await cancelRequest(leaveId);
+    if (!ok) {
+      showToast('error', 'ไม่สามารถยกเลิกใบลาได้');
+      return;
     }
+
+    showToast('success', 'ยกเลิกใบลาเรียบร้อย');
   };
 
-
-  if (!user) {
+  if (initializing || !user) {
     return null;
   }
 
-  const quotaItems = [
-    ...LEAVE_TYPE_LIST.filter(lt => lt.daysKey).map(lt => ({
-      icon: lt.icon,
-      label: lt.label.replace('ลา', ''),
-      value: lt.daysKey ? (user as any)[lt.daysKey] ?? 0 : 0,
-      color: lt.color,
-    })),
-  ];
+  const quotaItems = LEAVE_TYPE_LIST.filter((item) => item.daysKey).map((item) => ({
+    icon: item.icon,
+    label: item.label,
+    value: item.daysKey ? user[item.daysKey as LeaveBalanceKey] ?? 0 : 0,
+    color: item.color,
+  }));
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
@@ -166,21 +89,28 @@ function LeaveHistoryContent() {
 
         <div className="px-4 lg:px-8 py-3">
           <div className="max-w-3xl mx-auto space-y-4">
-
-            {/* Quota */}
             <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="card p-4">
               <div className="grid grid-cols-3 gap-3">
-                {quotaItems.map((q) => (
-                  <div key={q.label} className="text-center p-2.5 rounded-[var(--radius-md)]" style={{ background: 'var(--bg-inset)' }}>
-                    <q.icon className="w-4 h-4 mx-auto mb-1" style={{ color: q.color }} strokeWidth={1.8} />
-                    <p className="text-fluid-lg font-extrabold" style={{ color: q.color }}>{q.value}</p>
-                    <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>{q.label}</p>
+                {quotaItems.map((item) => (
+                  <div key={item.label} className="text-center p-2.5 rounded-[var(--radius-md)]" style={{ background: 'var(--bg-inset)' }}>
+                    <item.icon className="w-4 h-4 mx-auto mb-1" style={{ color: item.color }} strokeWidth={1.8} />
+                    <p className="text-fluid-lg font-extrabold" style={{ color: item.color }}>{item.value}</p>
+                    <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>{item.label}</p>
                   </div>
                 ))}
               </div>
             </motion.div>
 
-            {/* Content */}
+            {error && (
+              <div
+                className="flex items-center gap-2 p-3 rounded-[var(--radius-md)] text-fluid-sm"
+                style={{ background: 'var(--danger-light)', color: 'var(--danger)' }}
+              >
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                {error}
+              </div>
+            )}
+
             {loading ? (
               <div className="flex justify-center py-12">
                 <div className="w-10 h-10 rounded-full border-[3px] animate-spin" style={{ borderColor: 'var(--border)', borderTopColor: 'var(--accent)' }} />
@@ -210,39 +140,46 @@ function LeaveHistoryContent() {
                         transition={{ delay: index * 0.03 }}
                         className="card p-4"
                       >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0" style={{ background: 'var(--bg-inset)' }}>
-                                <Icon className="w-4 h-4" style={{ color: iconColor }} strokeWidth={1.8} />
-                              </div>
-                              <div>
-                                <h3 className="text-fluid-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-                                  {meta.label}
-                                </h3>
-                                <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>
-                                  {formatDateThai(request.startDate)} - {formatDateThai(request.endDate)}
-                                </p>
-                              </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-[var(--radius-sm)] flex items-center justify-center shrink-0" style={{ background: 'var(--bg-inset)' }}>
+                              <Icon className="w-4 h-4" style={{ color: iconColor }} strokeWidth={1.8} />
                             </div>
-                            
-                            {/* Approved By info */}
-                            {request.approvedBy && (
-                              <div className="flex items-center gap-2">
-                                <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
-                                  {request.status === 'approved' ? 'Approved By' : 'Rejected By'}
-                                </span>
-                                <UserAvatar
-                                  imageUrl={request.approvedBy.lineProfileImage}
-                                  displayName={request.approvedBy.name || request.approvedBy.lineDisplayName}
-                                  tier={request.approvedBy.performanceTier}
-                                  size="xs"
-                                  onClick={() => { setProfileUser(request.approvedBy as any); setShowProfile(true); }}
-                                />
-                              </div>
-                            )}
-                            
-                            {!request.approvedBy && <span className={`badge ${badge.cls}`}>{badge.label}</span>}
+                            <div>
+                              <h3 className="text-fluid-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+                                {meta.label}
+                              </h3>
+                              <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>
+                                {formatDateThai(String(request.startDate))} - {formatDateThai(String(request.endDate))}
+                              </p>
+                            </div>
                           </div>
+
+                          {request.approvedBy && (
+                            <div className="flex items-center gap-2">
+                              <span className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
+                                {request.status === 'approved' ? 'อนุมัติโดย' : 'ตรวจสอบโดย'}
+                              </span>
+                              <UserAvatar
+                                imageUrl={request.approvedBy.lineProfileImage}
+                                displayName={request.approvedBy.name || request.approvedBy.lineDisplayName || 'ไม่ทราบชื่อ'}
+                                tier={request.approvedBy.performanceTier}
+                                size="xs"
+                                onClick={() => openApproverProfile({
+                                  _id: request.approvedBy?._id || '',
+                                  id: request.approvedBy?._id || '',
+                                  lineDisplayName: request.approvedBy?.lineDisplayName || 'ไม่ทราบชื่อ',
+                                  lineProfileImage: request.approvedBy?.lineProfileImage,
+                                  name: request.approvedBy?.name,
+                                  surname: request.approvedBy?.surname,
+                                  branch: request.approvedBy?.branch,
+                                } satisfies ProfileUser)}
+                              />
+                            </div>
+                          )}
+
+                          {!request.approvedBy && <span className={`badge ${badge.cls}`}>{badge.label}</span>}
+                        </div>
 
                         <p className="text-fluid-xs rounded-[var(--radius-sm)] p-2.5" style={{ background: 'var(--bg-inset)', color: 'var(--text-secondary)' }}>
                           {request.reason}
@@ -259,7 +196,7 @@ function LeaveHistoryContent() {
 
                         <div className="flex items-center justify-between mt-2.5">
                           <p className="text-fluid-xs" style={{ color: 'var(--text-muted)' }}>
-                            {formatDateThai(request.createdAt)}
+                            {formatDateThai(String(request.createdAt))}
                           </p>
 
                           {(request.status === 'pending' || request.status === 'approved') && (
@@ -301,6 +238,3 @@ export default function LeaveHistoryPage() {
     </Suspense>
   );
 }
-
-
-

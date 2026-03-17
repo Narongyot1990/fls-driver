@@ -1,4 +1,4 @@
-import mongoose, { FilterQuery } from "mongoose";
+import mongoose, { type QueryFilter } from "mongoose";
 import { Attendance, type IAttendance } from "@/models/Attendance";
 import {
   AttendanceCorrection,
@@ -63,7 +63,7 @@ type UnifiedAttendanceRecord =
 type DateRange = { start: Date; end: Date };
 
 class AttendanceRepository {
-  async findMany(query: FilterQuery<IAttendance>, limit: number): Promise<AttendanceRecord[]> {
+  async findMany(query: QueryFilter<IAttendance>, limit: number): Promise<AttendanceRecord[]> {
     const records = await Attendance.find(query).sort({ timestamp: -1 }).limit(limit).lean();
     return records.map(mapAttendanceRecord);
   }
@@ -85,7 +85,7 @@ class AttendanceRepository {
   }
 
   async findLastClockInBefore(
-    query: FilterQuery<IAttendance>,
+    query: QueryFilter<IAttendance>,
     before: Date,
   ): Promise<AttendanceRecord | null> {
     const record = await Attendance.findOne({
@@ -141,7 +141,7 @@ class AttendanceRepository {
 
 class AttendanceCorrectionRepository {
   async findMany(
-    query: FilterQuery<IAttendanceCorrection>,
+    query: QueryFilter<IAttendanceCorrection>,
     limit: number,
     sort: Record<string, 1 | -1> = { createdAt: -1 },
   ): Promise<AttendanceCorrectionRecord[]> {
@@ -350,7 +350,7 @@ export class AttendanceService {
       throw forbidden("Unauthorized");
     }
 
-    const filter: FilterQuery<IAttendanceCorrection> = {};
+    const filter: QueryFilter<IAttendanceCorrection> = {};
     if (actor.role === "leader") {
       filter.userId = actor.userId;
     }
@@ -487,8 +487,8 @@ function mapCorrectionRecord(
   };
 }
 
-function buildAttendanceScope(actor: AttendanceActor, params: AttendanceQueryInput): FilterQuery<IAttendance> {
-  const query: FilterQuery<IAttendance> = {};
+function buildAttendanceScope(actor: AttendanceActor, params: AttendanceQueryInput): QueryFilter<IAttendance> {
+  const query: QueryFilter<IAttendance> = {};
 
   if (actor.role === "driver") {
     query.userId = actor.userId;
@@ -512,10 +512,10 @@ function buildAttendanceScope(actor: AttendanceActor, params: AttendanceQueryInp
 }
 
 function buildCorrectionScope(
-  query: FilterQuery<IAttendance>,
+  query: QueryFilter<IAttendance>,
   role: AttendanceActor["role"],
-): FilterQuery<IAttendanceCorrection> {
-  const correctionQuery: FilterQuery<IAttendanceCorrection> = {
+): QueryFilter<IAttendanceCorrection> {
+  const correctionQuery: QueryFilter<IAttendanceCorrection> = {
     status: { $ne: "approved" },
   };
 
@@ -524,13 +524,13 @@ function buildCorrectionScope(
     correctionQuery.branch = query.branch;
   }
   if (query.timestamp) {
-    correctionQuery.requestedTime = query.timestamp as FilterQuery<IAttendanceCorrection>["requestedTime"];
+    correctionQuery.requestedTime = query.timestamp as QueryFilter<IAttendanceCorrection>["requestedTime"];
   }
 
   return correctionQuery;
 }
 
-async function withDateRange(query: FilterQuery<IAttendance>, params: AttendanceQueryInput) {
+async function withDateRange(query: QueryFilter<IAttendance>, params: AttendanceQueryInput) {
   const resolved = { ...query };
 
   if (params.startDate && params.endDate) {
@@ -643,9 +643,10 @@ async function resolveIdentity(userId: string) {
     const [user, leader] = await Promise.all([User.findById(userId).lean(), Leader.findById(userId).lean()]);
     const person = user ?? leader;
     if (person) {
+      const personRecord = person as unknown as Record<string, unknown>;
       return {
-        userName: person.name || ("lineDisplayName" in person ? person.lineDisplayName : undefined) || "Unknown",
-        userImage: "lineProfileImage" in person ? person.lineProfileImage : undefined,
+        userName: (typeof personRecord.name === "string" && personRecord.name) || asOptionalString(personRecord.lineDisplayName) || "Unknown",
+        userImage: asOptionalString(personRecord.lineProfileImage),
       };
     }
   }
@@ -655,10 +656,11 @@ async function resolveIdentity(userId: string) {
     Leader.findOne({ email: userId }).lean(),
   ]);
   const person = user ?? leader;
+  const personRecord = (person ?? {}) as Record<string, unknown>;
 
   return {
-    userName: person?.name || ("lineDisplayName" in (person ?? {}) ? person?.lineDisplayName : undefined) || "Unknown",
-    userImage: person && "lineProfileImage" in person ? person.lineProfileImage : undefined,
+    userName: (typeof personRecord.name === "string" && personRecord.name) || asOptionalString(personRecord.lineDisplayName) || "Unknown",
+    userImage: asOptionalString(personRecord.lineProfileImage),
   };
 }
 
@@ -685,4 +687,8 @@ function buildDuplicateCorrectionMessage(type: AttendanceType, category: "correc
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function asOptionalString(value: unknown) {
+  return typeof value === "string" ? value : undefined;
 }

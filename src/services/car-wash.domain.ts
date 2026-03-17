@@ -1,4 +1,4 @@
-import mongoose, { FilterQuery } from "mongoose";
+import mongoose, { type QueryFilter } from "mongoose";
 import { del, put } from "@vercel/blob";
 import { badRequest, forbidden, notFound } from "@/lib/api-errors";
 import { CHANNELS, EVENTS, triggerPusher } from "@/lib/pusher";
@@ -32,7 +32,7 @@ const ADMIN_ROOT_PROFILE = {
 };
 
 class CarWashRepository {
-  async findMany(query: FilterQuery<ICarWashActivity>, page: number, limit: number) {
+  async findMany(query: QueryFilter<ICarWashActivity>, page: number, limit: number) {
     const skip = (page - 1) * limit;
     const total = await CarWashActivity.countDocuments(query);
     const activities = await CarWashActivity.find(query)
@@ -52,7 +52,7 @@ class CarWashRepository {
     };
   }
 
-  async count(query: FilterQuery<ICarWashActivity>) {
+  async count(query: QueryFilter<ICarWashActivity>) {
     return CarWashActivity.countDocuments(query);
   }
 
@@ -252,8 +252,8 @@ export class CarWashService {
   }
 }
 
-function buildCarWashFilter(query: CarWashQueryInput): FilterQuery<ICarWashActivity> {
-  const filter: FilterQuery<ICarWashActivity> = {};
+function buildCarWashFilter(query: CarWashQueryInput): QueryFilter<ICarWashActivity> {
+  const filter: QueryFilter<ICarWashActivity> = {};
 
   if (query.userId) filter.userId = query.userId;
   if (query.activityType) filter.activityType = query.activityType;
@@ -283,8 +283,8 @@ function toMixedUserId(value: string) {
   return mongoose.Types.ObjectId.isValid(value) ? new mongoose.Types.ObjectId(value) : value;
 }
 
-function normalizeActivity(activity: Record<string, unknown>): CarWashRecord {
-  const normalized = { ...activity };
+function normalizeActivity(activity: unknown): CarWashRecord {
+  const normalized = { ...(activity as Record<string, unknown>) };
 
   if (normalized.userId === "admin_root") normalized.userId = ADMIN_ROOT_PROFILE;
 

@@ -3,11 +3,12 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Briefcase, Send, X, Clock } from 'lucide-react';
+import type { AttendanceCorrectionFormPayload } from '@/app/leader/attendance/_lib/attendanceTypes';
 
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (payload: any) => Promise<boolean>;
+  onSubmit: (payload: AttendanceCorrectionFormPayload) => Promise<boolean>;
   loading: boolean;
   initialType?: 'in' | 'out';
 }

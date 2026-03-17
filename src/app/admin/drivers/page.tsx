@@ -1,0 +1,804 @@
+'use client';
+
+import { useEffect, useState, useCallback, Suspense } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Users, Trash2, X, CheckCircle2, AlertCircle, PhoneCall, MessageCircle, Shield, ChevronRight, MapPin, User, CalendarDays } from 'lucide-react';
+import PageHeader from '@/components/PageHeader';
+import BottomNav from '@/components/BottomNav';
+import Sidebar from '@/components/Sidebar';
+import AdminBranchFilter from '@/components/AdminBranchFilter';
+import AdminCardShell from '@/components/AdminCardShell';
+import AdminModalShell from '@/components/AdminModalShell';
+import { AdminEmptyState, AdminLoadingState } from '@/components/AdminPageStates';
+import ProfileModal, { type ProfileUser } from '@/components/ProfileModal';
+import UserAvatar from '@/components/UserAvatar';
+import { PERFORMANCE_TIERS, PERFORMANCE_TIER_CONFIG } from '@/lib/profile-tier';
+import { formatRelativeTime, isUserOnline } from '@/lib/date-utils';
+import { usePusher } from '@/hooks/usePusher';
+import { useBranches } from '@/hooks/useBranches';
+import { useAdminSession } from '@/hooks/useAdminSession';
+import { useAdminBranchScope } from '@/hooks/useAdminBranchScope';
+import { useToast } from '@/components/Toast';
+
+// Rename the internal role state to avoid confusion with the Personnel interface role
+
+interface Personnel {
+  _id: string;
+  lineUserId: string;
+  linePublicId?: string;
+  lineDisplayName: string;
+  lineProfileImage?: string;
+  performanceTier?: string;
+  performancePoints?: number;
+  performanceLevel?: number;
+  name?: string;
+  surname?: string;
+  phone?: string;
+  employeeId?: string;
+  branch?: string;
+  role: 'driver' | 'leader' | 'admin';
+  status: 'pending' | 'active';
+  vacationDays?: number;
+  sickDays?: number;
+  personalDays?: number;
+  lastSeen?: string;
+  isOnline?: boolean;
+  createdAt?: string;
+}
+function DriverManagementContent() {
+  const { branches, loading: branchesLoading } = useBranches();
+  const { user } = useAdminSession();
+  const role: Personnel['role'] = 'admin';
+  const [allPersonnel, setAllPersonnel] = useState<Personnel[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab ] = useState<'all' | 'pending' | 'active'>('all');
+  const [selectedPersonnel, setSelectedPersonnel] = useState<Personnel | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [profileUser, setProfileUser] = useState<ProfileUser | null>(null);
+  const [showProfile, setShowProfile] = useState(false);
+  const { selectedBranch, setSelectedBranch, appendBranchToParams } = useAdminBranchScope();
+
+  const openPersonnelDetails = useCallback((personnel: Personnel) => {
+    setSelectedPersonnel(personnel);
+  }, []);
+
+  const closePersonnelDetails = useCallback(() => {
+    setSelectedPersonnel(null);
+  }, []);
+
+  const openDeleteModal = useCallback((personnelId: string) => {
+    setDeletingId(personnelId);
+    setShowDeleteModal(true);
+  }, []);
+
+  const closeDeleteModal = useCallback(() => {
+    setShowDeleteModal(false);
+    setDeletingId(null);
+  }, []);
+
+  const openProfile = useCallback((personnel: Personnel) => {
+    setProfileUser(personnel as unknown as ProfileUser);
+    setShowProfile(true);
+  }, []);
+
+  const closeProfile = useCallback(() => {
+    setShowProfile(false);
+  }, []);
+
+  const patchSelectedPersonnel = useCallback((patch: Partial<Personnel>) => {
+    setSelectedPersonnel((previous) => (previous ? { ...previous, ...patch } : previous));
+  }, []);
+
+  const setSelectedRole = useCallback((nextRole: Personnel['role']) => {
+    patchSelectedPersonnel({ role: nextRole });
+  }, [patchSelectedPersonnel]);
+
+  const setSelectedBranchValue = useCallback((branchValue?: string) => {
+    patchSelectedPersonnel({ branch: branchValue });
+  }, [patchSelectedPersonnel]);
+
+  const setSelectedTier = useCallback((tier: Personnel['performanceTier']) => {
+    patchSelectedPersonnel({ performanceTier: tier });
+  }, [patchSelectedPersonnel]);
+
+  const setSelectedTextField = useCallback(
+    (field: 'name' | 'surname' | 'employeeId' | 'phone', value: string) => {
+      patchSelectedPersonnel({ [field]: value });
+    },
+    [patchSelectedPersonnel],
+  );
+
+  const setSelectedQuotaField = useCallback(
+    (field: 'vacationDays' | 'sickDays' | 'personalDays', value: number) => {
+      patchSelectedPersonnel({ [field]: value });
+    },
+    [patchSelectedPersonnel],
+  );
+
+  const personnelList = (activeTab === 'all' 
+    ? allPersonnel 
+    : allPersonnel.filter(d => d.status === activeTab));
+
+  const fetchDrivers = useCallback(async () => {
+    try {
+      const params = appendBranchToParams(new URLSearchParams());
+      const response = await fetch(`/api/users?${params.toString()}`);
+      const data = await response.json();
+      if (data.success) {
+        setAllPersonnel(data.users);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [appendBranchToParams]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchDrivers();
+    
+    // Refresh every 30 seconds to update online status
+    const interval = setInterval(fetchDrivers, 30000);
+    return () => clearInterval(interval);
+  }, [user, fetchDrivers]);
+
+  const { showToast } = useToast();
+
+  // Pusher realtime โ€” driver list auto-refresh
+  const handleDriverChanged = useCallback(() => {
+    fetchDrivers();
+  }, [fetchDrivers]);
+
+  const handleNewDriver = useCallback((data: { displayName?: string }) => {
+    fetchDrivers();
+    showToast('notification', `เธเธเธฑเธเธเธฒเธเนเธซเธกเนเธฅเธเธ—เธฐเน€เธเธตเธขเธ: ${data?.displayName || 'เธเธเธฑเธเธเธฒเธ'}`);
+  }, [fetchDrivers, showToast]);
+
+  usePusher('users', [
+    { event: 'new-driver', callback: handleNewDriver },
+    { event: 'driver-activated', callback: handleDriverChanged },
+    { event: 'driver-updated', callback: handleDriverChanged },
+    { event: 'driver-deleted', callback: handleDriverChanged },
+  ], !!user);
+
+  const handleActivate = async (driverId: string, additionalData: Partial<Personnel> = {}) => {
+    setActionLoading(driverId);
+    try {
+      const response = await fetch('/api/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: driverId, status: 'active', ...additionalData }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setAllPersonnel(prev => prev.map(d => d._id === driverId ? { ...d, status: 'active', ...additionalData } : d));
+        // Instead of closing, update selectedPersonnel to transition to Step 2
+        setSelectedPersonnel(prev => prev ? { ...prev, status: 'active', ...additionalData } : null);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDeactivate = async (driverId: string) => {
+    setActionLoading(driverId);
+    try {
+      const response = await fetch('/api/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: driverId, status: 'pending' }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setAllPersonnel(prev => prev.map(d => d._id === driverId ? { ...d, status: 'pending' } : d));
+        setSelectedPersonnel(null);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleUpdateDriver = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPersonnel) return;
+    
+    setActionLoading(selectedPersonnel._id);
+    try {
+      const response = await fetch('/api/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: selectedPersonnel._id,
+          name: selectedPersonnel.name,
+          surname: selectedPersonnel.surname,
+          phone: selectedPersonnel.phone,
+          linePublicId: selectedPersonnel.linePublicId,
+          employeeId: selectedPersonnel.employeeId,
+          vacationDays: selectedPersonnel.vacationDays,
+          sickDays: selectedPersonnel.sickDays,
+          personalDays: selectedPersonnel.personalDays,
+          performanceTier: selectedPersonnel.performanceTier,
+          branch: selectedPersonnel.branch,
+          role: selectedPersonnel.role,
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setAllPersonnel(prev => prev.map(d => d._id === selectedPersonnel._id ? { ...d, ...data.user } : d));
+        // If it was Step 2 (null branch), update selectedPersonnel to transition to Step 3
+        // If it was Step 3, we can keep it open for further edits or close it. 
+        // Let's update it so the UI reflects the saved state.
+        setSelectedPersonnel((previous) => (previous ? { ...previous, ...data.user } : previous));
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDeleteDriver = async () => {
+    if (!deletingId) return;
+    setActionLoading(deletingId);
+    try {
+      const response = await fetch(`/api/users?id=${deletingId}`, { method: 'DELETE' });
+      const data = await response.json();
+      if (data.success) {
+        setAllPersonnel(prev => prev.filter(d => d._id !== deletingId));
+        closeDeleteModal();
+        closePersonnelDetails();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  if (!user) return null;
+
+  return (
+    <div className="min-h-screen" style={{ background: 'var(--bg-base)' }}>
+      <Sidebar role={role} />
+
+      <div className="lg:pl-[240px] pb-[72px] lg:pb-6">
+        <PageHeader title="เธเธฑเธ”เธเธฒเธฃเธเธเธฑเธเธเธฒเธ" subtitle="เน€เธเธดเนเธก/เนเธเนเนเธ/เน€เธเธดเธ”เนเธเนเธเธฒเธเธเธเธฑเธเธเธฒเธ" backHref="/admin/home" />
+
+        <div className="px-4 lg:px-8 py-3">
+          <div className="max-w-3xl mx-auto flex flex-col gap-4">
+
+        {/* Branch Filter for Admin */}
+        <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }}>
+          <AdminBranchFilter
+            selectedBranch={selectedBranch}
+            onSelectBranch={setSelectedBranch}
+            branchCodes={(branchesLoading ? [] : branches).map((b) => b.code)}
+          />
+        </motion.div>
+
+        {/* Stats - Clickable */}
+        <div className="grid grid-cols-3 gap-3">
+          <button
+            onClick={() => setActiveTab('all')}
+            className="text-center p-2.5 rounded-[var(--radius-md)] transition-all"
+            style={{ 
+              background: activeTab === 'all' ? 'var(--accent)' : 'var(--bg-inset)',
+              boxShadow: activeTab === 'all' ? 'var(--shadow-accent)' : 'none'
+            }}
+          >
+            <p className="text-fluid-lg font-extrabold" style={{ color: activeTab === 'all' ? 'white' : 'var(--accent)' }}>{allPersonnel.length}</p>
+            <p className="text-fluid-xs" style={{ color: activeTab === 'all' ? 'white' : 'var(--text-muted)' }}>เธ—เธฑเนเธเธซเธกเธ”</p>
+          </button>
+          <button
+            onClick={() => setActiveTab('pending')}
+            className="text-center p-2.5 rounded-[var(--radius-md)] transition-all"
+            style={{ 
+              background: activeTab === 'pending' ? 'var(--warning)' : 'var(--bg-inset)',
+              boxShadow: activeTab === 'pending' ? '0 4px 12px rgba(245,158,11,0.3)' : 'none'
+            }}
+          >
+            <p className="text-fluid-lg font-extrabold" style={{ color: activeTab === 'pending' ? 'white' : 'var(--warning)' }}>
+              {personnelList.filter(d => d.status === 'pending').length}
+            </p>
+            <p className="text-fluid-xs" style={{ color: activeTab === 'pending' ? 'white' : 'var(--text-muted)' }}>เธฃเธญเธขเธทเธเธขเธฑเธ</p>
+          </button>
+          <button
+            onClick={() => setActiveTab('active')}
+            className="text-center p-2.5 rounded-[var(--radius-md)] transition-all"
+            style={{ 
+              background: activeTab === 'active' ? 'var(--success)' : 'var(--bg-inset)',
+              boxShadow: activeTab === 'active' ? '0 4px 12px rgba(5,150,105,0.3)' : 'none'
+            }}
+          >
+            <p className="text-fluid-lg font-extrabold" style={{ color: activeTab === 'active' ? 'white' : 'var(--success)' }}>
+              {personnelList.filter(d => d.status === 'active').length}
+            </p>
+            <p className="text-fluid-xs" style={{ color: activeTab === 'active' ? 'white' : 'var(--text-muted)' }}>เธเธฃเนเธญเธกเนเธเน</p>
+          </button>
+        </div>
+
+        <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - 280px)' }}>
+          {loading ? (
+            <AdminLoadingState className="py-12" />
+          ) : personnelList.length === 0 ? (
+            <AdminEmptyState icon={Users} message="ไม่พบพนักงาน" />
+          ) : (
+            <div className="space-y-3">
+              {personnelList.map((driver) => (
+                <AdminCardShell
+                  key={driver._id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  onClick={() => openPersonnelDetails(driver)}
+                  className="p-4 flex items-center gap-4 cursor-pointer group shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <div className="relative shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <UserAvatar
+                      imageUrl={driver.lineProfileImage}
+                      displayName={driver.name || driver.lineDisplayName}
+                      tier={driver.performanceTier}
+                      size="sm"
+                      onClick={() => openProfile(driver)}
+                    />
+                    <span
+                      className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2"
+                      style={{
+                        background: isUserOnline(driver.lastSeen) ? 'var(--success)' : 'var(--text-muted)',
+                        borderColor: 'var(--bg-surface)',
+                      }}
+                    />
+                  </div>
+                  
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                       <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${driver.status === 'active' ? 'bg-[var(--success-light)] text-[var(--success)]' : 'bg-[var(--warning-light)] text-[var(--warning)]'}`}>
+                        {driver.status === 'active' ? 'Active' : 'Pending'}
+                      </span>
+                      <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${driver.role === 'leader' ? 'bg-indigo-500/10 text-indigo-500' : 'bg-slate-500/10 text-slate-500'}`}>
+                        {driver.role || 'Driver'}
+                      </span>
+                      {driver.branch && (
+                        <span className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest leading-none">
+                          {driver.branch}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-fluid-sm font-black truncate" style={{ color: 'var(--text-primary)' }}>
+                      {driver.name && driver.surname ? `${driver.name} ${driver.surname}` : driver.lineDisplayName}
+                    </h3>
+                    <p className="text-[10px] font-medium" style={{ color: isUserOnline(driver.lastSeen) ? 'var(--success)' : 'var(--text-muted)' }}>
+                      {isUserOnline(driver.lastSeen) ? 'เธญเธญเธเนเธฅเธเน' : formatRelativeTime(driver.lastSeen)}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-[var(--bg-inset)] border border-[var(--border)] group-hover:border-[var(--accent)] transition-colors">
+                    {driver.linePublicId && (
+                      <a
+                        href={`https://line.me/R/ti/p/~${encodeURIComponent(driver.linePublicId)}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/50 dark:bg-black/20 hover:scale-110 active:scale-95 transition-all"
+                        style={{ color: '#00C300' }}
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                      </a>
+                    )}
+                    {driver.phone && (
+                      <a
+                        href={`tel:${driver.phone}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/50 dark:bg-black/20 hover:scale-110 active:scale-95 transition-all text-[var(--success)]"
+                      >
+                        <PhoneCall className="w-4 h-4" />
+                      </a>
+                    )}
+                    <ChevronRight className="w-4 h-4 opacity-20 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                  </div>
+                </AdminCardShell>
+              ))}
+            </div>
+          )}
+        </div>
+
+          </div>
+        </div>
+      </div>
+
+      {/* Edit Modal */}
+      <AnimatePresence>
+        {selectedPersonnel && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+            style={{ background: 'rgba(0,0,0,0.5)' }}
+            onClick={closePersonnelDetails}
+          >
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              className="card-neo w-full sm:max-w-md rounded-t-[var(--radius-xl)] sm:rounded-[var(--radius-xl)] p-4 max-h-[80vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-lg ${
+                    selectedPersonnel.status === 'pending' ? 'bg-amber-500 text-white' : 
+                    !selectedPersonnel.branch ? 'bg-blue-500 text-white' : 'bg-[var(--accent)] text-white'
+                  }`}>
+                    {selectedPersonnel.status === 'pending' ? <CheckCircle2 className="w-5 h-5" /> : 
+                     !selectedPersonnel.branch ? <MapPin className="w-5 h-5" /> : <User className="w-5 h-5" />}
+                  </div>
+                  <div>
+                    <h2 className="text-fluid-lg font-black uppercase tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                      {selectedPersonnel.status === 'pending' ? 'Step 1: เธญเธเธธเธกเธฑเธ•เธดเธเธเธฑเธเธเธฒเธ' : 
+                       !selectedPersonnel.branch ? 'Step 2: เธฃเธฐเธเธธเธชเธฒเธเธฒ' : 'Step 3: เธเนเธญเธกเธนเธฅเธเธเธฑเธเธเธฒเธ'}
+                    </h2>
+                    <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-tighter">
+                      {selectedPersonnel.status === 'pending' ? 'Activate New Employee' : 
+                       !selectedPersonnel.branch ? 'Assign Branch' : 'Manage Employee Details'}
+                    </p>
+                  </div>
+                </div>
+                <button onClick={closePersonnelDetails} className="btn-ghost w-8 h-8 p-0 rounded-full flex items-center justify-center">
+                  <X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                </button>
+              </div>
+
+              <form onSubmit={handleUpdateDriver} className="space-y-4">
+                {/* Avatar Preview Section */}
+                <div className="flex flex-col items-center justify-center p-4 bg-[var(--bg-inset)] rounded-2xl border border-[var(--border)] mb-2">
+                  <UserAvatar
+                    imageUrl={selectedPersonnel.lineProfileImage}
+                    displayName={selectedPersonnel.name || selectedPersonnel.lineDisplayName}
+                    tier={selectedPersonnel.performanceTier}
+                    size="lg"
+                    showTierBadge
+                  />
+                  <p className="mt-2 text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">{selectedPersonnel.lineDisplayName || 'New Driver'}</p>
+                </div>
+
+                {/* STEP 1: PENDING STATE */}
+                {selectedPersonnel.status === 'pending' ? (
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 text-center">
+                      <p className="text-xs font-bold text-amber-500 leading-relaxed">
+                        เธเธเธฑเธเธเธฒเธเนเธซเธกเนเธฃเธญเธเธฒเธฃเธขเธทเธเธขเธฑเธเธ•เธฑเธงเธ•เธเน€เธเนเธฒเธฃเธฐเธเธ ITL <br/> เธเธฃเธธเธ“เธฒเธ•เธฃเธงเธเธชเธญเธเนเธฅเธฐเธเธ”เธขเธทเธเธขเธฑเธเธ”เนเธฒเธเธฅเนเธฒเธ
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updateData: Partial<Personnel> = { status: 'active' };
+                          if ((role as string) === 'leader') {
+                             updateData.role = 'driver';
+                             updateData.branch = user?.branch;
+                          }
+                          handleActivate(selectedPersonnel._id, updateData);
+                        }}
+                        disabled={actionLoading === selectedPersonnel._id}
+                        className="btn flex-1 h-14 text-sm font-black uppercase tracking-widest disabled:opacity-50 shadow-xl shadow-emerald-500/10"
+                        style={{ background: 'var(--success)', color: 'white' }}
+                      >
+                        {actionLoading === selectedPersonnel._id ? 'เธเธณเธฅเธฑเธ...' : '1. เธขเธทเธเธขเธฑเธเธเธเธฑเธเธเธฒเธ'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openDeleteModal(selectedPersonnel._id)}
+                        disabled={actionLoading === selectedPersonnel._id}
+                        className="btn px-4 h-14 text-sm font-bold disabled:opacity-50"
+                        style={{ background: 'var(--danger)', color: 'white' }}
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* STEP 2: ASSIGN BRANCH & ROLE */}
+                    {!selectedPersonnel.branch ? (
+                      <div className="space-y-4">
+                        <div className="p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 space-y-3">
+                          {role === 'admin' ? (
+                            <div>
+                              <label className="block text-fluid-xs font-black uppercase tracking-widest mb-1 text-blue-500">2. เน€เธฅเธทเธญเธเธ•เนเธฒเนเธซเธเนเธเธเธฒเธ (Role)</label>
+                              <div className="grid grid-cols-2 gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedRole('driver')}
+                                  className={`py-2 rounded-lg text-xs font-black transition-all ${selectedPersonnel.role === 'driver' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/50 text-blue-500 border border-blue-500/20'}`}
+                                >
+                                  DRIVER
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedRole('leader')}
+                                  className={`py-2 rounded-lg text-xs font-black transition-all ${selectedPersonnel.role === 'leader' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'bg-white/50 text-blue-500 border border-blue-500/20'}`}
+                                >
+                                  LEADER
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="bg-blue-500/10 p-3 rounded-lg border border-blue-500/20">
+                              <p className="text-[10px] font-black text-blue-500 uppercase">เธ•เธณเนเธซเธเนเธเธเธฒเธ: DRIVER (เธเธเธฑเธเธเธฒเธเธเธฑเธเธฃเธ–)</p>
+                              <p className="text-[9px] text-blue-500/70">เธชเธดเธ—เธเธดเน Leader เธเธฐเน€เธเธดเธ”เนเธเนเธเธฒเธ Driver เนเธ”เนเน€เธ—เนเธฒเธเธฑเนเธ</p>
+                            </div>
+                          )}
+                          <div>
+                            <label className="block text-fluid-xs font-black uppercase tracking-widest mb-1 text-blue-500">3. เน€เธฅเธทเธญเธเธชเธฒเธเธฒเธ—เธตเนเธชเธฑเธเธเธฑเธ”</label>
+                            {role === 'admin' ? (
+                              <select
+                                value={selectedPersonnel.branch || ''}
+                                onChange={(e) => setSelectedBranchValue(e.target.value || undefined)}
+                                className="input border-blue-500/30 bg-blue-500/5 focus:border-blue-500"
+                                required
+                              >
+                                <option value="">-- เธฃเธฐเธเธธเธชเธฒเธเธฒ --</option>
+                                {(branchesLoading ? [] : branches).map(b => (
+                                  <option key={b.code} value={b.code}>{b.code} - {b.name}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <div className="input border-blue-500/30 bg-blue-500/20 flex items-center px-3 text-sm font-bold text-blue-600">
+                                เธชเธฒเธเธฒ {user?.branch} (เธ•เธฒเธกเธชเธดเธ—เธเธดเนเธเธนเนเธ”เธนเนเธฅ)
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <button 
+                          type="submit" 
+                          disabled={!selectedPersonnel.branch || actionLoading === selectedPersonnel._id} 
+                          className="btn btn-primary w-full h-14 text-sm font-black uppercase tracking-widest shadow-xl shadow-blue-500/10"
+                        >
+                          {actionLoading === selectedPersonnel._id ? 'เธเธณเธฅเธฑเธ...' : 'เธเธฑเธเธ—เธถเธเนเธฅเธฐเน€เธเธดเธ”เนเธเนเธเธฒเธ'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeactivate(selectedPersonnel._id)}
+                          className="btn btn-ghost w-full text-[10px] uppercase font-black tracking-widest opacity-50"
+                        >
+                          เธขเนเธญเธเธเธฅเธฑเธเนเธเธฃเธญเธญเธเธธเธกเธฑเธ•เธด (Deactivate)
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {role === 'admin' && (
+                          <div className="pt-1">
+                            <label className="block text-fluid-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>
+                              เธ•เนเธฒเนเธซเธเนเธเธเธฒเธ (Role)
+                            </label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedRole('driver')}
+                                className={`py-2 rounded-lg text-xs font-black transition-all ${selectedPersonnel.role === 'driver' ? 'bg-[var(--accent)] text-white' : 'bg-[var(--bg-inset)] text-[var(--text-muted)] border border-[var(--border)]'}`}
+                              >
+                                DRIVER
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedRole('leader')}
+                                className={`py-2 rounded-lg text-xs font-black transition-all ${selectedPersonnel.role === 'leader' ? 'bg-[var(--accent)] text-white' : 'bg-[var(--bg-inset)] text-[var(--text-muted)] border border-[var(--border)]'}`}
+                              >
+                                LEADER
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Tier selector */}
+                        <div className="pt-1">
+                          <label className="flex items-center gap-1.5 text-fluid-xs font-semibold uppercase tracking-wider mb-2" style={{ color: 'var(--text-muted)' }}>
+                            <Shield className="w-3.5 h-3.5" />
+                            Avatar Frame
+                          </label>
+                          <div className="grid grid-cols-5 gap-2">
+                            {PERFORMANCE_TIERS.map((tier) => {
+                              const cfg = PERFORMANCE_TIER_CONFIG[tier];
+                              const isSelected = (selectedPersonnel.performanceTier ?? 'standard') === tier;
+                              return (
+                                <button
+                                  key={tier}
+                                  type="button"
+                                  onClick={() => setSelectedTier(tier)}
+                                  className="flex flex-col items-center gap-1 py-2 px-1 rounded-[var(--radius-md)] transition-all"
+                                  style={{
+                                    background: isSelected ? 'var(--bg-inset)' : 'transparent',
+                                    border: isSelected ? '2px solid var(--accent)' : '2px solid transparent',
+                                  }}
+                                >
+                                  <UserAvatar
+                                    imageUrl={selectedPersonnel.lineProfileImage}
+                                    displayName={selectedPersonnel.name || selectedPersonnel.lineDisplayName}
+                                    tier={tier}
+                                    size="xs"
+                                  />
+                                  <span className="text-[10px] font-medium leading-none" style={{ color: isSelected ? 'var(--accent)' : 'var(--text-muted)' }}>
+                                    {cfg.label.split(' ')[0]}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-fluid-xs mb-1" style={{ color: 'var(--text-muted)' }}>เธเธทเนเธญ</label>
+                            <input type="text" value={selectedPersonnel.name || ''} onChange={(e) => setSelectedTextField('name', e.target.value)} className="input" placeholder="เธเธฃเธญเธเธเธทเนเธญ" required />
+                          </div>
+                          <div>
+                            <label className="block text-fluid-xs mb-1" style={{ color: 'var(--text-muted)' }}>เธเธฒเธกเธชเธเธธเธฅ</label>
+                            <input type="text" value={selectedPersonnel.surname || ''} onChange={(e) => setSelectedTextField('surname', e.target.value)} className="input" placeholder="เธเธฃเธญเธเธเธฒเธกเธชเธเธธเธฅ" required />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-fluid-xs mb-1" style={{ color: 'var(--text-muted)' }}>เธฃเธซเธฑเธชเธเธเธฑเธเธเธฒเธ</label>
+                            <input type="text" value={selectedPersonnel.employeeId || ''} onChange={(e) => setSelectedTextField('employeeId', e.target.value)} className="input" placeholder="เธเธฃเธญเธเธฃเธซเธฑเธช" />
+                          </div>
+                          <div>
+                            <label className="block text-fluid-xs mb-1" style={{ color: 'var(--text-muted)' }}>เน€เธเธญเธฃเนเนเธ—เธฃ</label>
+                            <input type="tel" value={selectedPersonnel.phone || ''} onChange={(e) => setSelectedTextField('phone', e.target.value)} className="input" placeholder="08x-xxxxxxx" />
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-fluid-xs mb-1" style={{ color: 'var(--text-muted)' }}>เธเธฃเธฑเธเน€เธเธฅเธตเนเธขเธเธชเธฒเธเธฒ</label>
+                          <select
+                            value={selectedPersonnel.branch || ''}
+                            onChange={(e) => setSelectedBranchValue(e.target.value)}
+                            className="input"
+                            required
+                          >
+                            {(branchesLoading ? [] : branches).map(b => (
+                              <option key={b.code} value={b.code}>{b.code}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Leave Days Input */}
+                        <div className="rounded-2xl border border-[var(--border)] overflow-hidden">
+                          <div className="flex items-center gap-2 px-3 py-2 bg-[var(--bg-inset)]">
+                            <CalendarDays className="w-3.5 h-3.5 text-[var(--accent)]" />
+                            <span className="text-[10px] font-black uppercase tracking-widest opacity-60">เธงเธฑเธเธฅเธฒเธเธเน€เธซเธฅเธทเธญ (Leave Quota)</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-0 divide-x divide-[var(--border)]">
+                            <div className="p-3">
+                              <label className="block text-[8px] font-black uppercase tracking-widest text-emerald-500 mb-1.5">เธเธฑเธเธฃเนเธญเธ</label>
+                              <input
+                                type="number"
+                                min="0"
+                                max="365"
+                                value={selectedPersonnel.vacationDays ?? 10}
+                                onChange={(e) => setSelectedQuotaField('vacationDays', Number(e.target.value))}
+                                className="w-full text-center text-lg font-black bg-transparent border-0 focus:outline-none focus:ring-1 focus:ring-emerald-500 rounded-lg p-1"
+                              />
+                              <p className="text-[8px] text-center opacity-30 uppercase tracking-widest">เธงเธฑเธ</p>
+                            </div>
+                            <div className="p-3">
+                              <label className="block text-[8px] font-black uppercase tracking-widest text-rose-500 mb-1.5">เธฅเธฒเธเนเธงเธข</label>
+                              <input
+                                type="number"
+                                min="0"
+                                max="365"
+                                value={selectedPersonnel.sickDays ?? 10}
+                                onChange={(e) => setSelectedQuotaField('sickDays', Number(e.target.value))}
+                                className="w-full text-center text-lg font-black bg-transparent border-0 focus:outline-none focus:ring-1 focus:ring-rose-500 rounded-lg p-1"
+                              />
+                              <p className="text-[8px] text-center opacity-30 uppercase tracking-widest">เธงเธฑเธ</p>
+                            </div>
+                            <div className="p-3">
+                              <label className="block text-[8px] font-black uppercase tracking-widest text-amber-500 mb-1.5">เธฅเธฒเธเธดเธ</label>
+                              <input
+                                type="number"
+                                min="0"
+                                max="365"
+                                value={selectedPersonnel.personalDays ?? 5}
+                                onChange={(e) => setSelectedQuotaField('personalDays', Number(e.target.value))}
+                                className="w-full text-center text-lg font-black bg-transparent border-0 focus:outline-none focus:ring-1 focus:ring-amber-500 rounded-lg p-1"
+                              />
+                              <p className="text-[8px] text-center opacity-30 uppercase tracking-widest">เธงเธฑเธ</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-3 pt-2">
+                        <button type="button" onClick={closePersonnelDetails} className="btn btn-secondary flex-1">เธขเธเน€เธฅเธดเธ</button>
+                          <button type="submit" disabled={actionLoading === selectedPersonnel._id} className="btn btn-primary flex-1 h-12 shadow-lg shadow-[var(--accent)]/10">
+                            {actionLoading === selectedPersonnel._id ? 'เธเธณเธฅเธฑเธ...' : '3. เธเธฑเธเธ—เธถเธเธเนเธญเธกเธนเธฅ'}
+                          </button>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeactivate(selectedPersonnel._id)}
+                          disabled={actionLoading === selectedPersonnel._id}
+                          className="btn btn-ghost w-full text-[10px] uppercase font-black tracking-widest mt-2"
+                          style={{ color: 'var(--warning)' }}
+                        >
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          เธฃเธฐเธเธฑเธเธเธฒเธฃเนเธเนเธเธฒเธเธเธเธฑเธเธเธฒเธ (Deactivate)
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Confirm Modal */}
+      <AnimatePresence>
+        {showDeleteModal && (
+          <AdminModalShell
+            onClose={closeDeleteModal}
+            contentClassName="card-neo w-full sm:max-w-sm rounded-t-[var(--radius-xl)] sm:rounded-[var(--radius-xl)] p-4"
+          >
+              <div className="text-center">
+                <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: 'rgba(239,68,68,0.1)' }}>
+                  <Trash2 className="w-7 h-7" style={{ color: 'var(--danger)' }} />
+                </div>
+                <h3 className="text-fluid-lg font-bold mb-2" style={{ color: 'var(--text-primary)' }}>เธฅเธเธเธเธฑเธเธเธฒเธ</h3>
+                <p className="text-fluid-sm mb-3" style={{ color: 'var(--text-muted)' }}>
+                  เธ•เนเธญเธเธเธฒเธฃเธฅเธเธเธเธฑเธเธเธฒเธเธเธเธเธตเนเนเธเนเธซเธฃเธทเธญเนเธกเน?<br/>
+                  เธเธฒเธฃเธฅเธเธเธฐเธ—เธณเนเธซเนเธเนเธญเธกเธนเธฅเธเธฒเธฃเธฅเธฒเนเธฅเธฐเธเธฑเธเธ—เธถเธเนเธ—เธเธซเธฒเธขเนเธเธ”เนเธงเธข
+                </p>
+                <div className="flex gap-3">
+                  <button 
+                    onClick={closeDeleteModal} 
+                    className="btn btn-secondary flex-1"
+                  >
+                    เธขเธเน€เธฅเธดเธ
+                  </button>
+                  <button 
+                    onClick={handleDeleteDriver} 
+                    disabled={actionLoading !== null}
+                    className="btn flex-1"
+                    style={{ background: 'var(--danger)', color: 'white' }}
+                  >
+                    {actionLoading ? 'เธเธณเธฅเธฑเธเธฅเธ...' : 'เธฅเธ'}
+                  </button>
+                </div>
+              </div>
+          </AdminModalShell>
+        )}
+      </AnimatePresence>
+
+      <ProfileModal user={profileUser} open={showProfile} onClose={closeProfile} />
+      <BottomNav role={role} />
+    </div>
+  );
+}
+
+function Loading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-base)' }}>
+      <AdminLoadingState className="py-0" />
+    </div>
+  );
+}
+
+export default function DriverManagementPage() {
+  return (
+    <Suspense fallback={<Loading />}>
+      <DriverManagementContent />
+    </Suspense>
+  );
+}
+
+
+
+

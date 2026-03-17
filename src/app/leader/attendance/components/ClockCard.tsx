@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, Navigation, Send, Clock, Zap, User } from 'lucide-react';
+import { MapPin, Send, Zap, User } from 'lucide-react';
+import Image from 'next/image';
 import SlideButton from './SlideButton';
+import type { AttendanceUser } from '@/app/leader/attendance/_lib/attendanceClient';
 
 interface ClockCardProps {
-  user: any;
+  user: AttendanceUser | null;
   isClockedIn: boolean;
-  isClockedOut: boolean;
   onClockIn: () => Promise<void>;
   onClockOut: () => Promise<void>;
   onOffsiteRequest: () => void;
@@ -19,7 +20,7 @@ interface ClockCardProps {
 }
 
 export function ClockCard({ 
-  user, isClockedIn, isClockedOut, 
+  user, isClockedIn,
   onClockIn, onClockOut, onOffsiteRequest, 
   distance, isInRange, loading, lastType 
 }: ClockCardProps) {
@@ -46,7 +47,14 @@ export function ClockCard({
            <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center overflow-hidden">
                 {user?.lineProfileImage ? (
-                  <img src={user.lineProfileImage} alt="" className="w-full h-full object-cover" />
+                  <Image
+                    src={user.lineProfileImage}
+                    alt={user.name || user.lineDisplayName || 'Profile image'}
+                    width={40}
+                    height={40}
+                    className="w-full h-full object-cover"
+                    unoptimized
+                  />
                 ) : (
                   <User className="w-5 h-5 text-indigo-400" />
                 )}

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
-import { ShieldCheck, Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import ThemeToggle from '@/components/ThemeToggle';
 
 export default function AdminLoginPage() {
@@ -36,21 +36,22 @@ export default function AdminLoginPage() {
       });
 
       const data = await response.json();
-
-      if (data.success) {
-        const sessionUser = data.user || data.leader;
-        localStorage.setItem('leaderUser', JSON.stringify(sessionUser));
-        
-        if (sessionUser?.role === 'admin') {
-          router.push('/admin/home');
-        } else {
-          router.push('/leader/home');
-        }
-      } else {
-        setError(data.error || 'เข้าสู่ระบบไม่สำเร็จ');
+      if (!data.success) {
+        setError(data.error || 'Login failed');
+        return;
       }
-    } catch (err) {
-      setError('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+
+      const sessionUser = data.user || data.leader;
+      if (sessionUser?.role !== 'admin') {
+        setError('This account does not have admin access.');
+        return;
+      }
+
+      localStorage.setItem('adminUser', JSON.stringify(sessionUser));
+      localStorage.removeItem('leaderUser');
+      router.push('/admin/home');
+    } catch {
+      setError('Unable to connect to server');
     } finally {
       setLoading(false);
     }
@@ -147,10 +148,6 @@ export default function AdminLoginPage() {
           </a>
         </div>
       </motion.div>
-
-      <div className="absolute bottom-10 opacity-5 pointer-events-none text-center">
-        <p className="text-[9px] font-black tracking-[0.5em] uppercase" style={{ color: 'var(--text-primary)' }}>ITL Admin Infrastructure</p>
-      </div>
     </div>
   );
 }

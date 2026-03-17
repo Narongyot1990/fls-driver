@@ -238,7 +238,10 @@ export default function LeaderTasksPage() {
       const res = await fetch(`/api/tasks/${taskId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'closed' }),
+        body: JSON.stringify({
+          action: 'update',
+          data: { status: 'closed' },
+        }),
       });
       const data = await res.json();
       if (data.success) setTasks(prev => prev.map(t => t._id === taskId ? { ...t, status: 'closed' } : t));

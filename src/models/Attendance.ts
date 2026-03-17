@@ -13,6 +13,8 @@ export interface IAttendance extends Document {
   distance: number; // in meters from branch center
   isInside: boolean;
   timestamp: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 const AttendanceSchema = new Schema<IAttendance>(

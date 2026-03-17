@@ -1,10 +1,11 @@
-import mongoose, { FilterQuery } from "mongoose";
+import mongoose, { type QueryFilter } from "mongoose";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import { badRequest } from "@/lib/api-errors";
 import type { TokenPayload } from "@/lib/jwt-auth";
 import { CarWashActivity } from "@/models/CarWashActivity";
 import { SubstituteRecord } from "@/models/SubstituteRecord";
+import type { ISubstituteRecord } from "@/models/SubstituteRecord";
 import { User } from "@/models/User";
 import { WorkSchedule } from "@/models/WorkSchedule";
 import type {
@@ -27,7 +28,7 @@ type OpsActor = Pick<TokenPayload, "userId" | "role">;
 
 export class SubstituteService {
   static async list(query: SubstituteListQueryInput) {
-    const filter: FilterQuery<typeof SubstituteRecord> = {};
+    const filter: QueryFilter<ISubstituteRecord> = {};
     if (query.userId) {
       if (mongoose.Types.ObjectId.isValid(query.userId)) {
         filter.userId = query.userId;
@@ -43,7 +44,7 @@ export class SubstituteService {
       .lean();
 
     return records.map((record) => {
-      const normalized = { ...record };
+      const normalized: Record<string, unknown> = { ...(record as unknown as Record<string, unknown>) };
       if (normalized.createdBy === "admin_root") {
         normalized.createdBy = ADMIN_ROOT_PROFILE;
       }

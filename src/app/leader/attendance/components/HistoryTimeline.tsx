@@ -2,201 +2,183 @@
 
 import { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { History as HistoryIcon, Trash2, ArrowRight, Clock, CalendarDays } from 'lucide-react';
-
-interface TimelineEvent {
-  _id: string;
-  type: 'in' | 'out';
-  timestamp: string;
-  branch: string;
-  eventType: 'actual' | 'correction';
-}
-
-interface AttendancePair {
-  in?: TimelineEvent;
-  out?: TimelineEvent;
-  id: string;
-}
+import { History as HistoryIcon, Trash2, ArrowRight, Clock, CalendarDays, AlertCircle } from 'lucide-react';
+import type { AttendancePair } from '@/app/leader/attendance/_lib/attendanceTypes';
 
 interface HistoryTimelineProps {
   pairs: AttendancePair[];
   onDeleteRecord: (id: string) => void;
-  onRequestCorrection: (type: 'in' | 'out') => void;
+  onRequestCorrection: (type: "in" | "out") => void;
   isSidebar?: boolean;
 }
 
-export function HistoryTimeline({ pairs, onDeleteRecord, onRequestCorrection, isSidebar = false }: HistoryTimelineProps) {
-  const formatTime = (iso: string) => {
+export function HistoryTimeline({ 
+  pairs, 
+  onDeleteRecord, 
+  onRequestCorrection,
+  isSidebar = false 
+}: HistoryTimelineProps) {
+  
+  const formatTime = (iso: string | Date) => {
     const d = new Date(iso);
-    return d.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleTimeString('th-TH', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false 
+    }) + ' น.';
   };
 
-  const getSessionDuration = (inTs: string, outTs: string) => {
-    const diff = new Date(outTs).getTime() - new Date(inTs).getTime();
-    const hours = Math.floor(diff / 3600000);
-    const mins = Math.floor((diff % 3600000) / 60000);
-    return `${hours}h ${mins}m`;
-  };
-
-  const groupedPairs = useMemo(() => {
-    const groups: { [key: string]: AttendancePair[] } = {};
-    
-    pairs.forEach(pair => {
-      const ts = pair.in?.timestamp || pair.out?.timestamp;
-      if (!ts) return;
-      
-      const date = new Date(ts).toLocaleDateString('en-CA'); // YYYY-MM-DD
-      if (!groups[date]) groups[date] = [];
-      groups[date].push(pair);
+  const formatDate = (iso: string | Date | undefined) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return d.toLocaleDateString('th-TH', { 
+      day: 'numeric', 
+      month: 'short', 
+      year: '2-digit' 
     });
-
-    return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
-  }, [pairs]);
-
-  const getDateLabel = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const today = new Date();
-    const yesterday = new Date();
-    yesterday.setDate(today.getDate() - 1);
-
-    if (date.toDateString() === today.toDateString()) return 'Today';
-    if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
-    
-    return date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
   };
+
+  const calculateDuration = (inTs?: string | Date, outTs?: string | Date) => {
+    if (!inTs || !outTs) return null;
+    const start = new Date(inTs).getTime();
+    const end = new Date(outTs).getTime();
+    const diffMs = end - start;
+    const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+    return `${diffHrs}ชม. ${diffMins}น.`;
+  };
+
+  if (pairs.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 px-4 text-center space-y-4 opacity-50">
+        <div className="w-12 h-12 rounded-full bg-[var(--bg-inset)] flex items-center justify-center border border-[var(--border)]">
+          <HistoryIcon className="w-6 h-6 opacity-20" />
+        </div>
+        <div className="space-y-1">
+          <p className="text-xs font-black uppercase tracking-widest">No History</p>
+          <p className="text-[10px] opacity-60">Record your first session today</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className={`flex flex-col h-full bg-transparent ${isSidebar ? '' : 'rounded-[40px] border border-[var(--border)] overflow-hidden shadow-2xl bg-[var(--bg-surface)]'}`}>
-      {!isSidebar && (
-        <div className="p-8 border-b border-[var(--border)] flex items-center justify-between bg-[var(--bg-surface)]/80 backdrop-blur-xl z-20 sticky top-0">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500">
-              <CalendarDays className="w-5 h-5" />
-            </div>
-            <h2 className="text-sm font-black uppercase tracking-widest">History Log</h2>
-          </div>
-          <div className="px-4 py-1.5 rounded-full bg-[var(--bg-inset)] border border-[var(--border)] text-[10px] font-black opacity-40 uppercase tracking-widest tabular-nums">
-            {pairs.length} Sessions
-          </div>
-        </div>
-      )}
+    <div className="space-y-4 pb-12">
+      <AnimatePresence initial={false}>
+        {pairs.map((pair, idx) => (
+          <motion.div
+            key={pair.id || idx}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="group relative"
+          >
+            {/* Timeline Connector */}
+            {idx !== pairs.length - 1 && (
+              <div className="absolute left-[23px] top-12 bottom-0 w-px bg-gradient-to-b from-[var(--border)] to-transparent opacity-20" />
+            )}
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar px-2 space-y-6 pb-20">
-        <AnimatePresence mode="popLayout">
-          {pairs.length === 0 ? (
-            <div className="py-24 text-center opacity-20 flex flex-col items-center gap-4">
-              <div className="w-20 h-20 rounded-[40px] bg-[var(--bg-inset)] flex items-center justify-center border border-[var(--border)]">
-                <HistoryIcon className="w-8 h-8" />
+            <div className="flex gap-4">
+              {/* Icon/Indicator */}
+              <div className="relative shrink-0 pt-1">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all duration-500 shadow-sm ${
+                  pair.out ? 'bg-emerald-500/5 border-emerald-500/10 text-emerald-500' : 'bg-indigo-500/5 border-indigo-500/10 text-indigo-500'
+                }`}>
+                  <Clock className="w-5 h-5" />
+                </div>
+                {!pair.out && (
+                  <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-indigo-500 border-2 border-[var(--bg-surface)] animate-pulse" />
+                )}
               </div>
-              <p className="text-[10px] font-black uppercase tracking-widest">No activity history</p>
-            </div>
-          ) : (
-            groupedPairs.map(([dateStr, dayPairs]) => (
-              <div key={dateStr} className="space-y-3 relative group/group">
-                {/* STICKY DAY HEADER */}
-                <div className="sticky top-0 z-10 py-3 bg-[var(--bg-surface)] md:bg-transparent backdrop-blur-md md:backdrop-blur-none -mx-2 px-2 transition-all">
-                  <div className="flex items-center gap-3">
-                    <span className="text-[11px] font-black uppercase tracking-[0.2em] text-indigo-500/60 drop-shadow-sm">
-                      {getDateLabel(dateStr)}
+
+              {/* Content Card */}
+              <div className="flex-1 p-5 rounded-3xl bg-[var(--bg-inset)] border border-[var(--border)] group-hover:bg-white/[0.03] transition-all space-y-4 relative overflow-hidden">
+                {/* Background Decor */}
+                <div className="absolute top-0 right-0 p-3 opacity-[0.03] pointer-events-none">
+                  <CalendarDays className="w-12 h-12 rotate-12" />
+                </div>
+
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <span className="text-[8px] font-black uppercase tracking-[0.2em] opacity-30">
+                      {formatDate(pair.in?.timestamp || pair.out?.timestamp)}
                     </span>
-                    <div className="h-px flex-1 bg-gradient-to-r from-indigo-500/20 to-transparent" />
+                    <div className="flex items-center gap-2">
+                       <span className="text-sm font-black tabular-nums">{pair.in ? formatTime(pair.in.timestamp) : '--:--'}</span>
+                       <ArrowRight className="w-3 h-3 opacity-20" />
+                       <span className="text-sm font-black tabular-nums">{pair.out ? formatTime(pair.out.timestamp) : 'On-going'}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-1">
+                    {pair.in && (
+                      <button
+                        onClick={() => onDeleteRecord(pair.in?._id || '')}
+                        className="p-2 rounded-xl hover:bg-rose-500/10 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100"
+                        title="Delete In"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {pair.out && (
+                      <button
+                        onClick={() => onDeleteRecord(pair.out?._id || '')}
+                        className="p-2 rounded-xl hover:bg-rose-500/10 hover:text-rose-500 transition-all opacity-0 group-hover:opacity-100"
+                        title="Delete Out"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  {dayPairs.map((pair) => (
-                    <motion.div
-                      key={pair.id}
-                      layout
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      className="bg-[var(--bg-surface)] border border-[var(--border)] rounded-[32px] overflow-hidden group shadow-sm hover:shadow-xl hover:border-indigo-500/30 transition-all duration-500"
-                    >
-                      {/* CARD HEADER */}
-                      <div className="px-5 py-3.5 bg-white/[0.01] border-b border-[var(--border)]/50 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-1.5 h-1.5 rounded-full ${pair.out ? 'bg-emerald-500' : 'bg-rose-500 animation-pulse'}`} />
-                          <span className="text-[8px] font-black uppercase tracking-widest opacity-30">
-                            {pair.in?.branch || pair.out?.branch || 'Unknown'}
-                          </span>
-                        </div>
-                        
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity translate-x-1 group-hover:translate-x-0">
-                          <button 
-                            onClick={() => onRequestCorrection(pair.in ? 'out' : 'in')}
-                            className="p-2 rounded-xl bg-indigo-500/5 text-indigo-500 hover:bg-indigo-500 hover:text-white transition-all border border-indigo-500/10"
-                            title="Request Correction"
-                          >
-                            <Clock className="w-3.5 h-3.5" />
-                          </button>
-                          <button 
-                            onClick={() => {
-                              if (!confirm('ยืนยันการลบรายการนี้?')) return;
-                              if (pair.in) onDeleteRecord(pair.in._id);
-                              if (pair.out) onDeleteRecord(pair.out._id);
-                            }}
-                            className="p-2 rounded-xl bg-rose-500/5 text-rose-500 hover:bg-rose-500 hover:text-white transition-all border border-rose-500/10"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                {/* Status and Details */}
+                <div className="flex items-center justify-between pt-1">
+                  <div className="flex items-center gap-3">
+                    {calculateDuration(pair.in?.timestamp, pair.out?.timestamp) && (
+                      <div className="px-2.5 py-1 rounded-full bg-white/5 border border-white/5 flex items-center gap-1.5 shadow-sm">
+                         <div className="w-1 h-1 rounded-full bg-emerald-500" />
+                         <span className="text-[10px] font-bold tabular-nums opacity-60">
+                           {calculateDuration(pair.in?.timestamp, pair.out?.timestamp)}
+                         </span>
                       </div>
-
-                      {/* CARD CONTENT */}
-                      <div className="p-5 flex items-center justify-between gap-6">
-                        <div className="flex-1 flex flex-col gap-1.5">
-                          <span className="text-[9px] font-black uppercase opacity-20 tracking-tighter">In Time</span>
-                          {pair.in ? (
-                            <span className="text-base font-black tabular-nums">{formatTime(pair.in.timestamp)}</span>
-                          ) : (
-                            <span className="text-[10px] font-bold text-rose-500/50 uppercase tracking-widest">Missing</span>
-                          )}
-                        </div>
-
-                        <div className="flex flex-col items-center gap-2">
-                           {pair.in && pair.out ? (
-                             <div className="px-2.5 py-1 rounded-full bg-white/5 border border-[var(--border)] text-[9px] font-black opacity-60 tabular-nums">
-                                {getSessionDuration(pair.in.timestamp, pair.out.timestamp)}
-                             </div>
-                           ) : (
-                             <ArrowRight className="w-4 h-4 opacity-5" />
-                           )}
-                        </div>
-
-                        <div className="flex-1 flex flex-col gap-1.5 text-right">
-                          <span className="text-[9px] font-black uppercase opacity-20 tracking-tighter">Out Time</span>
-                          {pair.out ? (
-                            <span className="text-base font-black tabular-nums">{formatTime(pair.out.timestamp)}</span>
-                          ) : (
-                            pair.in ? (
-                              <span className="text-[9px] font-black text-emerald-500 uppercase tracking-widest animate-pulse">On-Going</span>
-                            ) : (
-                              <span className="text-[10px] font-bold text-rose-500/50 uppercase tracking-widest">Missing</span>
-                            )
-                          )}
-                        </div>
+                    )}
+                    {!pair.out && (
+                      <div className="px-2.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/10 flex items-center gap-1.5 shadow-sm">
+                         <div className="w-1 h-1 rounded-full bg-indigo-500 animate-pulse" />
+                         <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider">
+                           Active Now
+                         </span>
                       </div>
-                    </motion.div>
-                  ))}
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {!pair.in && (
+                      <button
+                        onClick={() => onRequestCorrection('in')}
+                        className="text-[9px] font-black uppercase text-amber-500 hover:underline flex items-center gap-1"
+                      >
+                        <AlertCircle className="w-2.5 h-2.5" />
+                        Missing In
+                      </button>
+                    )}
+                    {!pair.out && pair.in && (
+                      <button
+                        onClick={() => onRequestCorrection('out')}
+                        className="text-[9px] font-black uppercase text-amber-500 hover:underline flex items-center gap-1"
+                      >
+                        <AlertCircle className="w-2.5 h-2.5" />
+                        Missed Out?
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-            ))
-          )}
-        </AnimatePresence>
-      </div>
-
-      <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 3px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.5; }
-        }
-        .animation-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-      `}</style>
+            </div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </div>
   );
 }
