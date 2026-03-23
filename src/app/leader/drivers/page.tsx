@@ -178,23 +178,29 @@ function DriverManagementContent() {
     
     setActionLoading(selectedPersonnel._id);
     try {
+      const payload: Record<string, unknown> = {
+        userId: selectedPersonnel._id,
+        name: selectedPersonnel.name,
+        surname: selectedPersonnel.surname,
+        phone: selectedPersonnel.phone,
+        linePublicId: selectedPersonnel.linePublicId,
+        employeeId: selectedPersonnel.employeeId,
+        vacationDays: selectedPersonnel.vacationDays,
+        sickDays: selectedPersonnel.sickDays,
+        personalDays: selectedPersonnel.personalDays,
+        performanceTier: selectedPersonnel.performanceTier,
+        branch: selectedPersonnel.branch,
+      };
+      
+      // Only admins can change roles
+      if (role === 'admin') {
+        payload.role = selectedPersonnel.role;
+      }
+      
       const response = await fetch('/api/users', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: selectedPersonnel._id,
-          name: selectedPersonnel.name,
-          surname: selectedPersonnel.surname,
-          phone: selectedPersonnel.phone,
-          linePublicId: selectedPersonnel.linePublicId,
-          employeeId: selectedPersonnel.employeeId,
-          vacationDays: selectedPersonnel.vacationDays,
-          sickDays: selectedPersonnel.sickDays,
-          personalDays: selectedPersonnel.personalDays,
-          performanceTier: selectedPersonnel.performanceTier,
-          branch: selectedPersonnel.branch,
-          role: selectedPersonnel.role,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await response.json();
       if (data.success) {
