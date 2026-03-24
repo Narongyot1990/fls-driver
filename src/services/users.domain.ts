@@ -143,13 +143,8 @@ export class UsersService {
       throw badRequest("Can only delete pending users");
     }
     
-    // Check permissions
-    if (actor.role === "leader") {
-      // Leader can only delete users in their branch
-      if (!actor.branch || actor.branch.toLowerCase() !== (user.branch ?? "").toLowerCase()) {
-        throw forbidden("Leaders can only delete users in their branch");
-      }
-    } else if (actor.role !== "admin") {
+    // Pending users have no branch - anyone with admin or leader role can delete them
+    if (actor.role !== "admin" && actor.role !== "leader") {
       throw forbidden("Only admins and leaders can delete users");
     }
 
