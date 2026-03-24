@@ -296,9 +296,9 @@ async function buildLeaveScope(actor: LeaveActor, query: LeaveQueryInput) {
 
   if (query.status) {
     filter.status = query.status;
-  } else if (!query.userId) {
-    filter.status = "approved";
   }
+  // Leaders and Admins should see ALL statuses when not filtering by specific user
+  // Don't default to "approved" - they need to see pending requests to approve them
 
   return filter;
 }
