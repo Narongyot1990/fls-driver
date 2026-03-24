@@ -37,4 +37,4 @@ export const DELETE = apiHandler(async ({ req, payload }) => {
   const input = DeleteUserSchema.parse({ id: searchParams.get("id") ?? undefined });
   await UsersService.remove(payload, input);
   return NextResponse.json({ success: true });
-}, { allowedRoles: ["leader", "admin"] });
+}, { requireAuth: true, allowedRoles: ["leader", "admin"] });
