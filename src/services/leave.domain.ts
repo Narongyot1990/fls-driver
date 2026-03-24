@@ -513,7 +513,7 @@ function getAdminRootProfile(): UserSummary {
     name: "ITL",
     surname: "Administrator",
     lineDisplayName: "ITL",
-    lineProfileImage: null, // No avatar for admin
+    lineProfileImage: undefined, // No avatar for admin
     role: "admin",
     status: "active",
   };
