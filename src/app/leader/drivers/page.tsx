@@ -228,9 +228,12 @@ function DriverManagementContent() {
         setShowDeleteModal(false);
         setDeletingId(null);
         setSelectedPersonnel(null);
+      } else {
+        alert(data.error || 'Failed to delete employee');
       }
     } catch (err) {
       console.error(err);
+      alert('Network error - please try again');
     } finally {
       setActionLoading(null);
     }
