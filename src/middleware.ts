@@ -17,6 +17,7 @@ const publicPaths = [
   '/api/auth/me',
   '/api/seed',
   '/api/car-wash/image',
+  '/api/line-webhook',
 ];
 
 export async function middleware(request: NextRequest) {

@@ -294,8 +294,13 @@ async function buildLeaveScope(actor: LeaveActor, query: LeaveQueryInput) {
     } else if (mongoose.Types.ObjectId.isValid(actor.userId)) {
       filter.userId = actor.userId;
     }
-  } else if (actor.role === "leader" && actor.branch) {
-    filter.userId = { $in: await getBranchUserIds(actor.branch, actor.userId) };
+  } else if (actor.role === "leader") {
+    // Leader: ถ้าไม่มี branch → ให้เห็น pending requests ทั้งหมด (ทุกสาขา)
+    if (!actor.branch) {
+      filter.status = "pending";
+    } else {
+      filter.userId = { $in: await getBranchUserIds(actor.branch, actor.userId) };
+    }
   } else if (actor.role === "admin" && query.branch && query.branch !== "all") {
     filter.userId = { $in: await getBranchUserIds(query.branch) };
   }
