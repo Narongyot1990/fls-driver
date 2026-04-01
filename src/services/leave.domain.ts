@@ -339,7 +339,7 @@ async function assertCanSubmitLeave(actor: LeaveActor, targetUserId: string) {
 
 async function getBranchUserIds(branch: string, authUserId?: string) {
   const branchUsers = await User.find({
-    branch: { $regex: new RegExp(`^${escapeRegExp(branch)}$`, "i") },
+    branch: { $options: 'i', $regex: `^${escapeRegExp(branch)}$` },
   })
     .select("_id")
     .lean();
