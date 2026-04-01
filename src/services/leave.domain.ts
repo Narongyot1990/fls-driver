@@ -285,43 +285,38 @@ export class LeaveService {
 }
 
 async function buildLeaveScope(actor: LeaveActor, query: LeaveQueryInput) {
-  // DEBUG: log actor info
+  // DEBUG
   console.log("[buildLeaveScope] actor:", JSON.stringify(actor));
   console.log("[buildLeaveScope] query:", JSON.stringify(query));
 
   const filter: QueryFilter<ILeaveRequest> = {};
 
   if (actor.role === "driver") {
-    if (actor.branch) {
-      const branchUserIds = await getBranchUserIds(actor.branch, actor.userId);
-      console.log("[buildLeaveScope] driver branchUserIds count:", branchUserIds.length);
-      filter.userId = { $in: branchUserIds };
-    } else if (mongoose.Types.ObjectId.isValid(actor.userId)) {
-      filter.userId = actor.userId;
+    // Driver: ดูได้แค่ตัวเอง
+    filter.userId = actor.userId;
+    if (query.status) {
+      filter.status = query.status;
     }
   } else if (actor.role === "leader") {
-    console.log("[buildLeaveScope] leader branch from actor:", actor.branch);
-    // Leader: ดูเฉพาะสาขาตัวเอง
+    // Leader: ดู pending ของสาขาตัวเอง
+    console.log("[buildLeaveScope] leader role, branch:", actor.branch);
     if (actor.branch) {
-      const branchUserIds = await getBranchUserIds(actor.branch, actor.userId);
-      console.log("[buildLeaveScope] leader branchUserIds count:", branchUserIds.length);
+      const branchUserIds = await getBranchUserIds(actor.branch);
+      console.log("[buildLeaveScope] branchUserIds:", branchUserIds.length, "users");
       filter.userId = { $in: branchUserIds };
-      // Default to pending, but allow override
-      if (query.status) {
-        filter.status = query.status;
-      } else {
-        filter.status = "pending";
-      }
+      // Leader should see pending by default, unless status is specified
+      filter.status = query.status || "pending";
     } else {
-      console.log("[buildLeaveScope] leader has NO branch - returning empty filter");
+      console.log("[buildLeaveScope] NO BRANCH - leader cannot see anything!");
     }
-    // ถ้าไม่มี branch → ไม่เห็นอะไรเลย (ต้องมี branch ตั้งค่า)
-  } else if (actor.role === "admin" && query.branch && query.branch !== "all") {
-    filter.userId = { $in: await getBranchUserIds(query.branch) };
-  }
-
-  if (query.userId) {
-    filter.userId = query.userId;
+  } else if (actor.role === "admin") {
+    // Admin: ดูตาม branch filter หรือทุกสาขา
+    if (query.branch && query.branch !== "all") {
+      filter.userId = { $in: await getBranchUserIds(query.branch) };
+    }
+    if (query.status) {
+      filter.status = query.status;
+    }
   }
 
   console.log("[buildLeaveScope] final filter:", JSON.stringify(filter));
