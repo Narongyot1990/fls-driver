@@ -59,6 +59,18 @@ const THAI_MONTHS = [
 
 const THAI_DAYS = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
 
+function padDatePart(value: number) {
+  return String(value).padStart(2, '0');
+}
+
+function toDateKey(value: string) {
+  return value.slice(0, 10);
+}
+
+function buildDateKey(year: number, month: number, day: number) {
+  return `${year}-${padDatePart(month + 1)}-${padDatePart(day)}`;
+}
+
 function DashboardContent() {
   const router = useRouter();
   const { branches, loading: branchesLoading } = useBranches();
@@ -172,13 +184,12 @@ function DashboardContent() {
   };
 
   const getLeavesForDay = (day: number): LeaveRequest[] => {
-    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    
+    const dateKey = buildDateKey(year, month, day);
+
     return leaves.filter(leave => {
-      const start = new Date(leave.startDate);
-      const end = new Date(leave.endDate);
-      const checkDate = new Date(dateStr);
-      return checkDate >= start && checkDate <= end;
+      const startKey = toDateKey(leave.startDate);
+      const endKey = toDateKey(leave.endDate);
+      return startKey <= dateKey && dateKey <= endKey;
     });
   };
 
@@ -192,9 +203,10 @@ function DashboardContent() {
 
 
   const exportToCSV = () => {
+    const monthKey = `${year}-${padDatePart(month + 1)}`;
+
     const monthLeaves = leaves.filter(leave => {
-      const leaveDate = new Date(leave.startDate);
-      return leaveDate.getMonth() === month && leaveDate.getFullYear() === year;
+      return toDateKey(leave.startDate).startsWith(monthKey);
     });
 
     if (monthLeaves.length === 0) {
