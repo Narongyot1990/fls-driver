@@ -11,36 +11,17 @@ import ProfileModal, { type ProfileUser } from '@/components/ProfileModal';
 import UserAvatar from '@/components/UserAvatar';
 import { getLeaveTypeMeta } from '@/lib/leave-types';
 import { formatDateThai, getLeaveDays } from '@/lib/date-utils';
+import type { AppRole, LeaveRequestRecord, SessionUser } from '@/lib/app-types';
 import { usePusher } from '@/hooks/usePusher';
 import { useBranches } from '@/hooks/useBranches';
 import { useToast } from '@/components/Toast';
 
-interface LeaveRequest {
-  _id: string;
-  userId: {
-    _id: string;
-    lineDisplayName: string;
-    lineProfileImage?: string;
-    performanceTier?: string;
-    name?: string;
-    surname?: string;
-    employeeId?: string;
-    phone?: string;
-  };
-  leaveType: string;
-  startDate: string;
-  endDate: string;
-  reason: string;
-  status: string;
-  createdAt: string;
-}
-
 export default function LeaderApprovePage() {
   const router = useRouter();
   const { branches, loading: branchesLoading } = useBranches();
-  const [user, setUser] = useState<any>(null);
-  const [role, setRole] = useState<'leader' | 'admin'>('leader');
-  const [requests, setRequests] = useState<LeaveRequest[]>([]);
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const [role, setRole] = useState<Extract<AppRole, 'leader' | 'admin'>>('leader');
+  const [requests, setRequests] = useState<LeaveRequestRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [newRequestAlert, setNewRequestAlert] = useState(false);
@@ -75,7 +56,7 @@ export default function LeaderApprovePage() {
   }, [router]);
 
   // Fetch pending requests
-  const fetchPending = async () => {
+  const fetchPending = useCallback(async () => {
     try {
       let url = '/api/leave?status=pending';
       if (role === 'admin' && selectedBranch !== 'all') {
@@ -93,12 +74,12 @@ export default function LeaderApprovePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [role, selectedBranch, user]);
 
   useEffect(() => {
     if (!user) return;
     fetchPending();
-  }, [user, role, selectedBranch]);
+  }, [user, fetchPending]);
 
   const { showToast } = useToast();
 
@@ -110,11 +91,11 @@ export default function LeaderApprovePage() {
     const audio = new Audio('/notification.mp3');
     audio.play().catch(() => {});
     setTimeout(() => setNewRequestAlert(false), 5000);
-  }, [showToast, role, selectedBranch]);
+  }, [fetchPending, showToast]);
 
   const handleLeaveStatusChanged = useCallback(() => {
     fetchPending();
-  }, [role, selectedBranch]);
+  }, [fetchPending]);
 
   usePusher('leave-requests', [
     { event: 'new-leave-request', callback: handleNewLeave },

@@ -12,43 +12,14 @@ import UserAvatar from '@/components/UserAvatar';
 import { getHolidayMap, getHolidaysForMonth } from '@/lib/thai-holidays';
 import { getLeaveTypeMeta, LEAVE_TYPE_LIST } from '@/lib/leave-types';
 import { formatDateThai as formatDateThaiUtil, getLeaveDays as getLeaveDaysUtil } from '@/lib/date-utils';
+import { buildDateKey, leaveSpansDateKey, leaveStartsInMonth } from '@/lib/leave-calendar';
+import type { AppRole, LeaveRequestRecord, SessionUser } from '@/lib/app-types';
 import { usePusher } from '@/hooks/usePusher';
 import { useBranches } from '@/hooks/useBranches';
 
-interface LeaveRequest {
-  _id: string;
-  userId: {
-    _id: string;
-    lineDisplayName: string;
-    lineProfileImage?: string;
-    performanceTier?: string;
-    name?: string;
-    surname?: string;
-    employeeId?: string;
-    phone?: string;
-  };
-  leaveType: string;
-  startDate: string;
-  endDate: string;
-  reason: string;
-  status: string;
-  approvedBy?: {
-    _id: string;
-    name: string;
-    surname: string;
-    lineDisplayName: string;
-    lineProfileImage?: string;
-    performanceTier?: string;
-    branch?: string;
-    role?: string;
-  };
-  approvedAt?: string;
-  createdAt: string;
-}
-
 interface DayData {
   date: number;
-  leaves: LeaveRequest[];
+  leaves: LeaveRequestRecord[];
 }
 
 
@@ -59,24 +30,12 @@ const THAI_MONTHS = [
 
 const THAI_DAYS = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
 
-function padDatePart(value: number) {
-  return String(value).padStart(2, '0');
-}
-
-function toDateKey(value: string) {
-  return value.slice(0, 10);
-}
-
-function buildDateKey(year: number, month: number, day: number) {
-  return `${year}-${padDatePart(month + 1)}-${padDatePart(day)}`;
-}
-
 function DashboardContent() {
   const router = useRouter();
   const { branches, loading: branchesLoading } = useBranches();
-  const [user, setUser] = useState<any>(null);
-  const [role, setRole] = useState<'driver' | 'leader' | 'admin'>('driver');
-  const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const [role, setRole] = useState<AppRole>('driver');
+  const [leaves, setLeaves] = useState<LeaveRequestRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<DayData | null>(null);
@@ -173,7 +132,6 @@ function DashboardContent() {
   
   const firstDayOfMonth = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const daysInPrevMonth = new Date(year, month, 0).getDate();
 
   const goToPrevMonth = () => {
     setCurrentDate(new Date(year, month - 1, 1));
@@ -183,13 +141,11 @@ function DashboardContent() {
     setCurrentDate(new Date(year, month + 1, 1));
   };
 
-  const getLeavesForDay = (day: number): LeaveRequest[] => {
+  const getLeavesForDay = (day: number): LeaveRequestRecord[] => {
     const dateKey = buildDateKey(year, month, day);
 
     return leaves.filter(leave => {
-      const startKey = toDateKey(leave.startDate);
-      const endKey = toDateKey(leave.endDate);
-      return startKey <= dateKey && dateKey <= endKey;
+      return leaveSpansDateKey(leave.startDate, leave.endDate, dateKey);
     });
   };
 
@@ -203,10 +159,8 @@ function DashboardContent() {
 
 
   const exportToCSV = () => {
-    const monthKey = `${year}-${padDatePart(month + 1)}`;
-
     const monthLeaves = leaves.filter(leave => {
-      return toDateKey(leave.startDate).startsWith(monthKey);
+      return leaveStartsInMonth(leave.startDate, year, month);
     });
 
     if (monthLeaves.length === 0) {
@@ -523,7 +477,7 @@ function DashboardContent() {
                               displayName={leave.approvedBy.name || leave.approvedBy.lineDisplayName}
                               tier={leave.approvedBy.performanceTier}
                               size="xs"
-                              onClick={() => { setProfileUser(leave.approvedBy as any); setShowProfile(true); }}
+                              onClick={() => { setProfileUser(leave.approvedBy as ProfileUser); setShowProfile(true); }}
                             />
                           </div>
                         )}

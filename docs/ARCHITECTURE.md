@@ -1,3 +1,8 @@
+> Deprecated: this file predates the current route/service layout and contains stale sections.
+> Use [`CURRENT_ARCHITECTURE.md`](./CURRENT_ARCHITECTURE.md),
+> [`PROJECT_STRUCTURE.md`](./PROJECT_STRUCTURE.md), and
+> [`AI_HANDOFF.md`](./AI_HANDOFF.md) for current guidance.
+
 # Leave Management - System Architecture
 
 ## Overview

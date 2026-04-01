@@ -17,41 +17,10 @@ import ProfileModal, { type ProfileUser } from '@/components/ProfileModal';
 import UserAvatar from '@/components/UserAvatar';
 import { getLeaveTypeMeta, getRecordTypeLabel, getStatusBadge } from '@/lib/leave-types';
 import { formatDateThai, getLeaveDays } from '@/lib/date-utils';
+import type { LeaveRequestRecord } from '@/lib/app-types';
 import { useAdminSession } from '@/hooks/useAdminSession';
 import { useAdminBranchScope } from '@/hooks/useAdminBranchScope';
 import { usePusher } from '@/hooks/usePusher';
-
-interface LeaveRequest {
-  _id: string;
-  userId: {
-    _id: string;
-    lineDisplayName: string;
-    lineProfileImage?: string;
-    performanceTier?: string;
-    name?: string;
-    surname?: string;
-    employeeId?: string;
-    phone?: string;
-  };
-  leaveType: string;
-  startDate: string;
-  endDate: string;
-  reason: string;
-  status: string;
-  approvedBy?: {
-    _id: string;
-    name: string;
-    surname: string;
-    lineDisplayName: string;
-    lineProfileImage?: string;
-    performanceTier?: string;
-    branch?: string;
-    role?: string;
-  };
-  approvedAt?: string;
-  rejectedReason?: string;
-  createdAt: string;
-}
 
 interface AttendanceRecord {
   _id: string;
@@ -87,7 +56,7 @@ function AdminHistoryContent() {
   const { user } = useAdminSession();
   const role = 'admin' as const;
   
-  const [leaves, setLeaves] = useState<LeaveRequest[]>([]);
+  const [leaves, setLeaves] = useState<LeaveRequestRecord[]>([]);
   const [substitutes, setSubstitutes] = useState<SubstituteRecord[]>([]);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -264,7 +233,7 @@ function AdminHistoryContent() {
                                   displayName={request.approvedBy.name || request.approvedBy.lineDisplayName}
                                   tier={request.approvedBy.performanceTier}
                                   size="xs"
-                                  onClick={() => { setProfileUser(request.approvedBy as any); setShowProfile(true); }}
+                                  onClick={() => { setProfileUser(request.approvedBy as ProfileUser); setShowProfile(true); }}
                                 />
                               </div>
                             )}

@@ -1,3 +1,8 @@
+> Deprecated: this file is retained for history and may not match the current codebase.
+> Start with [`docs/CURRENT_ARCHITECTURE.md`](./docs/CURRENT_ARCHITECTURE.md),
+> [`docs/PROJECT_STRUCTURE.md`](./docs/PROJECT_STRUCTURE.md), and
+> [`docs/AI_HANDOFF.md`](./docs/AI_HANDOFF.md).
+
 # Leave Management - Architecture Documentation
 
 ## Database Structure
