@@ -55,6 +55,8 @@ type PopulatedLeaveRecord = Omit<LeaveRecord, "userId" | "approvedBy"> & {
 };
 
 type QuotaSummary = Pick<IUser, "vacationDays" | "sickDays" | "personalDays">;
+const USER_SUMMARY_SELECT =
+  "lineDisplayName employeeId phone name surname lineProfileImage performanceTier performancePoints performanceLevel branch role status";
 
 class LeaveRepository {
   async findMany(query: QueryFilter<ILeaveRequest>) {
@@ -64,22 +66,12 @@ class LeaveRepository {
     }
     
     const requests = await LeaveRequest.find(finalQuery)
-      .populate("userId", "lineDisplayName employeeId phone name surname lineProfileImage performanceTier performancePoints performanceLevel branch")
-      .populate("approvedBy", "name surname lineDisplayName lineProfileImage performanceTier branch role")
+      .populate("userId", USER_SUMMARY_SELECT)
       .sort({ createdAt: -1 })
       .lean();
 
-    return requests.map((request) => {
-      // Handle "admin_root" special case AFTER populate - replace with admin profile object
-      const approvedBy = request.approvedBy;
-      if (isAdminRootReference(approvedBy)) {
-        return {
-          ...request,
-          approvedBy: getAdminRootProfile(),
-        };
-      }
-      return request;
-    });
+    const requestsWithApprovedBy = await attachApprovedBySummaries(requests);
+    return requestsWithApprovedBy.map((request) => mapPopulatedLeaveRequest(request));
   }
 
   async findById(id: string) {
@@ -138,11 +130,15 @@ class LeaveRepository {
       },
       { new: true },
     )
-      .populate("userId", "lineDisplayName employeeId phone name surname lineProfileImage performanceTier performancePoints performanceLevel branch")
-      .populate("approvedBy", "name surname lineDisplayName lineProfileImage performanceTier branch role")
+      .populate("userId", USER_SUMMARY_SELECT)
       .lean();
 
-    return request ? mapPopulatedLeaveRequest(request) : null;
+    if (!request) {
+      return null;
+    }
+
+    const [requestWithApprovedBy] = await attachApprovedBySummaries([request]);
+    return mapPopulatedLeaveRequest(requestWithApprovedBy);
   }
 }
 
@@ -152,12 +148,7 @@ export class LeaveService {
   static async list(actor: LeaveActor, query: LeaveQueryInput) {
     const resolvedActor = await resolveActorAccess(actor);
     const filter = await buildLeaveScope(resolvedActor, query);
-    const requests = await leaveRepository.findMany(filter);
-
-    return requests.map((request) => ({
-      ...request,
-      approvedBy: request.approvedBy === "admin_root" ? getAdminRootProfile() : request.approvedBy,
-    }));
+    return leaveRepository.findMany(filter);
   }
 
   static async create(actor: LeaveActor, input: CreateLeaveInput) {
@@ -409,6 +400,79 @@ function normalizeMixedIds(ids: unknown[]) {
   return normalized;
 }
 
+async function attachApprovedBySummaries<T extends { approvedBy?: unknown }>(records: T[]) {
+  const approverIds = Array.from(
+    new Set(
+      records
+        .map((record) => extractReferenceId(record.approvedBy))
+        .filter((value): value is string => Boolean(value) && value !== "admin_root"),
+    ),
+  );
+
+  if (approverIds.length === 0) {
+    return records.map((record) => {
+      const approverId = extractReferenceId(record.approvedBy);
+      if (approverId === "admin_root") {
+        return {
+          ...record,
+          approvedBy: getAdminRootProfile(),
+        };
+      }
+
+      return record;
+    });
+  }
+
+  const objectIds = approverIds
+    .filter((id) => mongoose.Types.ObjectId.isValid(id))
+    .map((id) => new mongoose.Types.ObjectId(id));
+
+  const [users, leaders] = await Promise.all([
+    objectIds.length > 0
+      ? User.find({ _id: { $in: objectIds } }).select(USER_SUMMARY_SELECT).lean()
+      : Promise.resolve([]),
+    objectIds.length > 0
+      ? Leader.find({ _id: { $in: objectIds } }).select("name branch role").lean()
+      : Promise.resolve([]),
+  ]);
+
+  const userMap = new Map<string, UserSummary>();
+  for (const user of users) {
+    userMap.set(String(user._id), mapReference(user) as UserSummary);
+  }
+
+  const leaderMap = new Map<string, UserSummary>();
+  for (const leader of leaders) {
+    leaderMap.set(String(leader._id), {
+      _id: String(leader._id),
+      name: leader.name,
+      lineDisplayName: leader.name,
+      branch: leader.branch,
+      role: leader.role,
+      status: "active",
+    });
+  }
+
+  return records.map((record) => {
+    const approverId = extractReferenceId(record.approvedBy);
+    if (!approverId) {
+      return record;
+    }
+
+    if (approverId === "admin_root") {
+      return {
+        ...record,
+        approvedBy: getAdminRootProfile(),
+      };
+    }
+
+    return {
+      ...record,
+      approvedBy: userMap.get(approverId) ?? leaderMap.get(approverId) ?? approverId,
+    };
+  });
+}
+
 async function resolveActorBranch(actor: LeaveActor) {
   const resolvedActor = await resolveActorAccess(actor);
   return resolvedActor.branch;
@@ -602,12 +666,24 @@ function asOptionalString(value: unknown) {
   return typeof value === "string" ? value : undefined;
 }
 
-function isAdminRootReference(value: unknown): value is { _id: string } {
-  if (!value || typeof value !== "object") {
-    return false;
+function extractReferenceId(value: unknown) {
+  if (value === undefined || value === null) {
+    return undefined;
   }
 
-  return String((value as { _id?: unknown })._id) === "admin_root";
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (value instanceof mongoose.Types.ObjectId) {
+    return value.toString();
+  }
+
+  if (typeof value === "object" && "_id" in (value as Record<string, unknown>)) {
+    return String((value as { _id?: unknown })._id);
+  }
+
+  return undefined;
 }
 
 function getAdminRootProfile(): UserSummary {
