@@ -100,8 +100,14 @@ class LeaveRepository {
     endDate: Date;
     reason: string;
   }) {
+    // Convert userId to ObjectId to match schema
+    const userIdObj = mongoose.Types.ObjectId.isValid(input.userId)
+      ? new mongoose.Types.ObjectId(input.userId)
+      : input.userId;
+
     const request = await LeaveRequest.create({
       ...input,
+      userId: userIdObj,
       status: "pending",
     });
 
