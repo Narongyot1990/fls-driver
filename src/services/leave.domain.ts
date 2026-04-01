@@ -285,25 +285,35 @@ export class LeaveService {
 }
 
 async function buildLeaveScope(actor: LeaveActor, query: LeaveQueryInput) {
+  // DEBUG: log actor info
+  console.log("[buildLeaveScope] actor:", JSON.stringify(actor));
+  console.log("[buildLeaveScope] query:", JSON.stringify(query));
+
   const filter: QueryFilter<ILeaveRequest> = {};
 
   if (actor.role === "driver") {
     if (actor.branch) {
       const branchUserIds = await getBranchUserIds(actor.branch, actor.userId);
+      console.log("[buildLeaveScope] driver branchUserIds count:", branchUserIds.length);
       filter.userId = { $in: branchUserIds };
     } else if (mongoose.Types.ObjectId.isValid(actor.userId)) {
       filter.userId = actor.userId;
     }
   } else if (actor.role === "leader") {
+    console.log("[buildLeaveScope] leader branch from actor:", actor.branch);
     // Leader: ดูเฉพาะสาขาตัวเอง
     if (actor.branch) {
-      filter.userId = { $in: await getBranchUserIds(actor.branch, actor.userId) };
+      const branchUserIds = await getBranchUserIds(actor.branch, actor.userId);
+      console.log("[buildLeaveScope] leader branchUserIds count:", branchUserIds.length);
+      filter.userId = { $in: branchUserIds };
       // Default to pending, but allow override
       if (query.status) {
         filter.status = query.status;
       } else {
         filter.status = "pending";
       }
+    } else {
+      console.log("[buildLeaveScope] leader has NO branch - returning empty filter");
     }
     // ถ้าไม่มี branch → ไม่เห็นอะไรเลย (ต้องมี branch ตั้งค่า)
   } else if (actor.role === "admin" && query.branch && query.branch !== "all") {
@@ -314,9 +324,7 @@ async function buildLeaveScope(actor: LeaveActor, query: LeaveQueryInput) {
     filter.userId = query.userId;
   }
 
-  // Leaders and Admins should see ALL statuses when not filtering by specific user
-  // Don't default to "approved" - they need to see pending requests to approve them
-
+  console.log("[buildLeaveScope] final filter:", JSON.stringify(filter));
   return filter;
 }
 
