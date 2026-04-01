@@ -19,7 +19,7 @@ export interface ILeaveRequest extends Document {
 
 const LeaveRequestSchema = new Schema<ILeaveRequest>(
   {
-    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    userId: { type: Schema.Types.Mixed, ref: 'User', required: true },
     leaveType: {
       type: String,
       enum: ['vacation', 'sick', 'personal', 'unpaid'],

@@ -53,7 +53,18 @@ type QuotaSummary = Pick<IUser, "vacationDays" | "sickDays" | "personalDays">;
 
 class LeaveRepository {
   async findMany(query: QueryFilter<ILeaveRequest>) {
-    const requests = await LeaveRequest.find(query)
+    // Handle userId filter specially - check both string and ObjectId formats
+    const finalQuery: any = { ...query };
+    if (query.userId && query.userId.$in) {
+      // For $in queries, also match string versions of the IDs
+      const objectIdArray = query.userId.$in.filter(id => mongoose.Types.ObjectId.isValid(id));
+      const stringArray = query.userId.$in.map(id => String(id));
+      finalQuery.userId = {
+        $in: [...objectIdArray, ...stringArray]
+      };
+    }
+    
+    const requests = await LeaveRequest.find(finalQuery)
       .populate("userId", "lineDisplayName employeeId phone name surname lineProfileImage performanceTier performancePoints performanceLevel branch")
       .populate("approvedBy", "name surname lineDisplayName lineProfileImage performanceTier branch role")
       .sort({ createdAt: -1 })
@@ -100,14 +111,8 @@ class LeaveRepository {
     endDate: Date;
     reason: string;
   }) {
-    // Convert userId to ObjectId to match schema
-    const userIdObj = mongoose.Types.ObjectId.isValid(input.userId)
-      ? new mongoose.Types.ObjectId(input.userId)
-      : input.userId;
-
     const request = await LeaveRequest.create({
       ...input,
-      userId: userIdObj,
       status: "pending",
     });
 
