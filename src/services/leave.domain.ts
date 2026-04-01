@@ -13,6 +13,10 @@ import { Leader } from "@/models/Leader";
 import { CHANNELS, EVENTS, triggerPusher } from "@/lib/pusher";
 
 type LeaveActor = Pick<TokenPayload, "userId" | "role" | "branch">;
+type ResolvedLeaveActor = LeaveActor & {
+  role: TokenPayload["role"];
+  branch?: string;
+};
 type QuotaKey = "vacationDays" | "sickDays" | "personalDays";
 type LeaveRecord = {
   _id: string;
@@ -146,7 +150,8 @@ const leaveRepository = new LeaveRepository();
 
 export class LeaveService {
   static async list(actor: LeaveActor, query: LeaveQueryInput) {
-    const filter = await buildLeaveScope(actor, query);
+    const resolvedActor = await resolveActorAccess(actor);
+    const filter = await buildLeaveScope(resolvedActor, query);
     const requests = await leaveRepository.findMany(filter);
 
     return requests.map((request) => ({
@@ -156,7 +161,8 @@ export class LeaveService {
   }
 
   static async create(actor: LeaveActor, input: CreateLeaveInput) {
-    await assertCanSubmitLeave(actor, input.userId);
+    const resolvedActor = await resolveActorAccess(actor);
+    await assertCanSubmitLeave(resolvedActor, input.userId);
 
     const user = await User.findById(input.userId).lean();
     if (!user) {
@@ -240,7 +246,9 @@ export class LeaveService {
   }
 
   static async review(actor: LeaveActor, id: string, input: ReviewLeaveInput) {
-    if (actor.role !== "leader" && actor.role !== "admin") {
+    const resolvedActor = await resolveActorAccess(actor);
+
+    if (resolvedActor.role !== "leader" && resolvedActor.role !== "admin") {
       throw forbidden("Forbidden");
     }
 
@@ -250,8 +258,8 @@ export class LeaveService {
     }
 
     const driverBranch = extractBranch(leaveRequest.userId);
-    const actorBranch = actor.role === "leader" ? await resolveActorBranch(actor) : actor.branch;
-    if (actor.role === "leader" && actorBranch && driverBranch?.toLowerCase() !== actorBranch.toLowerCase()) {
+    const actorBranch = resolvedActor.branch;
+    if (resolvedActor.role === "leader" && actorBranch && driverBranch?.toLowerCase() !== actorBranch.toLowerCase()) {
       throw forbidden("Cannot approve leave requests outside your branch");
     }
 
@@ -402,17 +410,42 @@ function normalizeMixedIds(ids: unknown[]) {
 }
 
 async function resolveActorBranch(actor: LeaveActor) {
+  const resolvedActor = await resolveActorAccess(actor);
+  return resolvedActor.branch;
+}
+
+async function resolveActorAccess(actor: LeaveActor): Promise<ResolvedLeaveActor> {
   if (!mongoose.Types.ObjectId.isValid(actor.userId)) {
-    return actor.branch;
+    return {
+      ...actor,
+      role: actor.role,
+      branch: actor.branch,
+    };
   }
 
-  const user = await User.findById(actor.userId).select("branch").lean();
-  if (user?.branch) {
-    return user.branch;
+  const user = await User.findById(actor.userId).select("role branch").lean();
+  if (user) {
+    return {
+      ...actor,
+      role: user.role ?? actor.role,
+      branch: user.branch ?? actor.branch,
+    };
   }
 
-  const leader = await Leader.findById(actor.userId).select("branch").lean();
-  return leader?.branch ?? actor.branch;
+  const leader = await Leader.findById(actor.userId).select("role branch").lean();
+  if (leader) {
+    return {
+      ...actor,
+      role: (leader.role as TokenPayload["role"]) ?? actor.role,
+      branch: leader.branch ?? actor.branch,
+    };
+  }
+
+  return {
+    ...actor,
+    role: actor.role,
+    branch: actor.branch,
+  };
 }
 
 function parseLocalDate(value: string) {
